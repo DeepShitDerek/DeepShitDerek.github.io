@@ -68,9 +68,9 @@ export default function Hero() {
   };
 
   return (
-    <section className="py-12 lg:py-24 relative">
+    <section className="py-16 lg:py-32 relative overflow-hidden">
       <motion.div
-        className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center"
+        className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center relative z-10"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
@@ -96,11 +96,11 @@ export default function Hero() {
           {/* Name Heading */}
           <motion.h1
             variants={itemVariants}
-            className="font-black text-foreground tracking-tighter leading-[0.9]"
-            style={{ fontSize: "clamp(3.5rem, 8vw, 6.5rem)" }}
+            className="font-black text-foreground tracking-tighter leading-[0.95]"
+            style={{ fontSize: "clamp(3.5rem, 10vw, 5rem)" }}
           >
             {hero.name}
-            <span className="text-primary">.</span>
+            <span className="text-primary font-black">.</span>
           </motion.h1>
 
           {/* Title */}
@@ -118,7 +118,7 @@ export default function Hero() {
           <motion.div
             variants={itemVariants}
             className={cn(
-              "max-w-xl prose prose-lg prose-invert prose-p:text-muted-foreground prose-a:text-primary",
+              "max-w-xl prose prose-lg prose-p:text-muted-foreground prose-a:text-primary prose-p:leading-relaxed",
               !status_panel.show && "mx-auto",
             )}
           >
@@ -135,16 +135,22 @@ export default function Hero() {
           >
             {socials
               .filter((s) => s.is_visible)
-              .map((social) => {
+              .map((social, index) => {
                 const Icon = socialIcons[social.id.toLowerCase()];
                 if (!Icon) return null;
+                const isPrimary = index === 0;
                 return (
                   <Button
                     key={social.url}
                     asChild
-                    variant="outline"
+                    variant={isPrimary ? "default" : "outline"}
                     size="lg"
-                    className="gap-2 border-border/50 bg-background/50 hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all duration-300"
+                    className={cn(
+                      "gap-2 transition-all duration-300",
+                      isPrimary
+                        ? "bg-primary text-primary-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                        : "border-border bg-card hover:bg-primary/5 hover:text-primary hover:border-primary/30"
+                    )}
                   >
                     <a
                       href={social.url}
@@ -164,12 +170,12 @@ export default function Hero() {
         {status_panel.show && (
           <motion.div className="lg:col-span-5 w-full" variants={itemVariants}>
             <div className="relative group">
-              {/* Glow Effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary to-cyan-400 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+              {/* Wiz Glow Effect */}
+              <div className="absolute -inset-1 bg-primary rounded-2xl blur opacity-15 group-hover:opacity-25 transition duration-500" />
 
-              <div className="relative bg-background/90 backdrop-blur-xl border border-white/10 rounded-xl p-6 md:p-8 overflow-hidden">
+              <div className="bg-card rounded-xl border shadow-sm hover:shadow-md transition-all relative p-6 md:p-8 overflow-hidden border-border/50">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+                <div className="flex justify-between items-center mb-6 border-b border-border pb-4">
                   <div className="flex items-center gap-2">
                     <Cpu className="size-4 text-primary" />
                     <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
@@ -177,9 +183,9 @@ export default function Hero() {
                     </span>
                   </div>
                   <div className="flex gap-1.5">
-                    <span className="size-2 rounded-full bg-red-500/20" />
-                    <span className="size-2 rounded-full bg-yellow-500/20" />
-                    <span className="size-2 rounded-full bg-green-500/80 animate-pulse" />
+                    <span className="size-2 rounded-full bg-red-400/30" />
+                    <span className="size-2 rounded-full bg-yellow-400/30" />
+                    <span className="size-2 rounded-full bg-green-500 animate-pulse" />
                   </div>
                 </div>
 
@@ -190,9 +196,9 @@ export default function Hero() {
                     <span className="text-xs text-muted-foreground font-mono flex items-center gap-2">
                       <CircleDashed className="size-3" /> Availability
                     </span>
-                    <div className="flex items-center gap-3 text-sm font-medium text-green-400">
+                    <div className="flex items-center gap-3 text-sm font-medium text-green-600">
                       <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                       </span>
                       {status_panel.availability}
@@ -210,7 +216,7 @@ export default function Hero() {
                         <Badge
                           key={item}
                           variant="secondary"
-                          className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 font-mono text-xs"
+                          className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/15 font-mono text-xs"
                         >
                           {item}
                         </Badge>
@@ -219,10 +225,10 @@ export default function Hero() {
                   </div>
 
                   {/* Latest Project Link */}
-                  <div className="pt-4 mt-2 border-t border-white/5">
+                  <div className="pt-4 mt-2 border-t border-border">
                     <Link
                       href={status_panel.latestProject.href}
-                      className="flex items-center justify-between group/link p-2 -mx-2 rounded-lg hover:bg-white/5 transition-colors"
+                      className="flex items-center justify-between group/link p-3 -mx-3 rounded-xl hover:bg-primary/5 transition-colors"
                     >
                       <div>
                         <p className="text-xs text-muted-foreground font-mono mb-1">
@@ -232,7 +238,7 @@ export default function Hero() {
                           {status_panel.latestProject.name}
                         </p>
                       </div>
-                      <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-background transition-all">
+                      <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-primary-foreground transition-all shadow-sm">
                         <ArrowRight className="size-4" />
                       </div>
                     </Link>

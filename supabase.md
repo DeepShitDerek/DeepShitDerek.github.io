@@ -326,9 +326,40 @@ $$;
 CREATE OR REPLACE FUNCTION update_section_order(section_ids UUID[]) RETURNS void AS $$ BEGIN FOR i IN 1..array_length(section_ids, 1) LOOP UPDATE portfolio_sections SET display_order = i WHERE id = section_ids[i]; END LOOP; END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_total_blog_views() RETURNS BIGINT AS $$ DECLARE total_views BIGINT; BEGIN SELECT SUM(views) INTO total_views FROM blog_posts WHERE published = true; RETURN COALESCE(total_views, 0); END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_learning_heatmap_data(start_date DATE, end_date DATE) RETURNS TABLE(day DATE, total_minutes INT) AS $$ BEGIN RETURN QUERY SELECT DATE(s.start_time AT TIME ZONE 'UTC') AS day, COALESCE(SUM(s.duration_minutes), 0):: INT AS total_minutes FROM learning_sessions s WHERE s.user_id = auth.uid() AND s.start_time AT TIME ZONE 'UTC' >= start_date AND s.start_time AT TIME ZONE 'UTC' <= end_date GROUP BY day ORDER BY day; END; $$ LANGUAGE plpgsql;
-CREATE OR REPLACE FUNCTION rename_transaction_category(old_name TEXT, new_name TEXT) RETURNS void AS $$ BEGIN UPDATE transactions SET category = new_name WHERE user_id = auth.uid() AND category = old_name; END; $$ LANGUAGE plpgsql;
-CREATE OR REPLACE FUNCTION merge_transaction_categories(source_name TEXT, target_name TEXT) RETURNS void AS $$ BEGIN UPDATE transactions SET category = target_name WHERE user_id = auth.uid() AND category = source_name; END; $$ LANGUAGE plpgsql;
-CREATE OR REPLACE FUNCTION delete_transaction_category(category_name TEXT) RETURNS void AS $$ BEGIN UPDATE transactions SET category = NULL WHERE user_id = auth.uid() AND category = category_name; END; $$ LANGUAGE plpgsql;
+
+-- Renames all instances of a category for the current user.
+CREATE OR REPLACE FUNCTION rename_transaction_category(old_name TEXT, new_name TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE transactions SET category = new_name WHERE user_id = auth.uid() AND category = old_name;
+END;
+$$;
+
+-- Merges all transactions from a source category into a target category.
+CREATE OR REPLACE FUNCTION merge_transaction_categories(source_name TEXT, target_name TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE transactions SET category = target_name WHERE user_id = auth.uid() AND category = source_name;
+END;
+$$;
+
+-- Removes a category tag from all associated transactions (sets to NULL).
+CREATE OR REPLACE FUNCTION delete_transaction_category(category_name TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE transactions SET category = NULL WHERE user_id = auth.uid() AND category = category_name;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION ping() RETURNS text AS $$ BEGIN RETURN 'pong'; END; $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION update_asset_usage() RETURNS void AS $$ DECLARE asset RECORD; usage JSONB; BEGIN FOR asset IN SELECT id, file_path FROM storage_assets LOOP usage := '[]' :: jsonb; IF EXISTS (SELECT 1 FROM blog_posts WHERE cover_image_url LIKE '%' || asset.file_path || '%') THEN usage := usage || jsonb_build_object('type', 'Blog Cover', 'id', (SELECT id FROM blog_posts WHERE cover_image_url LIKE '%' || asset.file_path || '%' LIMIT 1)); END IF; IF EXISTS (SELECT 1 FROM blog_posts WHERE content LIKE '%' || asset.file_path || '%') THEN usage := usage || jsonb_build_object('type', 'Blog Content', 'id', (SELECT id FROM blog_posts WHERE content LIKE '%' || asset.file_path || '%' LIMIT 1)); END IF; IF EXISTS (SELECT 1 FROM portfolio_items WHERE image_url LIKE '%' || asset.file_path || '%') THEN usage := usage || jsonb_build_object('type', 'Portfolio Item', 'id', (SELECT id FROM portfolio_items WHERE image_url LIKE '%' || asset.file_path || '%' LIMIT 1)); END IF; UPDATE storage_assets SET used_in = usage WHERE id = asset.id; END LOOP; END; $$ LANGUAGE plpgsql;
 

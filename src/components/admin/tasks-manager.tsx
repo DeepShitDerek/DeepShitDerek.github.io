@@ -1,8 +1,8 @@
 // src/components/admin/tasks-manager.tsx
 "use client";
 
-import React, { useState, FormEvent, useMemo, useEffect } from "react";
-import type { Task, SubTask } from "@/types";
+import React, { useState, useMemo } from "react";
+import type { Task } from "@/types";
 import {
   useGetTasksQuery,
   useAddTaskMutation,
@@ -12,16 +12,18 @@ import {
   useUpdateSubTaskMutation,
   useDeleteSubTaskMutation,
 } from "@/store/api/adminApi";
-import { TaskManagerHeader } from "@/components/admin/tasks/TaskManagerHeader";
 import { TaskTreeView } from "@/components/admin/tasks/TaskTreeView";
 import { TaskKanbanBoard } from "@/components/admin/tasks/TaskKanbanBoard";
 import TaskForm from "@/components/admin/tasks/TaskForm";
+import { PageHeader, ManagerWrapper } from "@/components/admin/shared";
+import { Plus, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
+  SheetClose,
 } from "@/components/ui/sheet";
 import {
   Dialog,
@@ -38,17 +40,18 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
-import { AnimatePresence, motion } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function TaskManager() {
   const confirm = useConfirm();
   const isMobile = useIsMobile();
-  const [view, setView] = useState<"table" | "board">("table");
   const [searchTerm, setSearchTerm] = useState("");
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [newTaskDefaults, setNewTaskDefaults] = useState<Partial<Task> | null>(
+    null,
+  );
 
   const [isSubtaskDialogOpen, setIsSubtaskDialogOpen] = useState(false);
   const [activeParentTaskId, setActiveParentTaskId] = useState<string | null>(
@@ -56,29 +59,28 @@ export default function TaskManager() {
   );
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
-  // Force table view on mobile
-  useEffect(() => {
-    if (isMobile) {
-      setView("table");
-    }
-  }, [isMobile]);
-
   // API Hooks
   const { data: tasks = [], isLoading } = useGetTasksQuery();
-  const [addTask] = useAddTaskMutation();
   const [updateTask] = useUpdateTaskMutation();
   const [deleteTask] = useDeleteTaskMutation();
   const [addSubTask] = useAddSubTaskMutation();
   const [updateSubTask] = useUpdateSubTaskMutation();
   const [deleteSubTask] = useDeleteSubTaskMutation();
 
-  // --- FILTERING & STABLE SORTING ---
+  // Derived state for editing
+  const editingTask = useMemo(() => {
+    if (editingTaskId) {
+      return tasks.find((t) => t.id === editingTaskId) || null;
+    }
+    return newTaskDefaults || null;
+  }, [tasks, editingTaskId, newTaskDefaults]);
+
+  // Filtering & Sorting
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter((t) =>
       t.title.toLowerCase().includes(searchTerm.toLowerCase()),
     );
-    // STABLE SORT FIX: Sort by Creation Date Descending (Newest first).
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       return (
         new Date(b.created_at || 0).getTime() -
         new Date(a.created_at || 0).getTime()
@@ -86,15 +88,19 @@ export default function TaskManager() {
     });
   }, [tasks, searchTerm]);
 
-  // --- HANDLERS ---
+  // Handlers
   const handleCreateTask = (initialStatus: string = "todo") => {
-    setEditingTask({ status: initialStatus as any } as Task);
+    setEditingTaskId(null);
+    setNewTaskDefaults({ status: initialStatus as any });
     setIsSheetOpen(true);
   };
+
   const handleEditTask = (task: Task) => {
-    setEditingTask(task);
+    setEditingTaskId(task.id);
+    setNewTaskDefaults(null);
     setIsSheetOpen(true);
   };
+
   const handleDeleteTask = async (id: string) => {
     const ok = await confirm({
       title: "Delete Task?",
@@ -106,16 +112,18 @@ export default function TaskManager() {
     try {
       await deleteTask(id).unwrap();
       toast.success("Task deleted");
-      if (editingTask?.id === id) setIsSheetOpen(false);
+      if (editingTaskId === id) setIsSheetOpen(false);
     } catch {
       toast.error("Failed to delete task");
     }
   };
+
   const openSubtaskDialog = (taskId: string) => {
     setActiveParentTaskId(taskId);
     setNewSubtaskTitle("");
     setIsSubtaskDialogOpen(true);
   };
+
   const handleCreateSubtask = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!activeParentTaskId || !newSubtaskTitle.trim()) return;
@@ -135,67 +143,77 @@ export default function TaskManager() {
   if (isLoading) return <LoadingSpinner />;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)]">
-      <TaskManagerHeader
-        view={view}
-        setView={setView}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        onNewTask={() => handleCreateTask("todo")}
-        isMobile={isMobile}
+    <ManagerWrapper className="flex flex-col h-[calc(100vh-4rem)] md:h-auto">
+      <PageHeader
+        title="Tasks"
+        description="Manage projects, track progress, and organize your workflow"
+        searchValue={searchTerm}
+        onSearch={setSearchTerm}
+        searchPlaceholder="Filter tasks..."
+        actions={
+          <Button
+            onClick={() => handleCreateTask("todo")}
+            size="sm"
+            className="h-9 shadow-sm"
+          >
+            <Plus className="mr-2 size-4" /> New Task
+          </Button>
+        }
       />
 
-      <div className="flex-1 overflow-auto p-4 md:p-6 bg-secondary/5">
-        <AnimatePresence mode="wait">
-          {view === "table" ? (
-            <motion.div
-              key="table"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <TaskTreeView
-                tasks={filteredTasks}
-                onUpdateTask={(id, updates) => updateTask({ id, ...updates })}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
-                onAddSubTask={openSubtaskDialog}
-                onUpdateSubTask={(id, completed) =>
-                  updateSubTask({ id, is_completed: completed })
-                }
-                onDeleteSubTask={(id) => deleteSubTask(id)}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="board"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              className="h-full"
-            >
-              <TaskKanbanBoard
-                tasks={filteredTasks}
-                onUpdateTask={(id, updates) => updateTask({ id, ...updates })}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
-                onNewTask={handleCreateTask}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* 
+        MAIN CONTENT AREA 
+        flex-1 min-h-0: Ensures it fills available space but scrolls internally
+        overflow-hidden: Prevents double scrollbars
+      */}
+      <div className="flex-1 min-h-0 flex flex-col bg-secondary/5 rounded-lg border border-border/40 overflow-hidden relative mt-4">
+        {isMobile ? (
+          // MOBILE VIEW: TABLE / TREE
+          <div className="h-full w-full overflow-auto bg-background">
+            <TaskTreeView
+              tasks={filteredTasks}
+              onUpdateTask={(id, updates) => updateTask({ id, ...updates })}
+              onEditTask={handleEditTask}
+              onDeleteTask={handleDeleteTask}
+              onAddSubTask={openSubtaskDialog}
+              onUpdateSubTask={(id, completed) =>
+                updateSubTask({ id, is_completed: completed })
+              }
+              onDeleteSubTask={(id) => deleteSubTask(id)}
+            />
+          </div>
+        ) : (
+          // DESKTOP VIEW: KANBAN BOARD
+          <div className="h-full w-full overflow-hidden p-2">
+            <TaskKanbanBoard
+              tasks={filteredTasks}
+              onUpdateTask={(id, updates) => updateTask({ id, ...updates })}
+              onEditTask={handleEditTask}
+              onDeleteTask={handleDeleteTask}
+              onNewTask={handleCreateTask}
+            />
+          </div>
+        )}
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="w-full sm:max-w-md md:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>
-              {editingTask?.id ? "Edit Task" : "Create Task"}
-            </SheetTitle>
-            <SheetDescription>
-              Manage task details and subtasks.
-            </SheetDescription>
-          </SheetHeader>
+          <div className="flex justify-between items-center mb-6">
+            <SheetHeader>
+              <SheetTitle>
+                {editingTask?.id ? "Edit Task" : "Create Task"}
+              </SheetTitle>
+              <SheetDescription>
+                Manage task details and subtasks.
+              </SheetDescription>
+            </SheetHeader>
+            <SheetClose asChild>
+              <Button type="button" variant="ghost" size="icon">
+                <X className="size-4" />
+              </Button>
+            </SheetClose>
+          </div>
+
           <TaskForm
             key={editingTask?.id || "new"}
             task={editingTask}
@@ -232,7 +250,7 @@ export default function TaskManager() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </ManagerWrapper>
   );
 }
 

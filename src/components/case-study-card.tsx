@@ -50,7 +50,7 @@ export default function FeaturedProject({
           href={project.link_url || "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-xl overflow-hidden bg-secondary shadow-lg transition-all duration-300 hover:shadow-primary/20 border border-border/50"
+          className="block rounded-2xl overflow-hidden bg-card shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 border border-border/50"
         >
           {project.image_url ? (
             <img
@@ -91,7 +91,7 @@ export default function FeaturedProject({
         {/* Description Box */}
         <div
           className={cn(
-            "rounded-lg bg-card p-6 shadow-md border border-border z-10 w-full",
+            "rounded-2xl bg-card p-8 shadow-wiz border border-border/50 z-10 w-full",
             // Overlap effect only on Desktop
             "md:w-[120%] lg:w-[130%]",
             isReversed

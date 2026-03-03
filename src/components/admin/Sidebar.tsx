@@ -44,32 +44,32 @@ import { Separator } from "@/components/ui/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const mainNav = [
-  { name: "Dashboard", href: "/admin", icon: Home },
-  { name: "Calendar", href: "/admin/calendar", icon: CalendarIcon },
+  { name: ":) Dashboard", href: "/admin", icon: Home },
+  { name: ":) Calendar", href: "/admin/calendar", icon: CalendarIcon },
 ];
 
 const portfolioNav = [
-  { name: "Blog", href: "/admin/blog", icon: BookText },
-  { name: "Content", href: "/admin/content", icon: LayoutTemplate },
-  { name: "Assets", href: "/admin/assets", icon: ImageIcon },
+  { name: ":) Blog", href: "/admin/blog", icon: BookText },
+  { name: ":) Content", href: "/admin/content", icon: LayoutTemplate },
+  { name: ":) Assets", href: "/admin/assets", icon: ImageIcon },
 ];
 
 const productivityNav = [
-  { name: "Tasks", href: "/admin/tasks", icon: ListTodo },
-  { name: "Notes", href: "/admin/notes", icon: StickyNote },
-  { name: "Learning", href: "/admin/learning", icon: BrainCircuit },
-  { name: "Habits", href: "/admin/habits", icon: CheckSquare },
+  { name: ":) Tasks", href: "/admin/tasks", icon: ListTodo },
+  { name: ":) Notes", href: "/admin/notes", icon: StickyNote },
+  { name: ":) Learning", href: "/admin/learning", icon: BrainCircuit },
+  { name: ":) Habits", href: "/admin/habits", icon: CheckSquare },
 ];
 const financialNav = [
-  { name: "Finance", href: "/admin/finance", icon: Banknote },
-  { name: "Inventory", href: "/admin/inventory", icon: Box },
+  { name: ":)-- Finance", href: "/admin/finance", icon: Banknote },
+  { name: ":) Inventory", href: "/admin/inventory", icon: Box },
 ];
 
 const systemNav = [
-  { name: "Navigation", href: "/admin/navigation", icon: NavigationIcon },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
-  { name: "Security", href: "/admin/security", icon: Lock },
-  // { name: "CRUD Test", href: "/admin/test", icon: FlaskConical },
+  { name: ":) Navigation", href: "/admin/navigation", icon: NavigationIcon },
+  { name: ":) Settings", href: "/admin/settings", icon: Settings },
+  { name: ":) Security", href: "/admin/security", icon: Lock },
+  { name: "CRUD Test", href: "/admin/test", icon: FlaskConical },
 ];
 
 interface SidebarProps {
@@ -79,7 +79,7 @@ interface SidebarProps {
   toggleCollapse?: () => void;
 }
 
-export function Sidebar({
+export default function Sidebar({
   onLinkClick,
   className,
   isCollapsed = false,
@@ -141,7 +141,7 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "flex h-full flex-col gap-y-5 overflow-y-auto bg-background py-4",
+        "flex h-full flex-col gap-y-4 overflow-y-auto bg-background py-3",
         isCollapsed ? "px-2" : "px-4",
         className,
       )}

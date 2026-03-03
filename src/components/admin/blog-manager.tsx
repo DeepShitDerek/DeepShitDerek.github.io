@@ -48,13 +48,13 @@ import {
   Calendar,
   ExternalLink,
   ImageIcon,
-  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "../providers/ConfirmDialogProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PageHeader, EmptyState, ManagerWrapper } from "./shared";
 
 interface BlogManagerProps {
   startInCreateMode?: boolean;
@@ -95,7 +95,7 @@ export default function BlogManager({
         return true;
       })
       .filter((post) =>
-        post.title.toLowerCase().includes(searchTerm.toLowerCase()),
+        (post.title || "").toLowerCase().includes(searchTerm.toLowerCase()),
       );
   }, [posts, searchTerm, filterStatus]);
 
@@ -169,52 +169,36 @@ export default function BlogManager({
   }
 
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Blog Manager</h2>
-          <p className="text-muted-foreground">
-            Manage, create, and publish your content.
-          </p>
-        </div>
-        <Button
-          onClick={handleCreatePost}
-          size="sm"
-          className="h-9 w-full sm:w-auto"
-        >
-          <Plus className="mr-2 size-4" /> Create Post
-        </Button>
-      </div>
+    <ManagerWrapper className="h-full flex flex-col">
+      <PageHeader
+        title="Blog Manager"
+        description="Manage, create, and publish your content."
+        searchValue={searchTerm}
+        onSearch={setSearchTerm}
+        searchPlaceholder="Search posts..."
+        actions={
+          <Button onClick={handleCreatePost} size="sm" className="h-9 w-full sm:w-auto">
+            <Plus className="mr-2 size-4" /> Create Post
+          </Button>
+        }
+        filters={
+          <Select
+            value={filterStatus}
+            onValueChange={(v) => setFilterStatus(v as any)}
+          >
+            <SelectTrigger className="w-full sm:w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="draft">Drafts</SelectItem>
+            </SelectContent>
+          </Select>
+        }
+      />
 
       <Card className="flex-1 flex flex-col overflow-hidden border-none sm:border shadow-none sm:shadow-sm bg-transparent sm:bg-card">
-        <CardHeader className="p-0 sm:p-4 sm:border-b mb-4 sm:mb-0">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search posts..."
-                className="pl-9 bg-background"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Select
-                value={filterStatus}
-                onValueChange={(v) => setFilterStatus(v as any)}
-              >
-                <SelectTrigger className="w-full sm:w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="draft">Drafts</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
 
         <CardContent className="p-0 flex-1 overflow-auto bg-transparent sm:bg-background/50">
           {isLoading ? (
@@ -222,10 +206,13 @@ export default function BlogManager({
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : filteredPosts.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10 mx-0 sm:mx-4 my-4">
-              <FileText className="h-12 w-12 mb-4 opacity-20" />
-              <p>No posts found.</p>
-            </div>
+            <EmptyState
+              icon={FileText}
+              title="No posts found"
+              description={searchTerm ? "Try adjusting your search or filters." : "Create your first blog post to get started."}
+              action={!searchTerm ? { label: "Create Post", onClick: handleCreatePost, icon: Plus } : undefined}
+              className="h-64 border-2 border-dashed rounded-lg bg-muted/10 mx-0 sm:mx-4 my-4"
+            />
           ) : (
             <>
               {/* DESKTOP TABLE VIEW */}
@@ -479,6 +466,6 @@ export default function BlogManager({
           )}
         </CardContent>
       </Card>
-    </div>
+    </ManagerWrapper>
   );
 }

@@ -86,17 +86,18 @@ export function TaskTreeView({
 
   if (tasks.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10 m-4">
         <CheckCircle2 className="size-10 mb-4 opacity-20" />
         <p>No tasks found.</p>
       </div>
     );
   }
 
+  // FIX: Changed from "inline-block" to "block w-full" to ensure it fills the container height
   return (
-    <div className="rounded-md border bg-card shadow-sm overflow-hidden">
+    <div className="w-full">
       <Table>
-        <TableHeader className="bg-muted/40">
+        <TableHeader className="bg-muted/40 sticky top-0 z-10">
           <TableRow>
             <TableHead className="w-full md:w-[40%] pl-4">Title</TableHead>
             {/* Hide secondary columns on mobile */}
@@ -118,12 +119,12 @@ export function TaskTreeView({
               {/* PARENT TASK ROW */}
               <TableRow className="group hover:bg-muted/30 transition-colors border-b-border/50">
                 <TableCell className="py-3 pl-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-start gap-2">
                     <Button
                       variant="ghost"
                       size="icon"
                       className={cn(
-                        "h-6 w-6 shrink-0 transition-transform",
+                        "h-6 w-6 shrink-0 transition-transform mt-0.5",
                         (task.sub_tasks?.length || 0) === 0 &&
                           "opacity-0 pointer-events-none",
                       )}
@@ -135,33 +136,39 @@ export function TaskTreeView({
                         <ChevronRight className="size-4" />
                       )}
                     </Button>
-                    <div className="flex flex-col">
-                      <span
-                        className={cn(
-                          "font-medium truncate max-w-[150px] sm:max-w-xs cursor-pointer hover:text-primary transition-colors",
-                          task.status === "done" &&
-                            "text-muted-foreground line-through decoration-border",
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "font-medium truncate max-w-[180px] sm:max-w-xs cursor-pointer hover:text-primary transition-colors",
+                            task.status === "done" &&
+                              "text-muted-foreground line-through decoration-border",
+                          )}
+                          onClick={() => onEditTask(task)}
+                        >
+                          {task.title}
+                        </span>
+                        {task.sub_tasks && task.sub_tasks.length > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] h-5 px-1.5 text-muted-foreground hidden sm:inline-flex"
+                          >
+                            {task.sub_tasks.filter((s) => s.is_completed).length}/
+                            {task.sub_tasks.length}
+                          </Badge>
                         )}
-                        onClick={() => onEditTask(task)}
-                      >
-                        {task.title}
-                      </span>
+                      </div>
+                      
                       {/* Mobile-only status/priority indicator */}
-                      <div className="flex md:hidden gap-2 mt-1 text-xs text-muted-foreground">
-                        <span className="capitalize">{task.status}</span>
+                      <div className="flex items-center md:hidden gap-2 text-[10px] text-muted-foreground">
+                        <span className={cn(
+                          "capitalize px-1.5 py-0.5 rounded-sm bg-secondary",
+                          task.status === 'done' && "text-green-600 bg-green-100 dark:bg-green-900/30"
+                        )}>{task.status === 'inprogress' ? 'In Progress' : task.status}</span>
                         <span>•</span>
                         <span className="capitalize">{task.priority}</span>
                       </div>
                     </div>
-                    {task.sub_tasks && task.sub_tasks.length > 0 && (
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] h-5 px-1.5 ml-2 text-muted-foreground hidden sm:inline-flex"
-                      >
-                        {task.sub_tasks.filter((s) => s.is_completed).length}/
-                        {task.sub_tasks.length}
-                      </Badge>
-                    )}
                   </div>
                 </TableCell>
 
@@ -186,7 +193,7 @@ export function TaskTreeView({
                     {task.due_date ? (
                       <>
                         <Calendar className="mr-2 size-3.5" />
-                        {format(parseLocalDate(task.due_date), "MMM d, yyyy")}
+                        {format(parseLocalDate(task.due_date), "MMM d")}
                       </>
                     ) : (
                       <span className="opacity-30 italic">No date</span>
@@ -195,16 +202,17 @@ export function TaskTreeView({
                 </TableCell>
 
                 <TableCell className="text-right pr-4 py-3">
-                  <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 hidden sm:flex opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => onAddSubTask(task.id)}
                       title="Add Subtask"
                     >
                       <Plus className="size-4 text-muted-foreground" />
                     </Button>
+                    
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -218,6 +226,9 @@ export function TaskTreeView({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleStartFocus(task)}>
                           <Zap className="mr-2 size-3.5 text-yellow-500" /> Start Focus
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onAddSubTask(task.id)}>
+                          <Plus className="mr-2 size-3.5" /> Add Subtask
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onEditTask(task)}>
@@ -242,12 +253,12 @@ export function TaskTreeView({
                     key={subTask.id}
                     className="bg-muted/10 hover:bg-muted/20 border-b-border/30"
                   >
-                    <TableCell className="py-2 pl-12 relative">
-                      <div className="absolute left-7 top-0 bottom-1/2 w-px bg-border/50" />
-                      <div className="absolute left-7 bottom-1/2 w-4 h-px bg-border/50" />
+                    <TableCell className="py-2 pl-8 md:pl-12 relative">
+                      <div className="hidden md:block absolute left-7 top-0 bottom-1/2 w-px bg-border/50" />
+                      <div className="hidden md:block absolute left-7 bottom-1/2 w-4 h-px bg-border/50" />
 
                       <div className="flex items-center gap-3">
-                        <CornerDownRight className="size-3.5 text-muted-foreground/40 shrink-0" />
+                        <CornerDownRight className="hidden md:block size-3.5 text-muted-foreground/40 shrink-0" />
                         <Checkbox
                           checked={subTask.is_completed}
                           onCheckedChange={(checked) =>
@@ -257,7 +268,7 @@ export function TaskTreeView({
                         />
                         <span
                           className={cn(
-                            "text-sm truncate",
+                            "text-sm truncate max-w-[200px] md:max-w-none",
                             subTask.is_completed
                               ? "text-muted-foreground line-through"
                               : "text-foreground",
@@ -285,7 +296,7 @@ export function TaskTreeView({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 opacity-0 hover:opacity-100 transition-opacity"
+                        className="h-6 w-6 md:opacity-0 md:hover:opacity-100 transition-opacity"
                         onClick={() => onDeleteSubTask(subTask.id)}
                       >
                         <Trash2 className="size-3.5 text-destructive/70" />

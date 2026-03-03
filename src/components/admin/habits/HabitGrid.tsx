@@ -1,6 +1,6 @@
 // src/components/admin/habits/HabitGrid.tsx
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import { format, subDays, isSameDay } from "date-fns";
 import { Habit } from "@/types";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import HabitRow from "./HabitRow";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useResponsiveDays } from "@/hooks/use-responsive-days"; // Import our new hook
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface HabitGridProps {
@@ -31,10 +31,8 @@ export default function HabitGrid({
   onDelete,
   onViewStats,
 }: HabitGridProps) {
-  const isMobile = useIsMobile();
-
-  // Show fewer days on mobile to avoid overwhelming horizontal scroll
-  const daysToShow = isMobile ? 5 : 14;
+  const daysToShow = useResponsiveDays(); // Use the hook instead of isMobile
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const dates = useMemo(() => {
     return Array.from({ length: daysToShow }).map((_, i) =>
@@ -42,33 +40,41 @@ export default function HabitGrid({
     );
   }, [daysToShow]);
 
+  // Auto-scroll to the end (today's date) on load or when days change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollLeft = scrollAreaRef.current.scrollWidth;
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [habits, daysToShow]);
+
   return (
-    <div className="rounded-xl border bg-card/50 shadow-sm overflow-hidden backdrop-blur-sm">
+    <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
       <ScrollArea className="w-full whitespace-nowrap">
-        <div className="min-w-full inline-block align-middle">
+        <div className="min-w-full inline-block align-middle" ref={scrollAreaRef}>
           <Table>
-            <TableHeader className="bg-secondary/30">
-              <TableRow className="hover:bg-transparent border-b-border/60">
-                {/* Sticky First Column Header */}
-                <TableHead className="w-[120px] sm:w-[180px] min-w-[120px] sm:min-w-[180px] pl-4 h-14 sticky left-0 bg-background/95 backdrop-blur z-20 border-r border-border/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+            <TableHeader className="bg-muted/30">
+              <TableRow className="hover:bg-transparent border-b">
+                <TableHead className="w-[120px] sm:w-[160px] min-w-[120px] sm:min-w-[160px] pl-4 h-12 sticky left-0 bg-background/95 backdrop-blur z-20 border-r">
                   Habit
                 </TableHead>
                 {dates.map((date) => (
                   <TableHead
                     key={date.toString()}
-                    className="p-0 h-16 w-10 sm:w-11 min-w-[40px] sm:min-w-[44px] text-center align-middle relative"
+                    className="p-0 h-12 w-11 min-w-[44px] text-center align-middle font-normal"
                   >
-                    <div className="absolute right-0 top-3 bottom-3 w-px bg-border/40" />
-                    <div className="flex flex-col items-center justify-center gap-1 z-10 relative">
-                      <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                    <div className="flex flex-col items-center justify-center gap-0.5">
+                      <span className="text-[10px] text-muted-foreground uppercase">
                         {format(date, "EEE")}
                       </span>
                       <span
                         className={cn(
-                          "text-xs font-bold h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded-full transition-all",
+                          "text-xs font-semibold h-6 w-6 flex items-center justify-center rounded-full",
                           isSameDay(date, new Date())
-                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110 ring-2 ring-background"
-                            : "text-foreground/70 bg-secondary/40",
+                            ? "bg-primary text-primary-foreground"
+                            : "text-foreground/80",
                         )}
                       >
                         {format(date, "d")}
@@ -76,10 +82,9 @@ export default function HabitGrid({
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-center w-[60px] sm:w-[80px]">
-                  Streak
+                <TableHead className="text-center w-[60px] min-w-[60px] sticky right-0 bg-background/95 backdrop-blur z-20 border-l">
+                  Stats
                 </TableHead>
-                <TableHead className="w-[40px] sm:w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -94,22 +99,13 @@ export default function HabitGrid({
                   onViewStats={onViewStats}
                 />
               ))}
-
               {habits.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={dates.length + 3}
-                    className="h-40 text-center"
+                    colSpan={daysToShow + 2}
+                    className="h-40 text-center text-muted-foreground"
                   >
-                    <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
-                      <div className="size-12 rounded-full bg-secondary/50 flex items-center justify-center">
-                        <span className="text-2xl">🌱</span>
-                      </div>
-                      <p className="font-medium text-sm">No habits yet</p>
-                      <p className="text-xs text-muted-foreground/60">
-                        Create one to start your journey.
-                      </p>
-                    </div>
+                    No habits found.
                   </TableCell>
                 </TableRow>
               )}

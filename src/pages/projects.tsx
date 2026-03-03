@@ -5,6 +5,7 @@ import FeaturedProject from "@/components/case-study-card";
 import Head from "next/head";
 import { config as appConfig } from "@/lib/config";
 import { siteContent } from "@/lib/site-content";
+import PageWrapper from "@/components/public/PageWrapper";
 import { motion } from "framer-motion";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -44,7 +45,7 @@ export default function ProjectsPage() {
         <link rel="canonical" href={pageUrl} />
       </Head>
 
-      <main className="py-12 md:py-16">
+      <PageWrapper maxWidth="wide">
         {/* Only show the main page header if we HAVE featured projects.
             Otherwise, the GitHub projects component will show its own header below. */}
         {hasFeaturedProjects && (
@@ -99,13 +100,13 @@ export default function ProjectsPage() {
           </div>
         )}
 
-        <div className="mx-auto max-w-6xl">
-          {/* Always show title for GitHub projects if it's the only section, 
-              or if it follows featured projects. 
+        <div>
+          {/* Always show title for GitHub projects if it's the only section,
+              or if it follows featured projects.
               The internal component handles "My Projects" title. */}
           <ProjectsComponent showTitle={true} />
         </div>
-      </main>
+      </PageWrapper>
     </Layout>
   );
 }

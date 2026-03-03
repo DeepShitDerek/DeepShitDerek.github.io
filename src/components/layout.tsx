@@ -95,12 +95,21 @@ export default function Layout({ children, isAdmin = false }: LayoutProps) {
       </Head>
 
       <div className="relative flex min-h-[100dvh] flex-col justify-between font-sans">
+        {/* Ambient Background System */}
         <div className="fixed inset-0 z-[-1] bg-background" />
-        <div className="fixed inset-0 z-[-1] bg-grid-pattern opacity-[0.6]" />
+
+        {/* Gradient Orbs */}
+        <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute top-1/3 -left-40 w-[400px] h-[400px] bg-accent/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-primary/3 rounded-full blur-3xl" />
+        </div>
+
+        {/* Interactive Mouse Glow */}
         <div
-          className="pointer-events-none fixed inset-0 z-[-1] opacity-40 transition-opacity duration-500"
+          className="pointer-events-none fixed inset-0 z-[-1] opacity-20 transition-opacity duration-500"
           style={{
-            background: `radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), hsl(var(--primary) / 0.15), transparent 40%)`,
+            background: `radial-gradient(500px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), hsl(var(--primary) / 0.08), transparent 50%)`,
           }}
         />
 

@@ -1,5 +1,5 @@
 // src/pages/admin/settings.tsx
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import AdminLayout from "@/components/admin/AdminLayout";
 import LoadingSpinner from "@/components/admin/LoadingSpinner";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import SiteSettingsManager from "@/components/admin/SiteSettingsManager";

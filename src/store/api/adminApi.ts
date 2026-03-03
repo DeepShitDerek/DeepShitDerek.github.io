@@ -20,37 +20,13 @@ import type {
   AnalyticsData,
   Habit,
   InventoryItem,
+  NavLink,
+  StorageAsset,
+  CalendarItem,
 } from "@/types";
 import { format, subDays, addDays } from "date-fns";
 import { publicApi } from "./publicApi";
-
-type NavLink = {
-  id: string;
-  label: string;
-  href: string;
-  display_order: number;
-  is_visible: boolean;
-};
-type StorageAsset = {
-  id: string;
-  file_name: string;
-  file_path: string;
-  mime_type: string | null;
-  size_kb: number | null;
-  alt_text: string | null;
-  used_in: { type: string; id: string }[] | null;
-  created_at: string;
-};
-type CalendarItem = {
-  item_id: string;
-  title: string;
-  start_time: string;
-  end_time: string | null;
-  item_type: "event" | "task" | "transaction";
-  data: any;
-};
-
-const BUCKET_NAME = process.env.NEXT_PUBLIC_BUCKET_NAME || "assets";
+import { BUCKET_NAME, HABIT_LOGS_LOOKBACK_DAYS } from "@/lib/constants";
 
 export const adminApi = createApi({
   reducerPath: "adminApi",
@@ -392,11 +368,12 @@ export const adminApi = createApi({
           post.cover_image_url.includes(process.env.NEXT_PUBLIC_SUPABASE_URL!)
         ) {
           const pathSegments = post.cover_image_url.split("/");
-          const imagePath = pathSegments
-            .slice(pathSegments.indexOf(BUCKET_NAME) + 1)
-            .join("/");
-          if (imagePath.startsWith("blog_images/")) {
-            await supabase.storage.from(BUCKET_NAME).remove([imagePath]);
+          const bucketIndex = pathSegments.indexOf(BUCKET_NAME);
+          if (bucketIndex !== -1) {
+            const imagePath = pathSegments.slice(bucketIndex + 1).join("/");
+            if (imagePath && imagePath.startsWith("blog_images/")) {
+              await supabase.storage.from(BUCKET_NAME).remove([imagePath]);
+            }
           }
         }
         const { error } = await supabase
@@ -479,12 +456,24 @@ export const adminApi = createApi({
         const { data, error } = await supabase
           .from("tasks")
           .insert(task)
-          .select()
+          .select("*, sub_tasks(*)")
           .single();
         if (error) return { error };
         return { data };
       },
-      invalidatesTags: ["Tasks"],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data: newTask } = await queryFulfilled;
+          dispatch(
+            adminApi.util.updateQueryData("getTasks", undefined, (draft) => {
+              draft.unshift(newTask);
+            }),
+          );
+        } catch {
+          // Task creation failed, no cache update needed
+        }
+      },
+      invalidatesTags: ["Calendar"],
     }),
     updateTask: builder.mutation<Task, Partial<Task>>({
       queryFn: async (task) => {
@@ -494,7 +483,7 @@ export const adminApi = createApi({
           .from("tasks")
           .update(updateData)
           .eq("id", id!)
-          .select()
+          .select("*, sub_tasks(*)")
           .single();
         if (error) return { error };
         return { data };
@@ -509,12 +498,20 @@ export const adminApi = createApi({
           }),
         );
         try {
-          await queryFulfilled;
+          const { data: updatedTask } = await queryFulfilled;
+          dispatch(
+            adminApi.util.updateQueryData("getTasks", undefined, (draft) => {
+              const index = draft.findIndex((t) => t.id === updatedTask.id);
+              if (index !== -1) {
+                draft[index] = updatedTask;
+              }
+            }),
+          );
         } catch {
           patchResult.undo();
         }
       },
-      invalidatesTags: ["Tasks", "Calendar"],
+      invalidatesTags: ["Calendar"],
     }),
     deleteTask: builder.mutation<{ id: string }, string>({
       queryFn: async (id) => {
@@ -523,7 +520,22 @@ export const adminApi = createApi({
         if (error) return { error };
         return { data: { id } };
       },
-      invalidatesTags: ["Tasks", "Calendar"],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          adminApi.util.updateQueryData("getTasks", undefined, (draft) => {
+            const index = draft.findIndex((t) => t.id === id);
+            if (index !== -1) {
+              draft.splice(index, 1);
+            }
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
+      invalidatesTags: ["Calendar"],
     }),
     addSubTask: builder.mutation<SubTask, Partial<SubTask>>({
       queryFn: async (subTask) => {
@@ -536,7 +548,22 @@ export const adminApi = createApi({
         if (error) return { error };
         return { data };
       },
-      invalidatesTags: ["Tasks"],
+      async onQueryStarted(subTask, { dispatch, queryFulfilled }) {
+        try {
+          const { data: newSubTask } = await queryFulfilled;
+          dispatch(
+            adminApi.util.updateQueryData("getTasks", undefined, (draft) => {
+              const task = draft.find((t) => t.id === subTask.task_id);
+              if (task) {
+                if (!task.sub_tasks) task.sub_tasks = [];
+                task.sub_tasks.push(newSubTask);
+              }
+            }),
+          );
+        } catch {
+          // Subtask creation failed
+        }
+      },
     }),
     updateSubTask: builder.mutation<SubTask, Partial<SubTask>>({
       queryFn: async (subTask) => {
@@ -551,7 +578,24 @@ export const adminApi = createApi({
         if (error) return { error };
         return { data };
       },
-      invalidatesTags: ["Tasks"],
+      async onQueryStarted(subTask, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          adminApi.util.updateQueryData("getTasks", undefined, (draft) => {
+            for (const task of draft) {
+              const st = task.sub_tasks?.find((s) => s.id === subTask.id);
+              if (st) {
+                Object.assign(st, subTask);
+                break;
+              }
+            }
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     deleteSubTask: builder.mutation<{ id: string }, string>({
       queryFn: async (id) => {
@@ -563,7 +607,26 @@ export const adminApi = createApi({
         if (error) return { error };
         return { data: { id } };
       },
-      invalidatesTags: ["Tasks"],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          adminApi.util.updateQueryData("getTasks", undefined, (draft) => {
+            for (const task of draft) {
+              if (task.sub_tasks) {
+                const index = task.sub_tasks.findIndex((s) => s.id === id);
+                if (index !== -1) {
+                  task.sub_tasks.splice(index, 1);
+                  break;
+                }
+              }
+            }
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     getFinancialData: builder.query<
       {
@@ -1092,12 +1155,15 @@ export const adminApi = createApi({
       queryFn: async (asset) => {
         if (!supabase) return { error: { message: "No DB" } };
         const { error: storageError } = await supabase.storage
-          .from(process.env.NEXT_PUBLIC_BUCKET_NAME || "assets")
+          .from(BUCKET_NAME)
           .remove([asset.file_path]);
-        if (storageError)
-          console.warn(
-            `Could not delete asset from storage: ${storageError.message}`,
-          );
+        if (storageError) {
+          return {
+            error: {
+              message: `Storage deletion failed: ${storageError.message}`,
+            },
+          };
+        }
 
         const { error: dbError } = await supabase
           .from("storage_assets")
@@ -1144,14 +1210,14 @@ export const adminApi = createApi({
       queryFn: async () => {
         if (!supabase) return { error: { message: "No DB" } };
         const today = new Date();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(today.getDate() - 30);
+        const lookbackDate = new Date();
+        lookbackDate.setDate(today.getDate() - HABIT_LOGS_LOOKBACK_DAYS);
 
         const { data, error } = await supabase
           .from("habits")
           .select(`*, habit_logs(id, completed_date)`)
           .eq("is_active", true)
-          .gte("habit_logs.completed_date", thirtyDaysAgo.toISOString())
+          .gte("habit_logs.completed_date", lookbackDate.toISOString())
           .order("created_at", { ascending: true });
 
         if (error) return { error };
@@ -1185,12 +1251,14 @@ export const adminApi = createApi({
     toggleHabitLog: builder.mutation<void, { habit_id: string; date: string }>({
       queryFn: async ({ habit_id, date }) => {
         if (!supabase) return { error: { message: "No DB" } };
-        const { data: existing } = await supabase
+        const { data: existing, error: fetchError } = await supabase
           .from("habit_logs")
           .select("id")
           .eq("habit_id", habit_id)
           .eq("completed_date", date)
-          .single();
+          .maybeSingle();
+
+        if (fetchError) return { error: fetchError };
 
         if (existing) {
           const { error } = await supabase

@@ -1,5 +1,53 @@
 // src/types/index.ts
 
+// =============================================================================
+// API TYPES
+// =============================================================================
+
+/** Standardized API error response */
+export interface ApiError {
+  message: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+}
+
+// =============================================================================
+// NAVIGATION & CONTENT MANAGEMENT
+// =============================================================================
+
+export interface NavLink {
+  id: string;
+  label: string;
+  href: string;
+  display_order: number;
+  is_visible: boolean;
+}
+
+export interface StorageAsset {
+  id: string;
+  file_name: string;
+  file_path: string;
+  mime_type: string | null;
+  size_kb: number | null;
+  alt_text: string | null;
+  used_in: { type: string; id: string }[] | null;
+  created_at: string;
+}
+
+export interface CalendarItem {
+  item_id: string;
+  title: string;
+  start_time: string;
+  end_time: string | null;
+  item_type: "event" | "task" | "transaction";
+  data: Record<string, unknown>;
+}
+
+// =============================================================================
+// PORTFOLIO
+// =============================================================================
+
 export interface PortfolioSection {
   id: string;
   user_id?: string;

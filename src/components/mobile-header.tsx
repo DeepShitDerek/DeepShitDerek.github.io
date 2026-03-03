@@ -28,7 +28,7 @@ export default function MobileHeader() {
   const isLoading = isContentLoading || isNavLoading;
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 py-3 backdrop-blur-lg md:hidden">
+    <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-white/80 py-3 backdrop-blur-md shadow-sm md:hidden">
       <div className="mx-auto flex items-center justify-between px-4">
         <Link
           href="/"
@@ -40,7 +40,7 @@ export default function MobileHeader() {
           ) : (
             <>
               {content.profile_data.logo.main}
-              <span className="text-primary">
+              <span className="text-primary font-bold">
                 {content.profile_data.logo.highlight}
               </span>
             </>
@@ -53,7 +53,7 @@ export default function MobileHeader() {
               <span className="sr-only">Open Menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent className="bg-blueprint-bg">
+          <SheetContent className="bg-card">
             <SheetHeader className="flex-row justify-between">
               <SheetTitle className="font-mono text-base uppercase">
                 Navigation
@@ -75,10 +75,10 @@ export default function MobileHeader() {
                       key={link.href}
                       href={link.href}
                       onClick={() => setIsOpen(false)}
-                      className={`-mx-3 flex items-center gap-3 rounded-md px-3 py-2 text-base font-medium transition-colors ${
+                      className={`-mx-3 flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-all ${
                         isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
                       }`}
                     >
                       {link.label}

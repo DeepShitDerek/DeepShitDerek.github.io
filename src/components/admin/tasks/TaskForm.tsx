@@ -1,7 +1,7 @@
 // src/components/admin/tasks/TaskForm.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -78,6 +78,17 @@ export default function TaskForm({ task, onSuccess, onClose }: TaskFormProps) {
     },
   });
 
+  useEffect(() => {
+    if (task) {
+      form.reset({
+        title: task.title || "",
+        status: task.status || "todo",
+        priority: task.priority || "medium",
+        due_date: task.due_date || null,
+      });
+    }
+  }, [task, form]);
+
   const handleSave = async (values: TaskFormValues) => {
     try {
       const payload = {
@@ -96,8 +107,7 @@ export default function TaskForm({ task, onSuccess, onClose }: TaskFormProps) {
     }
   };
 
-  const handleAddSubtask = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddSubtask = async () => {
     if (!task?.id || !newSubtaskTitle.trim()) return;
     try {
       await addSubTask({ task_id: task.id, title: newSubtaskTitle }).unwrap();
@@ -187,6 +197,7 @@ export default function TaskForm({ task, onSuccess, onClose }: TaskFormProps) {
                     <FormControl>
                       <Button
                         variant="outline"
+                        type="button"
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !field.value && "text-muted-foreground",
@@ -251,6 +262,7 @@ export default function TaskForm({ task, onSuccess, onClose }: TaskFormProps) {
                       {sub.title}
                     </span>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
@@ -260,18 +272,24 @@ export default function TaskForm({ task, onSuccess, onClose }: TaskFormProps) {
                     </Button>
                   </div>
                 ))}
-                <form
-                  onSubmit={handleAddSubtask}
-                  className="mt-2 flex gap-2 border-t pt-3"
-                >
+
+                {/* Subtask Input - Fixed nested form issue */}
+                <div className="mt-2 flex gap-2 border-t pt-3">
                   <Input
                     value={newSubtaskTitle}
                     onChange={(e) => setNewSubtaskTitle(e.target.value)}
                     placeholder="Add a subtask..."
                     className="h-8 text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSubtask();
+                      }
+                    }}
                   />
                   <Button
-                    type="submit"
+                    type="button"
+                    onClick={handleAddSubtask}
                     size="sm"
                     className="h-8"
                     disabled={!newSubtaskTitle.trim() || isAddingSubtask}
@@ -282,7 +300,7 @@ export default function TaskForm({ task, onSuccess, onClose }: TaskFormProps) {
                       "Add"
                     )}
                   </Button>
-                </form>
+                </div>
               </div>
             </div>
           </>

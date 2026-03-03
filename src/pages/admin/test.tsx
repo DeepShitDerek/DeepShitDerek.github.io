@@ -1,7 +1,7 @@
 // src/pages/admin/test.tsx
 "use client";
 
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import AdminLayout from "@/components/admin/AdminLayout";
 import LoadingSpinner from "@/components/admin/LoadingSpinner";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useState, useRef, useEffect, useMemo } from "react";

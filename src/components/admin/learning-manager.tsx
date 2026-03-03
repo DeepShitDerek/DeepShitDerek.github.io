@@ -1,56 +1,84 @@
 // src/components/admin/learning-manager.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { LearningSubject, LearningTopic } from "@/types";
-import { Plus, BrainCircuit, Loader2, X, GraduationCap } from "lucide-react";
+import { Plus, Loader2, X, Clock, BookOpen, Zap, Layers, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import SubjectTopicTree from "./learning/SubjectTopicTree";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
+import { useGetLearningDataQuery, useDeleteSubjectMutation, useDeleteTopicMutation } from "@/store/api/adminApi";
+import { useAppSelector } from "@/store/hooks";
+import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { PageHeader, ManagerWrapper } from "./shared";
+import ModuleCard from "./learning/ModuleCard";
 import TopicEditor from "./learning/TopicEditor";
-import LearningDashboard from "./learning/LearningDashboard";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetClose,
-} from "@/components/ui/sheet";
 import SubjectForm from "./learning/SubjectForm";
 import TopicForm from "./learning/TopicForm";
-import { toast } from "sonner";
-import {
-  useGetLearningDataQuery,
-  useDeleteSubjectMutation,
-  useDeleteTopicMutation,
-} from "@/store/api/adminApi";
-import { useAppSelector } from "@/store/hooks";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
-import { useIsMobile } from "@/hooks/use-mobile"; // Import the hook
-import { AnimatePresence, motion } from "framer-motion";
+import { subDays, startOfWeek, format, eachDayOfInterval, startOfDay } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-type SheetState =
-  | { type: "create-subject" }
-  | { type: "edit-subject"; data: LearningSubject }
-  | { type: "create-topic"; subjectId: string }
-  | { type: "edit-topic"; data: LearningTopic }
+type SheetState = 
+  | { type: "create-subject" } 
+  | { type: "edit-subject"; data: LearningSubject } 
+  | { type: "create-topic"; subjectId: string } 
+  | { type: "edit-topic"; data: LearningTopic } 
   | null;
+
+const Heatmap = ({ data, days }: { data: Record<string, number>; days: Date[] }) => {
+  const getColor = (m: number) => {
+    if (m <= 0) return "bg-muted/50";
+    if (m < 30) return "bg-primary/20";
+    if (m < 60) return "bg-primary/50";
+    return "bg-primary";
+  };
+  return (
+    <div className="grid grid-flow-col grid-rows-7 gap-1">
+      {days.map((day) => {
+        const dateKey = format(day, "yyyy-MM-dd");
+        const minutes = data[dateKey] || 0;
+        return (
+          <TooltipProvider key={dateKey} delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger>
+                <div className={cn("w-3 h-3 sm:w-4 sm:h-4 rounded-[3px] transition-colors", getColor(minutes))} />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-bold text-sm">{minutes} mins</p>
+                <p className="text-xs text-muted-foreground">{format(day, "MMM do, yyyy")}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      })}
+    </div>
+  );
+};
+
+const StatCard = ({ title, value, icon: Icon, highlight }: { title: string; value: string | number; icon: any; highlight?: boolean }) => (
+  <Card className={highlight ? "bg-gradient-to-br from-primary/5 to-transparent border-primary/20" : ""}>
+    <CardHeader className="pb-2">
+      <CardTitle className={cn("text-xs font-bold uppercase tracking-widest flex items-center gap-2", highlight ? "text-primary" : "text-muted-foreground")}>
+        <Icon className="size-4" /> {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent><div className="text-3xl font-black">{value}</div></CardContent>
+  </Card>
+);
 
 export default function LearningManager() {
   const confirm = useConfirm();
-  const isMobile = useIsMobile(); // Use the hook to detect screen size
-
-  const [activeTopic, setActiveTopic] = useState<LearningTopic | null>(null);
+  const isMobile = useIsMobile();
   const [sheetState, setSheetState] = useState<SheetState>(null);
+  const [isHeatmapOpen, setIsHeatmapOpen] = useState(!isMobile);
+  const [selectedTopic, setSelectedTopic] = useState<LearningTopic | null>(null);
 
   const { data, isLoading } = useGetLearningDataQuery();
   const { activeSession } = useAppSelector((state) => state.learningSession);
-
   const [deleteSubject] = useDeleteSubjectMutation();
   const [deleteTopic] = useDeleteTopicMutation();
 
@@ -58,8 +86,24 @@ export default function LearningManager() {
   const topics = data?.topics || [];
   const sessions = data?.sessions || [];
 
-  const handleSelectTopic = (topic: LearningTopic) => setActiveTopic(topic);
-  const handleDeselectTopic = () => setActiveTopic(null);
+  const stats = useMemo(() => {
+    const totalMinutes = sessions.reduce((acc, s) => acc + (s.duration_minutes || 0), 0);
+    return { totalHours: (totalMinutes / 60).toFixed(1) };
+  }, [sessions]);
+
+  const { heatmapData, gridDays } = useMemo(() => {
+    const today = new Date();
+    const start = startOfWeek(subDays(today, 364));
+    const days = eachDayOfInterval({ start, end: today });
+    const data = sessions.reduce((acc: Record<string, number>, s) => {
+      if (!s.duration_minutes) return acc;
+      const key = format(startOfDay(new Date(s.start_time)), "yyyy-MM-dd");
+      acc[key] = (acc[key] || 0) + s.duration_minutes;
+      return acc;
+    }, {});
+    return { heatmapData: data, gridDays: days };
+  }, [sessions]);
+
   const handleSaveSuccess = () => setSheetState(null);
 
   const handleDelete = async (type: "subject" | "topic", id: string) => {
@@ -68,213 +112,141 @@ export default function LearningManager() {
       description: `This cannot be undone.`,
       variant: "destructive",
     });
-
     if (!ok) return;
-    if (type === "topic" && activeTopic?.id === id) setActiveTopic(null);
-
     try {
       const mutation = type === "subject" ? deleteSubject : deleteTopic;
       await mutation(id).unwrap();
       toast.success(`${type === "subject" ? "Module" : "Topic"} deleted`);
-    } catch (error: any) {
-      toast.error("Delete failed", { description: error.message });
+      if (type === 'topic' && selectedTopic?.id === id) {
+        setSelectedTopic(null);
+      }
+    } catch (err: any) {
+      toast.error("Delete failed", { description: err.message });
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <Loader2 className="size-10 animate-spin text-muted-foreground/30" />
-      </div>
+      <ManagerWrapper>
+        <div className="flex h-[80vh] items-center justify-center">
+          <Loader2 className="size-10 animate-spin text-muted-foreground/30" />
+        </div>
+      </ManagerWrapper>
     );
   }
 
-  // --- RESPONSIVE LAYOUT LOGIC ---
-
-  // On Mobile: Show either the list or the editor, but not both.
-  if (isMobile) {
+  // --- FULL SCREEN EDITOR MODE ---
+  // Replaces the entire dashboard when a topic is selected.
+  // This solves the "side by side sucks" issue by focusing purely on content.
+  if (selectedTopic) {
     return (
-      <>
-        <div className="h-[calc(100vh-8rem)]">
-          <AnimatePresence mode="wait">
-            {activeTopic ? (
-              <motion.div
-                key="editor"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
-                transition={{ type: "spring", stiffness: 260, damping: 30 }}
-              >
-                <TopicEditor
-                  key={activeTopic.id}
-                  topic={activeTopic}
-                  onBack={handleDeselectTopic}
-                  onTopicUpdate={(updated) => {
-                    if (activeTopic?.id === updated.id) setActiveTopic(updated);
-                  }}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="dashboard"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="h-full flex flex-col"
-              >
-                <div className="p-4 border-b">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <GraduationCap className="size-6 text-primary" /> Learning
-                    Center
-                  </h2>
+      // We pass 0 padding on mobile to maximize space, normal padding on desktop
+      <ManagerWrapper className="p-0 md:p-6 h-[calc(100vh-4rem)]"> 
+        <TopicEditor
+          topic={selectedTopic}
+          onBack={() => setSelectedTopic(null)}
+          onTopicUpdate={(updated) => {
+            if (selectedTopic?.id === updated.id) setSelectedTopic(updated);
+          }}
+        />
+      </ManagerWrapper>
+    );
+  }
+
+  // --- DASHBOARD MODE ---
+  return (
+    <ManagerWrapper>
+      <PageHeader
+        title="Learning"
+        description="Track your personal curriculum and knowledge base"
+        actions={
+          <Button onClick={() => setSheetState({ type: "create-subject" })}>
+            <Plus className="mr-2 size-4" /> New Module
+          </Button>
+        }
+      />
+
+      <div className="mt-6 space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard title="Study Time" value={`${stats.totalHours} hrs`} icon={Clock} highlight />
+          <StatCard title="Modules" value={subjects.length} icon={Layers} />
+          <StatCard title="Topics" value={topics.length} icon={BookOpen} />
+          <StatCard title="Sessions" value={sessions.length} icon={Zap} />
+        </div>
+
+        <Collapsible open={isHeatmapOpen} onOpenChange={setIsHeatmapOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Consistency Log</CardTitle>
+                  <ChevronDown className={cn("size-5 text-muted-foreground transition-transform", isHeatmapOpen && "rotate-180")} />
                 </div>
-                <SubjectTopicTree
-                  subjects={subjects}
-                  topics={topics}
-                  activeTopicId={null}
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0 pb-4 overflow-x-auto">
+                <div className="min-w-[600px] md:min-w-full">
+                  <Heatmap data={heatmapData} days={gridDays} />
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+        
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Modules</h3>
+          {subjects.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center">
+                <Layers className="size-12 mx-auto text-muted-foreground/30 mb-4" />
+                <p className="text-lg font-semibold mb-1">No modules yet</p>
+                <Button onClick={() => setSheetState({ type: "create-subject" })}><Plus className="mr-2 size-4" /> Create First Module</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {subjects.map((subject) => (
+                <ModuleCard
+                  key={subject.id}
+                  subject={subject}
+                  topics={topics.filter((t) => t.subject_id === subject.id)}
                   activeSession={activeSession}
-                  onSelectTopic={handleSelectTopic}
-                  onCreateSubject={() =>
-                    setSheetState({ type: "create-subject" })
-                  }
-                  onEditSubject={(subject) =>
-                    setSheetState({ type: "edit-subject", data: subject })
-                  }
-                  onDeleteSubject={(id) => handleDelete("subject", id)}
-                  onCreateTopic={(subjectId) =>
-                    setSheetState({ type: "create-topic", subjectId })
-                  }
-                  onEditTopic={(topic) =>
-                    setSheetState({ type: "edit-topic", data: topic })
-                  }
+                  onTopicClick={(topic) => setSelectedTopic(topic)}
+                  onEditSubject={() => setSheetState({ type: "edit-subject", data: subject })}
+                  onDeleteSubject={() => handleDelete("subject", subject.id)}
+                  onAddTopic={() => setSheetState({ type: "create-topic", subjectId: subject.id })}
+                  onEditTopic={(topic) => setSheetState({ type: "edit-topic", data: topic })}
                   onDeleteTopic={(id) => handleDelete("topic", id)}
                 />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        {/* The Sheet component for forms remains the same */}
-        <Sheet
-          open={!!sheetState}
-          onOpenChange={(open) => !open && setSheetState(null)}
-        >
-          {/* ... Sheet content from desktop version ... */}
-        </Sheet>
-      </>
-    );
-  }
-
-  // On Desktop: Render the resizable panel group.
-  return (
-    <>
-      <div className="flex flex-col h-[calc(100vh-6rem)]">
-        {!activeTopic && (
-          <div className="flex items-center justify-between mb-4 shrink-0 px-2 py-1">
-            <div>
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <GraduationCap className="size-7 text-primary" /> Learning
-                Center
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Manage your personal curriculum and knowledge base.
-              </p>
+              ))}
             </div>
-          </div>
-        )}
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="flex-1 rounded-xl border bg-card shadow-sm overflow-hidden"
-        >
-          <ResizablePanel defaultSize={22} minSize={18} maxSize={35}>
-            <SubjectTopicTree
-              subjects={subjects}
-              topics={topics}
-              activeTopicId={activeTopic?.id}
-              activeSession={activeSession}
-              onSelectTopic={handleSelectTopic}
-              onCreateSubject={() => setSheetState({ type: "create-subject" })}
-              onEditSubject={(subject) =>
-                setSheetState({ type: "edit-subject", data: subject })
-              }
-              onDeleteSubject={(id) => handleDelete("subject", id)}
-              onCreateTopic={(subjectId) =>
-                setSheetState({ type: "create-topic", subjectId })
-              }
-              onEditTopic={(topic) =>
-                setSheetState({ type: "edit-topic", data: topic })
-              }
-              onDeleteTopic={(id) => handleDelete("topic", id)}
-            />
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={78} className="bg-background">
-            {activeTopic ? (
-              <TopicEditor
-                key={activeTopic.id}
-                topic={activeTopic}
-                onBack={handleDeselectTopic}
-                onTopicUpdate={(updated) => {
-                  if (activeTopic?.id === updated.id) setActiveTopic(updated);
-                }}
-              />
-            ) : (
-              <div className="h-full overflow-y-auto p-6 bg-secondary/5">
-                <LearningDashboard
-                  sessions={sessions}
-                  topics={topics}
-                  subjects={subjects}
-                />
-              </div>
-            )}
-          </ResizablePanel>
-        </ResizablePanelGroup>
+          )}
+        </div>
       </div>
 
-      <Sheet
-        open={!!sheetState}
-        onOpenChange={(open) => !open && setSheetState(null)}
-      >
+      <Sheet open={!!sheetState} onOpenChange={(open) => !open && setSheetState(null)}>
         <SheetContent className="sm:max-w-lg">
           <div className="flex justify-between items-center mb-6">
             <SheetHeader>
-              <SheetTitle>
-                {sheetState?.type.includes("create") ? "Create" : "Edit"}{" "}
-                {sheetState?.type.includes("subject") ? "Module" : "Topic"}
-              </SheetTitle>
-              <SheetDescription>
-                Configure your learning path details.
-              </SheetDescription>
+              <SheetTitle>{sheetState?.type?.includes("create") ? "Create" : "Edit"} {sheetState?.type?.includes("subject") ? "Module" : "Topic"}</SheetTitle>
+              <SheetDescription>Configure details.</SheetDescription>
             </SheetHeader>
-            <SheetClose asChild>
-              <Button variant="ghost" size="icon">
-                <X className="size-4" />
-              </Button>
-            </SheetClose>
+            <SheetClose asChild><Button variant="ghost" size="icon"><X className="size-4" /></Button></SheetClose>
           </div>
-          {(sheetState?.type === "create-subject" ||
-            sheetState?.type === "edit-subject") && (
-            <SubjectForm
-              subject={
-                sheetState.type === "edit-subject" ? sheetState.data : null
-              }
-              onSuccess={handleSaveSuccess}
-            />
+          {(sheetState?.type === "create-subject" || sheetState?.type === "edit-subject") && (
+            <SubjectForm subject={sheetState.type === "edit-subject" ? sheetState.data : null} onSuccess={handleSaveSuccess} />
           )}
-          {(sheetState?.type === "create-topic" ||
-            sheetState?.type === "edit-topic") && (
+          {(sheetState?.type === "create-topic" || sheetState?.type === "edit-topic") && (
             <TopicForm
               topic={sheetState.type === "edit-topic" ? sheetState.data : null}
               subjects={subjects}
-              defaultSubjectId={
-                sheetState.type === "create-topic"
-                  ? sheetState.subjectId
-                  : undefined
-              }
+              defaultSubjectId={sheetState.type === "create-topic" ? sheetState.subjectId : undefined}
               onSuccess={handleSaveSuccess}
             />
           )}
         </SheetContent>
       </Sheet>
-    </>
+    </ManagerWrapper>
   );
 }

@@ -5,6 +5,7 @@ import { config as appConfig } from "@/lib/config";
 import { motion } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import DynamicPageContent from "@/components/DynamicPageContent";
+import PageWrapper from "@/components/public/PageWrapper";
 import { useGetSiteIdentityQuery } from "@/store/api/publicApi";
 import { Skeleton } from "@/components/ui/skeleton";
 import ReactMarkdown from "react-markdown";
@@ -29,12 +30,11 @@ export default function AboutPage() {
         <meta property="og:url" content={pageUrl} />
         <link rel="canonical" href={pageUrl} />
       </Head>
-      <main className="py-12 md:py-16">
+      <PageWrapper maxWidth="narrow" animate={false}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mx-auto max-w-3xl"
         >
           <h1 className="mb-4 border-b pb-4 text-center font-mono text-4xl font-bold tracking-tighter text-foreground sm:text-5xl">
             About.
@@ -78,10 +78,10 @@ export default function AboutPage() {
           </div>
         </motion.div>
 
-        <div className="mx-auto mt-12 max-w-5xl">
+        <div className="mt-12">
           <DynamicPageContent pagePath="/about" />
         </div>
-      </main>
+      </PageWrapper>
     </Layout>
   );
 }

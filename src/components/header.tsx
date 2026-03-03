@@ -34,7 +34,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="fixed left-0 top-0 z-50 hidden w-full border-b border-border/40 bg-background/60 py-4 backdrop-blur-xl md:block supports-[backdrop-filter]:bg-background/30">
+    <header className="fixed left-0 top-0 z-50 hidden w-full border-b border-border/50 bg-white/80 py-4 backdrop-blur-md shadow-sm md:block">
       <Container>
         <div className="flex h-8 items-center justify-between">
           <Link
@@ -48,14 +48,14 @@ export default function Header() {
                 <span className="text-foreground">
                   {content.profile_data.logo.main}
                 </span>
-                <span className="text-primary animate-pulse">
+                <span className="text-primary font-bold font-black">
                   {content.profile_data.logo.highlight}
                 </span>
               </>
             )}
           </Link>
 
-          <nav className="flex items-center gap-1 rounded-full bg-secondary/40 p-1 border border-white/5 backdrop-blur-sm">
+          <nav className="flex items-center gap-1 rounded-full bg-secondary p-1 border border-border/50 shadow-sm">
             {isLoading ? (
               <div className="flex gap-4 px-4">
                 <Skeleton className="h-4 w-16" />
@@ -85,7 +85,7 @@ export default function Header() {
                         {isActive && (
                           <motion.div
                             layoutId="header-pill"
-                            className="absolute inset-0 z-[-1] rounded-full bg-primary shadow-[0_0_15px_rgba(var(--primary),0.4)]"
+                            className="absolute inset-0 z-[-1] rounded-full bg-primary shadow-sm"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8 }}

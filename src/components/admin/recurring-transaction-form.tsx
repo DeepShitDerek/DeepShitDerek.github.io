@@ -81,8 +81,16 @@ export default function RecurringTransactionForm({
   useEffect(() => {
     if (frequency === "daily" || frequency === "yearly") {
       form.setValue("occurrence_day", null);
+    } else if (frequency === "weekly" || frequency === "bi-weekly") {
+      const current = form.getValues("occurrence_day");
+      if (current == null || current > 6) {
+        // Reset to start_date's day of week
+        const sd = form.getValues("start_date");
+        if (sd)
+          form.setValue("occurrence_day", new Date(sd + "T00:00:00").getDay());
+      }
     }
-  }, [frequency, form]);
+  }, [frequency]);
 
   const handleSubmit = async (values: RecurringFormValues) => {
     try {
@@ -358,9 +366,7 @@ export default function RecurringTransactionForm({
                         field.value ? parseLocalDate(field.value) : undefined
                       }
                       onSelect={(date) =>
-                        field.onChange(
-                          date ? format(date, "yyyy-MM-dd") : null,
-                        )
+                        field.onChange(date ? format(date, "yyyy-MM-dd") : null)
                       }
                       initialFocus
                     />

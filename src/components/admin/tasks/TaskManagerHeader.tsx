@@ -86,32 +86,36 @@ export function TaskManagerHeader({
           </DropdownMenu>
         </div>
 
-        {/* Hide toggle on mobile */}
-        {!isMobile && (
-          <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50">
-            <ToggleGroup
-              type="single"
-              value={view}
-              onValueChange={(v) => v && setView(v as any)}
-              size="sm"
+        {/* View toggle - board disabled on mobile */}
+        <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border border-border/50">
+          <ToggleGroup
+            type="single"
+            value={view}
+            onValueChange={(v) => {
+              if (v && !(isMobile && v === "board")) {
+                setView(v as any);
+              }
+            }}
+            size="sm"
+          >
+            <ToggleGroupItem
+              value="table"
+              aria-label="Table View"
+              className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
             >
-              <ToggleGroupItem
-                value="table"
-                aria-label="Table View"
-                className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
-              >
-                <List className="size-4 mr-2" /> Table
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="board"
-                aria-label="Board View"
-                className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
-              >
-                <LayoutGrid className="size-4 mr-2" /> Board
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-        )}
+              <List className="size-4 mr-2" /> Table
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="board"
+              aria-label="Board View"
+              disabled={isMobile}
+              title={isMobile ? "Board view is not available on mobile" : undefined}
+              className="data-[state=on]:bg-background data-[state=on]:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <LayoutGrid className="size-4 mr-2" /> Board
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
     </div>
   );

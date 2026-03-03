@@ -15,13 +15,13 @@ type ProjectCardProps = { project: GitHubRepo };
 
 export default function ProjectCard({ project }: ProjectCardProps) {
   return (
-    <Card className="group relative flex h-full flex-col overflow-hidden bg-blueprint-bg border-border/50 transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5">
+    <Card className="bg-card rounded-xl border shadow-sm hover:shadow-md transition-all group relative flex h-full flex-col overflow-hidden border-border/50">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle className="text-lg font-bold font-mono tracking-tight text-foreground group-hover:text-primary transition-colors">
+            <CardTitle className="text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
               {project.name.replaceAll("-", " ")}
             </CardTitle>
             {project.html_url && (

@@ -428,6 +428,33 @@ END; $$ LANGUAGE plpgsql;
 -- RPC: Asset Usage
 CREATE OR REPLACE FUNCTION update_asset_usage() RETURNS void AS $$ DECLARE asset RECORD; usage JSONB; BEGIN FOR asset IN SELECT id, file_path FROM storage_assets LOOP usage := '[]' :: jsonb; IF EXISTS (SELECT 1 FROM blog_posts WHERE cover_image_url LIKE '%' || asset.file_path || '%') THEN usage := usage || jsonb_build_object('type', 'Blog Cover', 'id', (SELECT id FROM blog_posts WHERE cover_image_url LIKE '%' || asset.file_path || '%' LIMIT 1)); END IF; IF EXISTS (SELECT 1 FROM blog_posts WHERE content LIKE '%' || asset.file_path || '%') THEN usage := usage || jsonb_build_object('type', 'Blog Content', 'id', (SELECT id FROM blog_posts WHERE content LIKE '%' || asset.file_path || '%' LIMIT 1)); END IF; IF EXISTS (SELECT 1 FROM portfolio_items WHERE image_url LIKE '%' || asset.file_path || '%') THEN usage := usage || jsonb_build_object('type', 'Portfolio Item', 'id', (SELECT id FROM portfolio_items WHERE image_url LIKE '%' || asset.file_path || '%' LIMIT 1)); END IF; UPDATE storage_assets SET used_in = usage WHERE id = asset.id; END LOOP; END; $$ LANGUAGE plpgsql;
 
+-- RPC: Rename Transaction Category
+CREATE OR REPLACE FUNCTION rename_transaction_category(old_name TEXT, new_name TEXT)
+RETURNS void AS $$
+BEGIN
+  UPDATE transactions SET category = new_name WHERE category = old_name;
+  UPDATE recurring_transactions SET category = new_name WHERE category = old_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RPC: Merge Transaction Categories (moves all transactions from source to target category)
+CREATE OR REPLACE FUNCTION merge_transaction_categories(source_name TEXT, target_name TEXT)
+RETURNS void AS $$
+BEGIN
+  UPDATE transactions SET category = target_name WHERE category = source_name;
+  UPDATE recurring_transactions SET category = target_name WHERE category = source_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RPC: Delete Transaction Category (sets category to NULL)
+CREATE OR REPLACE FUNCTION delete_transaction_category(category_name TEXT)
+RETURNS void AS $$
+BEGIN
+  UPDATE transactions SET category = NULL WHERE category = category_name;
+  UPDATE recurring_transactions SET category = NULL WHERE category = category_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Create a function to check if any user exists
 CREATE OR REPLACE FUNCTION check_admin_exists()
 RETURNS boolean

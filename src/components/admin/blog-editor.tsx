@@ -4,7 +4,7 @@ import type React from "react";
 import { useState, useEffect, FormEvent, useRef } from "react";
 import { motion } from "framer-motion";
 import type { BlogPost } from "@/types";
-import AdvancedMarkdownEditor from "@/components/admin/AdvancedMarkdownEditor";
+import NovelEditor from "@/components/admin/novel-editor";
 import { supabase } from "@/supabase/client";
 import imageCompression from "browser-image-compression";
 import { Button } from "../ui/button";
@@ -73,7 +73,6 @@ export default function BlogEditor({
   const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const contentImageInputRef = useRef<HTMLInputElement>(null);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -162,11 +161,11 @@ export default function BlogEditor({
   const handleImageUpload = async (
     file: File,
     forCoverImage: boolean = false,
-  ) => {
-    if (!file) return;
+  ): Promise<string> => {
+    if (!file) return "";
     if (!supabase) {
       toast.error("DB connection missing. Cannot upload images.");
-      return;
+      return "";
     }
 
     setIsUploading(true);
@@ -204,7 +203,7 @@ export default function BlogEditor({
 
     if (uploadError) {
       toast.error(`Upload failed: ${uploadError.message}`);
-      return;
+      return "";
     }
 
     const { data: urlData } = supabase.storage
@@ -216,22 +215,16 @@ export default function BlogEditor({
       setFormData((prev) => ({ ...prev, cover_image_url: imageUrl }));
       toast.success("Cover image uploaded");
     } else {
-      const imageMarkdown = `\n![${compressedFile.name.split(".")[0] || "image"}](${imageUrl})\n`;
-      setFormData((prev) => ({
-        ...prev,
-        content: prev.content + imageMarkdown,
-      }));
-      toast.success("Image inserted into editor");
+      toast.success("Image uploaded");
     }
+
+    return imageUrl;
   };
 
-  const onFileSelected = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    forCoverImage: boolean,
-  ) => {
+  const onCoverImageSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      handleImageUpload(file, forCoverImage);
+      handleImageUpload(file, true);
     }
     if (event.target) event.target.value = "";
   };
@@ -240,10 +233,10 @@ export default function BlogEditor({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col h-[calc(100vh-6rem)]"
+      className="flex flex-col h-[calc(100vh-4rem)] sm:h-[calc(100vh-6rem)] overflow-hidden"
     >
       {/* Sticky Header Toolbar */}
-      <div className="sticky top-0 z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b bg-background/95 p-4 gap-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="shrink-0 sticky top-0 z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between border-b bg-background/95 py-4 gap-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
           <Button
             variant="ghost"
@@ -460,7 +453,7 @@ export default function BlogEditor({
                             ref={coverImageInputRef}
                             accept="image/*"
                             className="hidden"
-                            onChange={(e) => onFileSelected(e, true)}
+                            onChange={onCoverImageSelected}
                           />
                         </div>
                       </TabsContent>
@@ -532,8 +525,8 @@ export default function BlogEditor({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full mt-2 sm:mt-6 space-y-4 sm:space-y-6 px-4">
-        <div className="px-1">
+    <div className="flex-1 flex flex-col min-h-0 max-w-5xl mx-auto w-full mt-2 sm:mt-6 space-y-4 sm:space-y-6 px-4">
+        <div className="shrink-0 px-1">
           <Input
             id="title"
             value={formData.title}
@@ -552,7 +545,7 @@ export default function BlogEditor({
           )}
         </div>
 
-        <div className="flex-1 min-h-[500px] rounded-lg border bg-card shadow-sm overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex flex-col rounded-lg border bg-card shadow-sm overflow-hidden relative mb-6">
           {isUploading && (
             <div className="absolute top-2 right-2 z-20 bg-background/80 backdrop-blur px-3 py-1 rounded-full text-xs font-medium flex items-center border shadow-sm">
               <Loader2 className="size-3 animate-spin mr-2" /> Uploading
@@ -560,21 +553,15 @@ export default function BlogEditor({
             </div>
           )}
 
-          <AdvancedMarkdownEditor
+          <NovelEditor
             value={formData.content}
             onChange={(newContent) =>
               setFormData((prev) => ({ ...prev, content: newContent }))
             }
-            onImageUploadRequest={() => contentImageInputRef.current?.click()}
-            minHeight="100%"
-          />
-
-          <input
-            type="file"
-            ref={contentImageInputRef}
-            onChange={(e) => onFileSelected(e, false)}
-            accept="image/*"
-            className="hidden"
+            onImageUpload={(file) => handleImageUpload(file, false)}
+            minHeight="100%" 
+            className="h-full border-none" // Remove border here since parent has it
+            isRounded={false} // Remove internal rounding to fit parent
           />
         </div>
 

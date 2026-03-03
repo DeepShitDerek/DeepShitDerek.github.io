@@ -15,7 +15,7 @@ const socialIcons: { [key: string]: React.ComponentType<any> } = {
 };
 
 const FooterSkeleton = () => (
-  <footer className="w-full border-t border-border/50 py-16 text-sm text-muted-foreground">
+  <footer className="w-full border-t border-border py-16 text-sm text-muted-foreground bg-secondary/30">
     <Container>
       <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
         <div className="space-y-2">
@@ -64,7 +64,7 @@ export default function Footer() {
   const { footer_data, social_links, profile_data } = content;
 
   return (
-    <footer className="w-full border-t border-border/50 py-16 text-sm text-muted-foreground">
+    <footer className="w-full border-t border-border py-16 text-sm text-muted-foreground bg-secondary/30">
       <Container>
         <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
           <div
@@ -97,7 +97,7 @@ export default function Footer() {
                     rel="noopener noreferrer"
                     target="_blank"
                     aria-label={social.label}
-                    className="text-2xl transition-colors hover:text-primary"
+                    className="size-10 rounded-full bg-card flex items-center justify-center text-muted-foreground transition-all hover:text-primary-foreground hover:bg-primary hover:shadow-sm"
                   >
                     <Icon className="size-5" />
                   </a>

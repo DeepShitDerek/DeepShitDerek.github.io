@@ -2,7 +2,7 @@
 import React, { useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { Sidebar } from "@/components/admin/Sidebar";
+import Sidebar from "@/components/admin/Sidebar";
 import { Button } from "@/components/ui/button";
 import {
   Menu,
@@ -35,10 +35,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import FocusTimer from "./focus/FocusTimer";
-import { GlobalCommandPalette } from "@/components/GlobalCommandPalette";
+import GlobalCommandPalette from "@/components/GlobalCommandPalette";
 import Head from "next/head";
 import { isSupabaseConfigured } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import { MobileBottomNav } from "./shared";
 
 const SIDEBAR_STORAGE_KEY = "admin_sidebar_collapsed";
 
@@ -69,7 +70,7 @@ const Breadcrumbs = () => {
 
   return (
     <>
-      <div className="md:hidden font-semibold text-lg capitalize tracking-tight">
+      <div className="md:hidden font-semibold text-lg capitalize tracking-tight truncate max-w-[200px]">
         {pathSegments[pathSegments.length - 1].replace(/-/g, " ")}
       </div>
       <nav className="hidden items-center gap-2 text-sm font-medium md:flex">
@@ -111,10 +112,11 @@ interface AdminLayoutProps {
   title?: string;
 }
 
-export function AdminLayout({ children, title }: AdminLayoutProps) {
+export default function AdminLayout({ children, title }: AdminLayoutProps) {
   const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+
   // State for sidebar logic
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSidebarInitialized, setIsSidebarInitialized] = useState(false);
@@ -154,6 +156,12 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
     router.replace("/admin/login");
   };
 
+  const triggerCommandPalette = () => {
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "k", metaKey: true })
+    );
+  };
+
   const currentTopicName = activeSession
     ? learningData?.topics.find((t) => t.id === activeSession.topic_id)?.title
     : null;
@@ -171,6 +179,8 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
   }
 
   return (
+    // TODO: CHECK FOR BG COLOR OF THE WEBSITE
+    // <div className="min-h-[100dvh] flex flex-col">
     <div className="min-h-[100dvh] bg-secondary/30 flex flex-col">
       <Head>
         <title>{pageTitle}</title>
@@ -254,31 +264,6 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="outline"
-                  size="icon"
-                  className="lg:hidden h-9 w-9 rounded-full border-dashed border-primary/50"
-                >
-                  <Plus className="h-4 w-4 text-primary" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Quick Add</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/admin/tasks")}>
-                  <ListTodo className="mr-2 h-4 w-4" /> New Task
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/admin/notes")}>
-                  <StickyNote className="mr-2 h-4 w-4" /> New Note
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/admin/finance")}>
-                  <Banknote className="mr-2 h-4 w-4" /> New Transaction
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
                   variant="ghost"
                   className="flex items-center gap-2 px-1 lg:px-4"
                 >
@@ -310,11 +295,12 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 py-6 lg:py-10">
-          <div className="px-4 sm:px-6 lg:px-8 h-full">{children}</div>
+        <main className="flex-1 py-4 lg:py-6 pb-20 lg:pb-6">
+          <div className="px-4 lg:px-6 h-full">{children}</div>
         </main>
       </div>
 
+      {/* Desktop FAB - Quick Add */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -339,6 +325,59 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Mobile Bottom Navigation */}
+      {/* <MobileBottomNav
+        onMenuClick={() => setMobileSidebarOpen(true)}
+        onSearchClick={triggerCommandPalette}
+        onAddClick={() => setQuickAddOpen(!quickAddOpen)}
+      /> */}
+
+      {/* Mobile Quick Add Dropdown - appears above bottom nav */}
+      {quickAddOpen && (
+        <div className="fixed bottom-16 left-0 right-0 z-50 p-4 lg:hidden">
+          <div className="bg-background border border-border rounded-lg shadow-lg p-2 space-y-1">
+            <button
+              onClick={() => {
+                router.push("/admin/tasks");
+                setQuickAddOpen(false);
+              }}
+              className="flex items-center gap-3 w-full p-3 rounded-md hover:bg-secondary text-left"
+            >
+              <ListTodo className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium">New Task</span>
+            </button>
+            <button
+              onClick={() => {
+                router.push("/admin/notes");
+                setQuickAddOpen(false);
+              }}
+              className="flex items-center gap-3 w-full p-3 rounded-md hover:bg-secondary text-left"
+            >
+              <StickyNote className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium">New Note</span>
+            </button>
+            <button
+              onClick={() => {
+                router.push("/admin/finance");
+                setQuickAddOpen(false);
+              }}
+              className="flex items-center gap-3 w-full p-3 rounded-md hover:bg-secondary text-left"
+            >
+              <Banknote className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium">New Transaction</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay for quick add dropdown */}
+      {quickAddOpen && (
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          onClick={() => setQuickAddOpen(false)}
+        />
+      )}
     </div>
   );
 }

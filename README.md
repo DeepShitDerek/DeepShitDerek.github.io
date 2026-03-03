@@ -1,4 +1,4 @@
-# 🚀 Personal Portfolio & Headless CMS (Personal OS)
+# Personal Portfolio & Headless CMS ("Personal OS")
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
 ![Supabase](https://img.shields.io/badge/Supabase-Backend-green?style=flat-square&logo=supabase)
@@ -6,182 +6,445 @@
 ![Redux Toolkit](https://img.shields.io/badge/Redux-State-purple?style=flat-square&logo=redux)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
-A high-performance, kinetic typography-themed portfolio website integrated with a powerful **"Personal OS" Admin Panel**. 
+A high-performance portfolio website with an integrated **"Personal OS" Admin Panel**. This project supports two deployment modes:
 
-This project solves the dilemma of having a static portfolio but needing dynamic features. It runs in two modes:
-1.  **Static Mode:** Zero-config, data loaded from a file (Great for simple hosting).
-2.  **Admin Mode:** Full-stack "Personal OS" connected to Supabase (Finance, Tasks, CMS, Habits).
-
----
-
-## 🌟 Key Features
-
-### 🎨 Public-Facing Portfolio
-*   **Universal Template:** Works immediately upon cloning. Missing database credentials? It gracefully falls back to fallback data.
-*   **Kinetic Design:** Bold aesthetic with smooth Framer Motion animations.
-*   **Dynamic Content Engine:** Pages like `/about` or `/projects` are rendered based on your CMS data.
-*   **Markdown Blog:** Full-featured blog with syntax highlighting, Table of Contents, and read-time estimation.
-
-### 🔐 Admin Panel (Personal OS)
-*   **Secure Auth:** Supabase Auth with mandatory **Multi-Factor Authentication (MFA/TOTP)**.
-*   **Productivity Suite:**
-    *   **Task Manager:** Kanban board and Tree view with subtasks.
-    *   **Finance Tracker:** Income/Expense tracking, recurring subscriptions, and investment forecasting.
-    *   **Habit Tracker:** GitHub-style contribution heatmaps.
-    *   **Inventory:** Asset tracking for hardware/software with depreciation.
-    *   **Learning Hub:** Curriculum builder with a built-in Pomodoro focus timer.
-*   **CMS:** Drag-and-drop page builder and advanced Markdown editor with image uploads.
+1. **Static Portfolio** - Zero-config, works immediately with fallback data
+2. **Headless CMS Portfolio** - Full-stack dashboard connected to Supabase
 
 ---
 
-## 🛠️ Tech Stack
+## Table of Contents
 
-*   **Frontend:** Next.js 14 (Pages Router), React 18
-*   **Language:** TypeScript
-*   **Styling:** Tailwind CSS, Shadcn UI, Framer Motion
-*   **Backend:** Supabase (PostgreSQL, Auth, Storage)
-*   **State:** Redux Toolkit (RTK Query) for caching and optimistic updates
-*   **Visualization:** Recharts (Analytics), FullCalendar
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Option A: Static Portfolio](#option-a-static-portfolio-zero-config)
+- [Option B: Headless CMS Portfolio](#option-b-headless-cms-portfolio-full-features)
+- [First-Time Admin Setup](#first-time-admin-setup)
+- [Customization Guide](#customization-guide)
+- [Deployment](#deployment)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
 ---
 
-## 🚀 Getting Started
+## Features
 
-### 1. Clone & Install
+### Public Portfolio
+- **Universal Template** - Works immediately without any configuration
+- **Kinetic Design** - Bold aesthetic with smooth Framer Motion animations
+- **Dynamic Content Engine** - Pages rendered based on CMS data
+- **Markdown Blog** - Syntax highlighting, Table of Contents, read-time estimation
+- **50+ Theme Presets** - Curated themes optimized for contrast and accessibility
+
+### Admin Panel (Personal OS)
+- **Secure Auth** - Supabase Auth with mandatory MFA/TOTP
+- **Task Manager** - Kanban board and tree view with subtasks
+- **Finance Tracker** - Income/expense tracking, recurring subscriptions, forecasting
+- **Habit Tracker** - GitHub-style contribution heatmaps
+- **Inventory** - Asset tracking with depreciation
+- **Learning Hub** - Curriculum builder with Pomodoro focus timer
+- **CMS** - Drag-and-drop page builder with Markdown editor
+
+---
+
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| Frontend | Next.js 14 (Pages Router), React 18 |
+| Language | TypeScript (strict mode) |
+| Styling | Tailwind CSS, Shadcn UI, Framer Motion |
+| Backend | Supabase (PostgreSQL, Auth, Storage) |
+| State | Redux Toolkit with RTK Query |
+| Validation | Zod schemas |
+| Charts | Recharts, FullCalendar |
+
+---
+
+## Quick Start
+
 ```bash
-git clone https://github.com/abharadva/abharadva.github.io.git
-cd abharadva.github.io
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+cd YOUR_REPO
+
+# Install dependencies
 npm install
+
+# Start development server
+npm run dev
 ```
 
-### 2. Choose Your Mode
+The app will be available at `http://localhost:8889`
 
-#### 🟢 Option A: Static Mode (Fastest)
-Ideal if you just want the portfolio website without the admin features.
-1.  Simply run `npm run dev`.
-2.  The app detects missing database keys and switches to **Mock Mode**.
-3.  Edit `src/lib/mock-data.ts` to change your content.
+---
 
-#### 🔴 Option B: Admin Mode (Full Power)
-Connect a free Supabase database to unlock the Admin Panel, CMS, and Dashboard.
+## Option A: Static Portfolio (Zero-Config)
 
-**Step 1: Create Supabase Project**
-1.  Go to [Supabase.com](https://supabase.com) and create a new project.
-2.  Go to **Project Settings > API**.
-3.  Copy the **Project URL** and **anon / public** Key.
+Best for: Simple hosting, no database needed, quick deployment.
 
-**Step 2: Environment Variables**
-Create a `.env.local` file in your root directory:
+### Step 1: Run Without Configuration
 
-```env
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_SUPABASE_URL=your_project_url_here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
-NEXT_PUBLIC_BUCKET_NAME=blog-assets
+Simply start the development server:
 
-# Optional: Only needed for the 'npm run seed' script
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
-```
-
-**Step 3: Database Setup**
-1.  Open the file `db/schema.sql` in this repository.
-2.  Copy the contents.
-3.  Go to the **Supabase SQL Editor**, paste the SQL, and click **Run**.
-    *   *This creates all 18+ tables, RLS policies, and triggers.*
-
-**Step 4: Storage Setup**
-1.  Go to **Storage** in Supabase.
-2.  Create a new bucket named `blog-assets`.
-3.  **Important:** Toggle "Public Bucket" to **ON**.
-
-**Step 5: Seed Data**
-Populate the database with the default template data so your dashboard isn't empty.
-```bash
-npm run seed
-```
-
-**Step 6: Launch**
 ```bash
 npm run dev
 ```
 
+The app automatically detects missing Supabase credentials and uses fallback data from `src/lib/fallback-data.ts`.
+
+### Step 2: Customize Your Content
+
+Edit the fallback data file to personalize your portfolio:
+
+```typescript
+// src/lib/fallback-data.ts
+export const fallbackSiteIdentity = {
+  profile_data: {
+    name: "Your Name",
+    title: "Your Title",
+    description: "Your hero description...",
+    bio: ["Your bio paragraph 1", "Your bio paragraph 2"],
+    logo: { main: "YOUR", highlight: "NAME" },
+    // ... more options
+  },
+  social_links: [
+    { id: "github", label: "GitHub", url: "https://github.com/yourusername", is_visible: true },
+    { id: "linkedin", label: "LinkedIn", url: "https://linkedin.com/in/yourusername", is_visible: true },
+  ],
+  footer_data: {
+    copyright_text: "Your Name"
+  }
+};
+```
+
+### Step 3: Build and Deploy
+
+```bash
+npm run build
+```
+
+The `out/` folder contains your static site ready for deployment to:
+- GitHub Pages
+- Vercel
+- Netlify
+- Any static hosting
+
 ---
 
-## 👤 First-Time Admin Setup
+## Option B: Headless CMS Portfolio (Full Features)
 
-The admin panel is secure by default. There is no public registration page.
+Best for: Dynamic content management, admin dashboard, productivity tools.
 
-1.  Navigate to `http://localhost:3000/admin/signup`.
-    *   *Note: This page only works if no admin user exists in the database.*
-2.  Create your root account.
-3.  **Check your email** to confirm the account.
-4.  Log in at `/admin/login`.
-5.  Follow the prompt to scan the QR Code and set up **2FA (MFA)**.
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Free [Supabase](https://supabase.com) account
+
+### Step 1: Create Supabase Project
+
+1. Go to [supabase.com](https://supabase.com) and create a new project
+2. Wait for the project to initialize (takes ~2 minutes)
+3. Go to **Project Settings > API**
+4. Copy the following values:
+   - **Project URL** (e.g., `https://xxxxx.supabase.co`)
+   - **anon / public** API Key
+
+### Step 2: Configure Environment Variables
+
+Create a `.env.local` file in your project root:
+
+```env
+# Required for Admin Mode
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+NEXT_PUBLIC_BUCKET_NAME=assets
+NEXT_PUBLIC_SITE_URL=http://localhost:8889
+```
+
+### Step 3: Set Up Database Schema
+
+1. Open `db/schema.sql` in this repository
+2. Copy the entire contents
+3. In Supabase Dashboard, go to **SQL Editor**
+4. Paste the SQL and click **Run**
+
+This creates:
+- 21+ tables with proper relationships
+- Row Level Security (RLS) policies
+- Triggers for automatic timestamps
+- Helper functions for analytics
+
+### Step 4: Set Up Storage Bucket
+
+1. In Supabase Dashboard, go to **Storage**
+2. Click **New bucket**
+3. Name it `assets` (or match your `NEXT_PUBLIC_BUCKET_NAME`)
+4. Toggle **Public bucket** to **ON**
+5. Click **Create bucket**
+
+### Step 5: Start Development Server
+
+```bash
+npm run dev
+```
+
+Navigate to `http://localhost:8889` - you should see the portfolio.
 
 ---
 
-## 📦 Deployment
+## First-Time Admin Setup
 
-This project uses `output: 'export'` for compatibility with static hosts like **GitHub Pages**.
+The admin panel requires account creation and MFA setup.
 
-### 1. GitHub Secrets
-Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**. Add these secrets:
+### Step 1: Create Admin Account
+
+1. Navigate to `http://localhost:8889/admin/signup`
+   > Note: This page only works when no admin user exists in the database
+2. Enter your email and password
+3. Check your email for the confirmation link
+4. Click the link to verify your account
+
+### Step 2: Login and Setup MFA
+
+1. Go to `http://localhost:8889/admin/login`
+2. Enter your credentials
+3. You'll be prompted to set up Two-Factor Authentication (required)
+4. Scan the QR code with an authenticator app (Google Authenticator, Authy, etc.)
+5. Enter the 6-digit code to complete setup
+
+### Step 3: Access Admin Dashboard
+
+After MFA setup, you'll have access to:
+
+| Route | Feature |
+|-------|---------|
+| `/admin` | Dashboard overview |
+| `/admin/blog` | Blog post management |
+| `/admin/content` | Portfolio content CMS |
+| `/admin/tasks` | Task manager (Kanban/Tree) |
+| `/admin/finance` | Finance tracker |
+| `/admin/habits` | Habit tracking |
+| `/admin/learning` | Learning curriculum |
+| `/admin/calendar` | Calendar view |
+| `/admin/notes` | Quick notes |
+| `/admin/settings` | Site settings & themes |
+
+---
+
+## Customization Guide
+
+### Changing Themes
+
+The project includes 20 curated themes. To change the default theme:
+
+1. Go to `/admin/settings` in the admin panel
+2. Select a theme from the dropdown
+3. Or edit `src/lib/fallback-data.ts`:
+
+```typescript
+profile_data: {
+  default_theme: "theme-nord", // Options: theme-dracula, theme-tokyo-night, etc.
+}
+```
+
+Available themes:
+- Dark: `theme-dracula`, `theme-nord`, `theme-tokyo-night`, `theme-catppuccin-mocha`, `theme-github-dark`, `theme-onedark-pro`, `theme-rose-pine`, `theme-monokai`, `theme-ayu-dark`
+- Light: `theme-solarized-light`, `theme-catppuccin-latte`, `theme-github-light`, `theme-arctic`, `theme-paper`
+- Special: `theme-cyberpunk`, `theme-ocean`, `theme-matrix`
+- High Contrast: `theme-hc-dark`, `theme-hc-light`
+
+### Customizing Colors
+
+Each theme uses CSS variables. To create a custom theme, add to `src/styles/globals.css`:
+
+```css
+.theme-custom {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --primary: 210 40% 50%;
+  /* ... other variables */
+}
+```
+
+### Adding New Pages
+
+1. Create a new page in `src/pages/`:
+
+```typescript
+// src/pages/services.tsx
+import { PublicLayout } from "@/components/layout";
+
+export default function ServicesPage() {
+  return (
+    <PublicLayout>
+      <h1>Services</h1>
+    </PublicLayout>
+  );
+}
+```
+
+2. Add navigation link in admin panel or fallback data.
+
+---
+
+## Deployment
+
+### GitHub Pages (Recommended)
+
+#### Step 1: Configure GitHub Secrets
+
+Go to your GitHub repo **Settings > Secrets and variables > Actions** and add:
 
 | Secret Name | Value |
-| :--- | :--- |
+|-------------|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase Anon Key |
-| `NEXT_PUBLIC_BUCKET_NAME` | `blog-assets` |
-| `NEXT_PUBLIC_SITE_URL` | Your production domain (e.g., `https://yourname.github.io`) |
+| `NEXT_PUBLIC_BUCKET_NAME` | `assets` |
+| `NEXT_PUBLIC_SITE_URL` | `https://yourusername.github.io` |
 
-### 2. Enable Pages
-Go to **Settings** -> **Pages**. Set **Source** to **GitHub Actions**.
+#### Step 2: Enable GitHub Pages
 
-Push your code to the `main` branch. The included workflow `.github/workflows/next-deploy.yml` will automatically build and deploy your site.
+1. Go to **Settings > Pages**
+2. Set **Source** to **GitHub Actions**
+3. Push to `main` branch
+
+The included workflow `.github/workflows/next-deploy.yml` handles the build and deployment.
+
+### Vercel
+
+1. Import your repository on [vercel.com](https://vercel.com)
+2. Add environment variables in project settings
+3. Deploy
+
+### Static Export
+
+```bash
+npm run build
+```
+
+Upload the `out/` folder to any static hosting.
 
 ---
 
-## 🤖 Automations (Optional)
-
-### Supabase Keep-Alive & Fun Facts
-The Supabase Free Tier pauses projects after 7 days of inactivity. This repository includes a GitHub Action to prevent this.
-
-**Features:**
-1.  Pings your database twice daily.
-2.  Fetches a random **Dev Joke** or **Fun Fact**.
-3.  Sends a beautiful status report to Discord.
-
-**Setup:**
-1.  Create a **Discord Webhook** (Channel Settings -> Integrations -> Webhooks).
-2.  Add a GitHub Secret named `DISCORD_WEBHOOK_URL` with the webhook link.
-3.  The workflow is located at `.github/workflows/keep-alive.yml` and runs automatically.
-
----
-
-## 📂 Project Structure
+## Project Structure
 
 ```
 ├── src/
 │   ├── components/
-│   │   ├── admin/       # Dashboard, Finance, Tasks, CMS components
-│   │   ├── ui/          # Reusable Shadcn UI primitives
-│   │   └── ...          # Public components (Hero, Projects)
+│   │   ├── admin/           # Dashboard components
+│   │   │   ├── finance/     # Finance module
+│   │   │   ├── tasks/       # Task manager
+│   │   │   ├── learning/    # Learning hub
+│   │   │   └── ...
+│   │   ├── ui/              # Shadcn UI primitives
+│   │   └── ...              # Public components
+│   ├── hooks/               # Custom React hooks
 │   ├── lib/
-│   │   ├── mock-data.ts # Fallback content for Static Mode
-│   │   └── utils.ts     # Helpers (Date parsing, formatting)
-│   ├── pages/           # Next.js Routes
-│   │   ├── admin/       # Secure admin routes
-│   │   └── ...          # Public routes
-│   ├── store/           # Redux Logic (RTK Query API definitions)
-├── db/                  # SQL Schema for Supabase
-├── public/              # Static assets
+│   │   ├── constants.ts     # App constants and enums
+│   │   ├── schemas.ts       # Zod validation schemas
+│   │   ├── fallback-data.ts # Static mode fallback
+│   │   └── utils.ts         # Utility functions
+│   ├── pages/
+│   │   ├── admin/           # Admin routes (18 pages)
+│   │   └── ...              # Public routes
+│   ├── store/
+│   │   └── api/
+│   │       ├── publicApi.ts # Public content queries
+│   │       └── adminApi.ts  # Admin CRUD operations
+│   ├── styles/
+│   │   └── globals.css      # Tailwind + theme definitions
+│   └── types/
+│       └── index.ts         # TypeScript interfaces
+├── db/
+│   └── schema.sql           # Supabase schema
+├── public/                  # Static assets
 └── ...config files
 ```
 
-## 🤝 Contributing
+---
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Troubleshooting
 
-## 📄 License
+### "No DB" Error
+
+**Cause:** Supabase credentials not configured or incorrect.
+
+**Solution:**
+- Verify `.env.local` contains correct `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Restart the development server after adding environment variables
+
+### Admin Signup Page Shows "Admin Exists"
+
+**Cause:** An admin account already exists in the database.
+
+**Solution:**
+- Use `/admin/login` instead
+- Or clear the `auth.users` table in Supabase if starting fresh
+
+### MFA Setup Not Working
+
+**Cause:** Time sync issue between server and authenticator app.
+
+**Solution:**
+- Ensure your device time is synchronized
+- Try a different authenticator app
+- Clear browser cache and try again
+
+### Images Not Loading
+
+**Cause:** Storage bucket not configured correctly.
+
+**Solution:**
+1. Verify bucket name matches `NEXT_PUBLIC_BUCKET_NAME`
+2. Ensure bucket is set to **Public**
+3. Check RLS policies allow public read access
+
+### Build Fails on GitHub Actions
+
+**Cause:** Missing environment variables in GitHub Secrets.
+
+**Solution:**
+- Verify all required secrets are added in GitHub repo settings
+- Check secret names match exactly (case-sensitive)
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server (port 8889) |
+| `npm run build` | Production build (static export) |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format code with Prettier |
+
+---
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## Acknowledgments
+
+- [Shadcn UI](https://ui.shadcn.com/) for the component library
+- [Supabase](https://supabase.com/) for the backend infrastructure
+- [Vercel](https://vercel.com/) for Next.js

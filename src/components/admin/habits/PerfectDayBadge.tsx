@@ -33,7 +33,7 @@ export const PerfectDayBadge = ({ habits }: { habits: Habit[] }) => {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 text-yellow-600 dark:text-yellow-400 rounded-full shadow-sm mb-4 mx-auto w-fit"
+          className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 text-yellow-600 dark:text-yellow-400 rounded-full shadow-sm mx-auto w-fit"
         >
           <Crown className="size-5 fill-yellow-500 stroke-yellow-600" />
           <span className="text-sm font-bold tracking-wide uppercase">

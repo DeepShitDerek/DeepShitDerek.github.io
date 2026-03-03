@@ -1,5 +1,5 @@
 // src/pages/admin/learning.tsx
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import AdminLayout from "@/components/admin/AdminLayout";
 import LearningManager from "@/components/admin/learning-manager";
 import LoadingSpinner from "@/components/admin/LoadingSpinner";
 import { useAuthGuard } from "@/hooks/useAuthGuard";

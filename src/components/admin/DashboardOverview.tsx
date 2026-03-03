@@ -34,7 +34,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { cn, getNextOccurrence, parseLocalDate } from "@/lib/utils";
+import { cn, parseLocalDate } from "@/lib/utils";
+import { getNextOccurrence } from "@/lib/finance-utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { addDays, format, isAfter, isBefore, startOfDay, isSameDay } from "date-fns";

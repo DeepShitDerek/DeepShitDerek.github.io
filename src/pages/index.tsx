@@ -4,6 +4,7 @@ import Cta from "@/components/cta";
 import Head from "next/head";
 import { config as appConfig } from "@/lib/config";
 import DynamicPageContent from "@/components/DynamicPageContent";
+import PageWrapper from "@/components/public/PageWrapper";
 import { useEffect } from "react";
 
 export default function HomePage() {
@@ -49,11 +50,11 @@ export default function HomePage() {
       <Head>
         <link rel="canonical" href={siteConfig.url} />
       </Head>
-      <div className="py-12 md:py-20">
+      <PageWrapper maxWidth="full">
         <Hero />
         <DynamicPageContent pagePath="/" />
         <Cta />
-      </div>
+      </PageWrapper>
     </Layout>
   );
 }

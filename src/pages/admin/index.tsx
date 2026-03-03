@@ -1,7 +1,7 @@
 // src/pages/admin/index.tsx
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import DashboardOverview from "@/components/admin/DashboardOverview";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import AdminLayout from "@/components/admin/AdminLayout";
 import LoadingSpinner from "@/components/admin/LoadingSpinner";
 import { useGetDashboardDataQuery } from "@/store/api/adminApi";
 import type {
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/admin/shared";
 
 export interface DashboardData {
   stats: {
@@ -64,35 +65,33 @@ export default function AdminIndexPage() {
   return (
     <AdminLayout title="Dashboard">
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              Welcome back! Here's your portfolio's command center.
-            </p>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button>
-                <Plus className="mr-2 size-4" /> Quick Add
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push("/admin/blog")}>
-                New Blog Post
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/admin/tasks")}>
-                New Task
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/admin/notes")}>
-                New Note
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/admin/finance")}>
-                New Transaction
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <PageHeader
+          title="Dashboard"
+          description="Welcome back! Here's your portfolio's command center."
+          actions={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 size-4" /> Quick Add
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => router.push("/admin/blog")}>
+                  New Blog Post
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/admin/tasks")}>
+                  New Task
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/admin/notes")}>
+                  New Note
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/admin/finance")}>
+                  New Transaction
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
         {isDataLoading || !dashboardData ? (
           <LoadingSpinner />
         ) : (

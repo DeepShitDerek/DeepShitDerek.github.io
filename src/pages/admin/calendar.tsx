@@ -1,4 +1,4 @@
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import AdminLayout from "@/components/admin/AdminLayout";
 import CommandCalendar from "@/components/admin/CommandCalendar";
 import LoadingSpinner from "@/components/admin/LoadingSpinner";
 import { useAuthGuard } from "@/hooks/useAuthGuard";

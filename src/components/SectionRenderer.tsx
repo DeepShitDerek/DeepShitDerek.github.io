@@ -70,10 +70,10 @@ const Grid2ColLayout = ({ items }: { items: PortfolioItem[] }) => (
         href={item.link_url || "#"}
         rel="noopener noreferrer"
         target="_blank"
-        className="group flex flex-col h-full rounded-lg border border-border bg-card/50 p-6 transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
+        className="bg-card rounded-xl border shadow-sm hover:shadow-md transition-all group flex flex-col h-full p-6 border-border/50"
       >
         <div className="flex items-start justify-between mb-4">
-          <h3 className="font-mono text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+          <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
             {item.title}
           </h3>
           <ArrowUpRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:-translate-y-1 group-hover:text-primary" />
@@ -84,12 +84,13 @@ const Grid2ColLayout = ({ items }: { items: PortfolioItem[] }) => (
         {item.tags && (
           <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-border/50">
             {item.tags.map((tag) => (
-              <span
+              <Badge
                 key={tag}
-                className="text-xs font-mono text-muted-foreground"
+                variant="secondary"
+                className="bg-primary/10 text-primary border-transparent text-xs"
               >
                 #{tag}
-              </span>
+              </Badge>
             ))}
           </div>
         )}
@@ -192,17 +193,17 @@ export default function SectionRenderer({ section }: SectionRendererProps) {
 
   return (
     <motion.section
-      className="py-20"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      className="py-24 md:py-32 lg:py-40"
+      initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       viewport={{ once: true, amount: 0.1 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
     >
-      <div className="mb-12 flex items-center gap-4">
-        <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground font-mono">
+      <div className="mb-16 flex items-center gap-6">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
           {title}
         </h2>
-        <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+        <div className="h-px flex-1 bg-gradient-to-r from-primary/30 via-border to-transparent" />
       </div>
 
       {renderContent()}

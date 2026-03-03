@@ -1,7 +1,7 @@
 // src/pages/admin/habits.tsx
 "use client";
 import React, { useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import AdminLayout from "@/components/admin/AdminLayout";
 import LoadingSpinner from "@/components/admin/LoadingSpinner";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import {
@@ -14,9 +14,10 @@ import HabitForm from "@/components/admin/habits/HabitForm";
 import HabitStats from "@/components/admin/habits/HabitStats";
 import HabitHeatmapModal from "@/components/admin/habits/HabitHeatmapModal";
 import { Button } from "@/components/ui/button";
-import { Plus, CheckSquare } from "lucide-react";
+import { Plus, CheckSquare, X } from "lucide-react";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -85,12 +86,14 @@ export default function AdminHabitsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <CheckSquare className="size-5 sm:size-6 text-primary" /> Habit
-              Tracker
+              Habit Tracker
             </h2>
             <p className="text-muted-foreground text-sm hidden sm:block">
               Level up your life, one day at a time.
             </p>
+          </div>
+          <div className="flex justify-center sm:my-0">
+            <PerfectDayBadge habits={habits} />
           </div>
           <Button
             onClick={openCreate}
@@ -103,10 +106,6 @@ export default function AdminHabitsPage() {
 
         {/* 1. Gamified Stats */}
         {!isDataLoading && habits.length > 0 && <HabitStats habits={habits} />}
-
-        <div className="flex justify-center -my-2 sm:my-0">
-          <PerfectDayBadge habits={habits} />
-        </div>
 
         {/* 2. Main Grid */}
         {isDataLoading ? (
@@ -124,11 +123,18 @@ export default function AdminHabitsPage() {
         {/* Forms & Modals */}
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
           <SheetContent className="w-full sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>
-                {editingHabit ? "Edit Habit" : "Create New Habit"}
-              </SheetTitle>
-            </SheetHeader>
+            <div className="flex justify-between items-center">
+              <SheetHeader>
+                <SheetTitle>
+                  {editingHabit ? "Edit Habit" : "Create New Habit"}
+                </SheetTitle>
+              </SheetHeader>
+              <SheetClose asChild>
+                <Button type="button" variant="ghost">
+                  <X />
+                </Button>
+              </SheetClose>
+            </div>
             <HabitForm
               habit={editingHabit}
               onSuccess={() => setIsSheetOpen(false)}

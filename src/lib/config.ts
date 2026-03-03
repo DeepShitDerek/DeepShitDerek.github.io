@@ -1,5 +1,10 @@
-interface AppConfig {
-  admin: {};
+import { SESSION_MAX_AGE_MS, BUCKET_NAME } from "./constants";
+
+/** Default site URL for fallback */
+const DEFAULT_SITE_URL = "https://abharadva.github.io";
+
+export interface AppConfig {
+  admin: Record<string, never>;
   mfa: {
     appName: string;
     issuer: string;
@@ -33,17 +38,17 @@ export const config: AppConfig = {
     description:
       process.env.NEXT_PUBLIC_SITE_DESCRIPTION ||
       "A modern portfolio website with blog functionality, built by Akshay Bharadva.",
-    url: process.env.NEXT_PUBLIC_SITE_URL || "https://abharadva.github.io",
-    defaultOgImage: `${process.env.NEXT_PUBLIC_SITE_URL || "https://abharadva.github.io"}/default-og-image.png`,
+    url: process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL,
+    defaultOgImage: `${process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL}/default-og-image.png`,
     author: "Akshay Bharadva",
   },
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-    bucketName: process.env.NEXT_PUBLIC_BUCKET_NAME || "assets",
+    bucketName: BUCKET_NAME,
   },
   session: {
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: SESSION_MAX_AGE_MS,
   },
 };
 
