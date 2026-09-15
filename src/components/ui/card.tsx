@@ -8,8 +8,11 @@ const Card = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
+    // v3: a card is a surface — fill plus elevation. The hairline border is
+    // gone; two cards are separated by the gap between their shadows, not by a
+    // line. See docs/redesign/v3-design-vision.md.
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      "rounded-surface bg-card text-card-foreground shadow-e1",
       className,
     )}
     {...props}
@@ -36,7 +39,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "font-heading text-base font-semibold leading-tight tracking-tight",
       className,
     )}
     {...props}

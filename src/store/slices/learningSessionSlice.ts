@@ -1,4 +1,3 @@
-// src/store/slices/learningSessionSlice.ts
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { LearningSession } from "@/types";
 

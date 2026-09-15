@@ -1,5 +1,3 @@
-// src/supabase/client.ts
-
 import {
   createClient,
   Session,

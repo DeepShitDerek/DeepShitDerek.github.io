@@ -1,4 +1,3 @@
-// src/store/store.ts
 import { configureStore } from "@reduxjs/toolkit";
 import { publicApi } from "./api/publicApi";
 import { adminApi } from "./api/adminApi";

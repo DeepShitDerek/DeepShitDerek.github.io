@@ -1,16 +1,6 @@
-// src/components/LearningSessionManager.tsx
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  sessionStarted,
-  sessionStopped,
-  tick,
-} from "@/store/slices/learningSessionSlice";
-import {
-  useAddLearningSessionMutation,
-  useUpdateLearningSessionMutation,
-  useDeleteLearningSessionMutation,
-} from "@/store/api/adminApi";
+import { sessionStarted, tick } from "@/store/slices/learningSessionSlice";
 import type { LearningSession } from "@/types";
 
 const SESSION_KEY = "activeLearningSession";
@@ -19,10 +9,6 @@ const SESSION_KEY = "activeLearningSession";
 export const LearningSessionManager = () => {
   const dispatch = useAppDispatch();
   const { activeSession } = useAppSelector((state) => state.learningSession);
-
-  const [addSession] = useAddLearningSessionMutation();
-  const [updateSession] = useUpdateLearningSessionMutation();
-  const [deleteSession] = useDeleteLearningSessionMutation();
 
   // On mount, check localStorage for a session and initialize the store
   useEffect(() => {

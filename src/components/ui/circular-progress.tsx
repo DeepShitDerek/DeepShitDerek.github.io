@@ -3,7 +3,12 @@ export function CircularProgress({
   size = 24,
   strokeWidth = 3,
   color = "currentColor",
-}: any) {
+}: {
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+}) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (value / 100) * circumference;

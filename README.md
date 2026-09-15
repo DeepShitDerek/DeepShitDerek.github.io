@@ -1,187 +1,382 @@
-# 🚀 Personal Portfolio & Headless CMS (Personal OS)
+# Foliokit
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)
-![Supabase](https://img.shields.io/badge/Supabase-Backend-green?style=flat-square&logo=supabase)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
-![Redux Toolkit](https://img.shields.io/badge/Redux-State-purple?style=flat-square&logo=redux)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38bdf8?style=flat-square&logo=tailwindcss)
+![Supabase](https://img.shields.io/badge/Supabase-optional-3ECF8E?style=flat-square&logo=supabase)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
-A high-performance, kinetic typography-themed portfolio website integrated with a powerful **"Personal OS" Admin Panel**. 
+A developer portfolio template + personal CMS. Clone it, edit one config file, deploy. Optionally connect Supabase to unlock a full admin dashboard — blog, tasks, finance, habits, learning, calendar, and more.
 
-This project solves the dilemma of having a static portfolio but needing dynamic features. It runs in two modes:
-1.  **Static Mode:** Zero-config, data loaded from a file (Great for simple hosting).
-2.  **Admin Mode:** Full-stack "Personal OS" connected to Supabase (Finance, Tasks, CMS, Habits).
+**One config file. 56 themes. Zero lock-in.**
 
 ---
 
-## 🌟 Key Features
+## Table of Contents
 
-### 🎨 Public-Facing Portfolio
-*   **Universal Template:** Works immediately upon cloning. Missing database credentials? It gracefully falls back to fallback data.
-*   **Kinetic Design:** Bold aesthetic with smooth Framer Motion animations.
-*   **Dynamic Content Engine:** Pages like `/about` or `/projects` are rendered based on your CMS data.
-*   **Markdown Blog:** Full-featured blog with syntax highlighting, Table of Contents, and read-time estimation.
-
-### 🔐 Admin Panel (Personal OS)
-*   **Secure Auth:** Supabase Auth with mandatory **Multi-Factor Authentication (MFA/TOTP)**.
-*   **Productivity Suite:**
-    *   **Task Manager:** Kanban board and Tree view with subtasks.
-    *   **Finance Tracker:** Income/Expense tracking, recurring subscriptions, and investment forecasting.
-    *   **Habit Tracker:** GitHub-style contribution heatmaps.
-    *   **Inventory:** Asset tracking for hardware/software with depreciation.
-    *   **Learning Hub:** Curriculum builder with a built-in Pomodoro focus timer.
-*   **CMS:** Drag-and-drop page builder and advanced Markdown editor with image uploads.
-
----
-
-## 🛠️ Tech Stack
-
-*   **Frontend:** Next.js 14 (Pages Router), React 18
-*   **Language:** TypeScript
-*   **Styling:** Tailwind CSS, Shadcn UI, Framer Motion
-*   **Backend:** Supabase (PostgreSQL, Auth, Storage)
-*   **State:** Redux Toolkit (RTK Query) for caching and optimistic updates
-*   **Visualization:** Recharts (Analytics), FullCalendar
+- [Quick Start](#quick-start)
+- [Two Modes](#two-modes)
+- [The Config File](#the-config-file)
+- [Themes](#themes)
+- [Typography](#typography)
+- [Deployment](#deployment)
+- [Dynamic Mode Setup](#dynamic-mode-setup)
+- [Admin Dashboard](#admin-dashboard)
+- [Project Structure](#project-structure)
+- [Commands](#commands)
+- [Tech Stack](#tech-stack)
+- [Environment Variables](#environment-variables)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 🚀 Getting Started
+## Quick Start
 
-### 1. Clone & Install
 ```bash
-git clone https://github.com/abharadva/abharadva.github.io.git
-cd abharadva.github.io
-npm install
+# 1. Clone
+git clone https://github.com/akshay-bharadva/foliokit.git
+cd foliokit && npm install
+
+# 2. Configure
+#    Open portfolio.config.ts and replace demo values with yours.
+
+# 3. Run
+npm run dev        # Dev server at http://localhost:8889
+npm run build      # Static export to ./out/
 ```
 
-### 2. Choose Your Mode
+No database. No env vars. No API keys required.
 
-#### 🟢 Option A: Static Mode (Fastest)
-Ideal if you just want the portfolio website without the admin features.
-1.  Simply run `npm run dev`.
-2.  The app detects missing database keys and switches to **Mock Mode**.
-3.  Edit `src/lib/mock-data.ts` to change your content.
+---
 
-#### 🔴 Option B: Admin Mode (Full Power)
-Connect a free Supabase database to unlock the Admin Panel, CMS, and Dashboard.
+## Two Modes
 
-**Step 1: Create Supabase Project**
-1.  Go to [Supabase.com](https://supabase.com) and create a new project.
-2.  Go to **Project Settings > API**.
-3.  Copy the **Project URL** and **anon / public** Key.
+Foliokit auto-detects its mode at runtime based on environment variables.
 
-**Step 2: Environment Variables**
-Create a `.env.local` file in your root directory:
+### Static Mode (default)
 
-```env
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_SUPABASE_URL=your_project_url_here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
-NEXT_PUBLIC_BUCKET_NAME=blog-assets
+- Reads everything from `portfolio.config.ts`
+- No database, no auth, no backend
+- Fully static-exported (`output: "export"`)
+- Deploys to GitHub Pages, Vercel, Netlify, Cloudflare Pages, or any static host
 
-# Optional: Only needed for the 'npm run seed' script
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+### Dynamic Mode (opt-in)
+
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` and you unlock:
+
+- `/admin` dashboard (20 protected routes)
+- Portfolio CMS, blog editor, life updates feed
+- Task manager, habit tracker, finance tracker, learning hub, calendar, notes, inventory
+- Asset manager with storage bucket browser
+- Supabase Auth with **mandatory TOTP MFA**
+- Row Level Security on every table
+
+The public site stays statically exported — all data fetching happens client-side against Supabase.
+
+---
+
+## The Config File
+
+`portfolio.config.ts` is the single source of truth in static mode, and the initial seed in dynamic mode.
+
+| Section                        | What it controls                                                   |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `name`, `title`, `description` | Hero identity                                                      |
+| `bio`                          | About-page paragraphs                                              |
+| `logo.{main,highlight}`        | Two-tone header logo                                               |
+| `headline`, `proof`            | The home page's promise, and the results under it                  |
+| `process`                      | "How I work" steps                                                 |
+| `product`                      | The `/kit` product page and its plans                              |
+| `defaultTheme`                 | One of 56 themes                                                   |
+| `typographyPreset`             | One of 14 font pairings                                            |
+| `portfolioMode`                | `"multi-page"` or `"single-page"`                                  |
+| `statusPanel`                  | Right-side hero widget — `minimal`, `terminal`, or `bento` variant |
+| `socialLinks`                  | GitHub, LinkedIn, email, Twitter, etc.                             |
+| `navLinks`                     | Header navigation                                                  |
+| `experience`                   | Work timeline                                                      |
+| `techStack`, `tools`           | Skills grid + tooling                                              |
+| `education`                    | Education timeline                                                 |
+| `projects`                     | Featured projects                                                  |
+| `showcase`                     | Deep-dive case studies                                             |
+| `services`                     | `/contact` offerings                                               |
+| `blogPosts`                    | Static Markdown blog posts                                         |
+| `lifeUpdates`                  | `/updates` feed entries                                            |
+| `updatesLayout`                | `"timeline"` or `"scrapbook"`                                      |
+| `github`                       | Live GitHub repo fetch (filters, pagination)                       |
+| `contact`                      | Availability badge, services panel, contact form toggle            |
+
+---
+
+## Selling with it
+
+Two parts of the config exist to sell — you, and the kit itself.
+
+- **`headline` and `proof`** turn the home page into a pitch: the headline
+  becomes the main heading with your name as the byline, and `proof` (up to
+  four figures) closes the hero as a results strip. Both are editable later in
+  **Admin → Settings → Hero**. Leave them empty and the hero leads with your
+  name, as before.
+- **`process`** feeds the "How I work" section. In dynamic mode, add a section
+  with the **Process** or **FAQ** layout to any page from **Admin → Pages**.
+- **`product`** powers `/kit`, a product page for Foliokit: figures counted
+  from the code, the workspace, a live theme preview, your plans, getting
+  started and an FAQ. Prices are yours to set. Set `show: false` to remove
+  `/kit` and the footer's "Built with" credit.
+
+---
+
+## Themes
+
+56 curated themes, all CSS-variable based and each gated at WCAG AA. Visitors can switch live; your default is just the starting point.
+
+```typescript
+defaultTheme: "theme-nord",
 ```
 
-**Step 3: Database Setup**
-1.  Open the file `db/schema.sql` in this repository.
-2.  Copy the contents.
-3.  Go to the **Supabase SQL Editor**, paste the SQL, and click **Run**.
-    *   *This creates all 18+ tables, RLS policies, and triggers.*
+| Category          | Themes                                                                                                                                                                       |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ink** (default) | `theme-ink-light`, `theme-ink-dark`                                                                                                                                          |
+| **Dark**          | `theme-dracula`, `theme-nord`, `theme-tokyo-night`, `theme-catppuccin-mocha`, `theme-github-dark`, `theme-onedark-pro`, `theme-rose-pine`, `theme-monokai`, `theme-ayu-dark` |
+| **Light**         | `theme-solarized-light`, `theme-catppuccin-latte`, `theme-github-light`, `theme-arctic`, `theme-paper`                                                                       |
+| **Special**       | `theme-blueprint`, `theme-cyberpunk`, `theme-ocean`, `theme-matrix`, `theme-terminal`                                                                                        |
+| **High contrast** | `theme-hc-dark`, `theme-hc-light`                                                                                                                                            |
+| **Neobrutalism**  | `theme-neobrutalism-light`, `theme-neobrutalism-dark`, `theme-neobrutalism-punk`                                                                                             |
+| **Glass**         | `theme-glass-dark`, `theme-glass-frost`, `theme-glass-aurora`, `theme-glass-ocean`                                                                                           |
+| **Retro**         | `theme-synthwave`, `theme-retrowave`                                                                                                                                         |
 
-**Step 4: Storage Setup**
-1.  Go to **Storage** in Supabase.
-2.  Create a new bucket named `blog-assets`.
-3.  **Important:** Toggle "Public Bucket" to **ON**.
+Want custom colors? Dynamic mode ships a `theme-custom` option that takes 6 hex values and converts them to HSL at runtime.
 
-**Step 5: Seed Data**
-Populate the database with the default template data so your dashboard isn't empty.
+---
+
+## Typography
+
+14 font-pair presets. Set via `typographyPreset` in config, or live-switch in admin settings.
+
+`typo-default`, `typo-editorial`, `typo-modern-tech`, `typo-elegant`, `typo-bold-quirky`, `typo-futuristic`, `typo-classic-pro`, `typo-geometric`
+
+---
+
+## Deployment
+
+### GitHub Pages
+
+1. Push to GitHub
+2. **Settings → Pages → Source: GitHub Actions**
+3. Done — the included `.github/workflows/next-deploy.yml` handles the rest.
+
+For dynamic mode, add these as GitHub Secrets:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SITE_URL` (your deployed URL)
+
+### Vercel / Netlify / Cloudflare Pages
+
+Import the repo, add env vars if using Supabase, deploy. No config needed.
+
+### Manual
+
 ```bash
-npm run seed
+npm run build    # Outputs ./out/
 ```
 
-**Step 6: Launch**
-```bash
-npm run dev
-```
+Upload `./out/` to any static host.
+
+### Included Workflows
+
+| Workflow                   | Static mode                                           | Dynamic mode                                                                                  |
+| -------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `next-deploy.yml`          | Optional — builds + deploys on push to `main`         | Required — injects Supabase secrets at build                                                  |
+| `keep-supabase-active.yml` | Auto-skipped when `NEXT_PUBLIC_SUPABASE_URL` is unset | Required — pings Supabase every 24h so the free tier doesn't pause after 7 days of inactivity |
 
 ---
 
-## 👤 First-Time Admin Setup
+## Dynamic Mode Setup
 
-The admin panel is secure by default. There is no public registration page.
+Want the admin dashboard? Four steps:
 
-1.  Navigate to `http://localhost:3000/admin/signup`.
-    *   *Note: This page only works if no admin user exists in the database.*
-2.  Create your root account.
-3.  **Check your email** to confirm the account.
-4.  Log in at `/admin/login`.
-5.  Follow the prompt to scan the QR Code and set up **2FA (MFA)**.
+1. Create a free project at [supabase.com](https://supabase.com)
+2. Copy `.env.example` to `.env.local` and fill in keys
+3. Run `db/schema.sql` in the Supabase SQL editor (creates 50 tables + RLS policies + seed)
+4. Create a public storage bucket named `assets`
 
----
+Then visit `/admin/signup` to create your admin account. You'll be prompted to enroll TOTP MFA on first login.
 
-## 📦 Deployment
+If a step is missing, the sign-in screen says which: without Supabase keys, or
+with keys but no schema, it shows the remaining steps instead of a login form.
+Once you're in, **Get your site ready** on the dashboard walks you through the
+rest — identity, headline, theme, links, pages, a first post, and the bucket.
 
-This project uses `output: 'export'` for compatibility with static hosts like **GitHub Pages**.
-
-### 1. GitHub Secrets
-Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**. Add these secrets:
-
-| Secret Name | Value |
-| :--- | :--- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase Anon Key |
-| `NEXT_PUBLIC_BUCKET_NAME` | `blog-assets` |
-| `NEXT_PUBLIC_SITE_URL` | Your production domain (e.g., `https://yourname.github.io`) |
-
-### 2. Enable Pages
-Go to **Settings** -> **Pages**. Set **Source** to **GitHub Actions**.
-
-Push your code to the `main` branch. The included workflow `.github/workflows/next-deploy.yml` will automatically build and deploy your site.
+Single-admin and MFA are enforced in the database, not just the client: write policies
+require an AAL2 session, and a trigger on `auth.users` rejects further signups once an
+admin exists. The client-side guard is UX, not the security boundary.
 
 ---
 
-## 🤖 Automations (Optional)
+## Admin Dashboard
 
-### Supabase Keep-Alive & Fun Facts
-The Supabase Free Tier pauses projects after 7 days of inactivity. This repository includes a GitHub Action to prevent this.
+20 protected routes. The `(protected)` route group's layout runs the guard once
+(`useAdminGuard`, requires AAL2 / MFA) and wraps every module in the admin shell.
 
-**Features:**
-1.  Pings your database twice daily.
-2.  Fetches a random **Dev Joke** or **Fun Fact**.
-3.  Sends a beautiful status report to Discord.
-
-**Setup:**
-1.  Create a **Discord Webhook** (Channel Settings -> Integrations -> Webhooks).
-2.  Add a GitHub Secret named `DISCORD_WEBHOOK_URL` with the webhook link.
-3.  The workflow is located at `.github/workflows/keep-alive.yml` and runs automatically.
+| Route                 | Feature                                                            |
+| --------------------- | ------------------------------------------------------------------ |
+| `/admin`              | Dashboard overview (tasks, finance, habits, learning KPIs)         |
+| `/admin/blog`         | Blog post editor (Tiptap/Novel)                                    |
+| `/admin/content`      | Pages — sections + items per page, with live preview                |
+| `/admin/analytics`    | Visitors and what they read — no IP address stored                 |
+| `/admin/inbox`        | Contact-form messages, with optional Discord alerts                |
+| `/admin/library`      | Books and articles, with highlights                                |
+| `/admin/discover`     | Markets, the job market and the news                               |
+| `/admin/life-updates` | `/updates` feed editor                                             |
+| `/admin/tasks`        | Task manager — Kanban / Table / Tree views, sub-tasks              |
+| `/admin/finance`      | Income, expenses, recurring transactions, goals, monthly analytics |
+| `/admin/habits`       | Habit tracker with heatmaps + streaks                              |
+| `/admin/learning`     | Subjects, topics, timed study sessions                             |
+| `/admin/calendar`     | FullCalendar unified view (tasks + events + habits)                |
+| `/admin/notes`        | Sticky-notes editor                                                |
+| `/admin/inventory`    | Personal inventory CRUD                                            |
+| `/admin/assets`       | Storage bucket browser + usage scan                                |
+| `/admin/navigation`   | Reorder public nav links                                           |
+| `/admin/settings`     | Brand, theme, typography, hero, GitHub, contact, social, footer    |
+| `/admin/security`     | Lockdown level, password change, MFA unenroll                      |
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
-├── src/
-│   ├── components/
-│   │   ├── admin/       # Dashboard, Finance, Tasks, CMS components
-│   │   ├── ui/          # Reusable Shadcn UI primitives
-│   │   └── ...          # Public components (Hero, Projects)
-│   ├── lib/
-│   │   ├── mock-data.ts # Fallback content for Static Mode
-│   │   └── utils.ts     # Helpers (Date parsing, formatting)
-│   ├── pages/           # Next.js Routes
-│   │   ├── admin/       # Secure admin routes
-│   │   └── ...          # Public routes
-│   ├── store/           # Redux Logic (RTK Query API definitions)
-├── db/                  # SQL Schema for Supabase
-├── public/              # Static assets
-└── ...config files
+foliokit/
+├── portfolio.config.ts           # YOUR CONFIG — edit this
+├── next.config.js                # output: "export", trailingSlash, unoptimized images
+├── tailwind.config.js            # Tailwind + CSS-variable theme wiring
+├── .env.example                  # Env vars for dynamic mode
+├── .github/workflows/
+│   ├── next-deploy.yml           # GH Pages deploy on push to main
+│   └── keep-supabase-active.yml  # Daily Supabase heartbeat ping
+├── db/
+│   ├── schema.sql                # 50 tables + RLS + seed
+│   └── john-doe.sample.sql       # Demo persona seed
+├── public/                       # Static assets
+└── src/
+    ├── app/                      # App Router tree (static export)
+    │   ├── layout.tsx            # Root layout + providers.tsx
+    │   ├── (public)/             # Public routes, shared header/footer chrome
+    │   └── admin/
+    │       ├── (auth)/           # login, signup, setup-mfa, mfa-challenge
+    │       └── (protected)/      # Guard + admin shell, 15 routes
+    ├── features/                 # Feature-first UI — one folder per domain
+    │   │                         #   public: home, about, contact, blog,
+    │   │                         #   updates, sections, github
+    │   │                         #   admin: tasks, notes, habits, learning,
+    │   │                         #   calendar, finance, inventory, assets,
+    │   │                         #   content, settings, security, dashboard…
+    │   └── sections/             # 24 CMS layouts + markdown/list fallback
+    ├── components/
+    │   ├── layout/               # Shared public + admin chrome
+    │   ├── admin/                # Shared admin infra (patterns, editor, spinner)
+    │   └── ui/                   # Shadcn/Radix primitives
+    ├── store/
+    │   ├── api/
+    │   │   ├── publicApi.ts      # 10 public endpoints (no auth)
+    │   │   ├── adminApi.ts       # Barrel — import every admin hook from here
+    │   │   └── admin/            # Per-feature endpoint slices + query-helpers
+    │   └── slices/               # Focus timer + learning session state
+    ├── lib/
+    │   ├── fallback-data.ts      # Maps portfolio.config.ts → mock RTK payloads
+    │   ├── schemas.ts            # Zod schemas (form validation)
+    │   ├── config.ts             # isSupabaseConfigured + AppConfig
+    │   ├── themes.ts             # Runtime theme/typography application
+    │   └── constants.ts          # Theme + typography registries, enums, limits
+    ├── hooks/                    # Custom hooks (session, mobile, theme sync…)
+    ├── supabase/client.ts        # Nullable Supabase client
+    ├── styles/
+    │   ├── globals.css           # Tailwind, base token scale, prose, motifs
+    │   └── themes.css            # 56 theme + 14 typography presets (unlayered)
+    ├── test/setup.ts             # Vitest + Testing Library setup
+    └── types/index.ts            # Central TypeScript interfaces
 ```
 
-## 🤝 Contributing
+Tests live next to their source as `*.test.ts(x)`.
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+---
 
-## 📄 License
+## Commands
 
-This project is licensed under the [MIT License](LICENSE).
+| Command              | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `npm run dev`        | Dev server on port **8889**                  |
+| `npm run build`      | Production build + static export to `./out/` |
+| `npm run start`      | Production server                            |
+| `npm run lint`       | ESLint                                       |
+| `npm run test`       | Vitest, single run                           |
+| `npm run test:watch` | Vitest in watch mode                         |
+| `npm run format`     | Prettier                                     |
+
+Run one test file with `npx vitest run <path>`, and filter by name with `-t "<name>"`.
+
+---
+
+## Tech Stack
+
+**Framework:** Next.js 14 (App Router, static export) · React 18 · TypeScript 5
+
+**State & Data:** Redux Toolkit · RTK Query · Supabase (optional)
+
+**Forms & Validation:** React Hook Form · Zod · `@hookform/resolvers`
+
+**Styling:** Tailwind CSS · Shadcn/Radix UI · Framer Motion · `class-variance-authority`
+
+**Content:** Tiptap + Novel (rich-text) · `react-markdown` · `rehype-prism-plus` (syntax highlighting)
+
+**Visualization:** Recharts · FullCalendar
+
+**Testing:** Vitest · React Testing Library · jsdom
+
+**Security:** Supabase Auth · mandatory TOTP MFA · RLS on every table · `rehype-sanitize` on all rendered Markdown
+
+---
+
+## Environment Variables
+
+All variables are `NEXT_PUBLIC_*` (the app is fully client-rendered after export).
+
+| Variable                          | Required?    | Purpose                                   |
+| --------------------------------- | ------------ | ----------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`        | Dynamic mode | Supabase project URL                      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`   | Dynamic mode | Anon key (RLS handles authorization)      |
+| `NEXT_PUBLIC_BUCKET_NAME`         | Optional     | Storage bucket name, default `"assets"`   |
+| `NEXT_PUBLIC_SITE_URL`            | For builds   | Canonical URL (OG tags, sitemap)          |
+| `NEXT_PUBLIC_VISIT_NOTIFIER_URL`  | Unused       | Superseded by Analytics (see note)        |
+| `NEXT_PUBLIC_CONTACT_WEBHOOK_URL` | Static only  | Discord webhook — contact form (see note) |
+| `NEXT_PUBLIC_APP_NAME`            | Optional     | MFA app name override                     |
+| `NEXT_PUBLIC_MFA_ISSUER`          | Optional     | MFA issuer override                       |
+
+Static mode requires zero env vars.
+
+> **Visitor analytics.** `NEXT_PUBLIC_VISIT_NOTIFIER_URL` is no longer read. Visits are recorded in `site_visits` and shown in **Admin → Analytics**, and the Discord ping for a new visitor is sent by a database trigger reading the URL from `integration_settings` (**Admin → Analytics → Notifications**), deduplicated to the first visit of the day per visitor. Requires `db/migrations/008-visitor-analytics.sql`. **No IP address is ever stored** — the trigger derives `sha256(secret || current_date || ip || user_agent)` and keeps only that, so unique-visitor counts are accurate within a day and the column identifies nobody.
+
+> **Contact notifications.** With Supabase configured, `NEXT_PUBLIC_CONTACT_WEBHOOK_URL` is ignored: the ping is sent by a database trigger reading the URL from the admin-only `integration_settings` table, so set it in **Admin → Inbox → Notifications** (`db/migrations/007-contact-inbox.sql`). Anything prefixed `NEXT_PUBLIC_` is compiled into the client bundle and readable by every visitor, and a Discord webhook URL is full authority to post in that channel. Static mode has no server to hide it behind, so it still uses the variable.
+
+---
+
+## Contributing
+
+Contributions welcome! The workflow:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/my-feature`)
+3. Commit with a clear message
+4. Open a pull request
+
+For larger changes, please open an issue first to discuss direction.
+
+---
+
+## License
+
+[MIT](LICENSE) — use it for anything, commercial or personal.
+
+---
+
+Built with Foliokit by [Akshay Bharadva](https://github.com/akshay-bharadva). If you ship something with this, I'd love to see it.

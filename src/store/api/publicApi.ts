@@ -1,4 +1,3 @@
-// src/store/api/publicApi.ts
 import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react";
 import { supabase } from "@/supabase/client";
 import {
@@ -6,11 +5,17 @@ import {
   MOCK_BLOG_POSTS,
   MOCK_SECTIONS,
   MOCK_NAV_LINKS,
+  MOCK_LIFE_UPDATES,
+  MOCK_HIGHLIGHTS,
 } from "@/lib/fallback-data";
+import { pickRandom } from "@/lib/random-pick";
+import { normalizeSiteContent } from "@/lib/site-identity";
 import type {
   BlogPost,
   GitHubRepo,
+  LifeUpdate,
   PortfolioSection,
+  PublicHighlight,
   SiteContent,
 } from "@/types";
 
@@ -26,13 +31,14 @@ export const publicApi = createApi({
     "Portfolio",
     "Navigation",
     "SiteSettings",
+    "LifeUpdates",
   ],
   endpoints: (builder) => ({
     getSiteIdentity: builder.query<SiteContent, void>({
       queryFn: async () => {
         // --- MOCK FALLBACK ---
         if (!supabase) {
-          return { data: MOCK_SITE_IDENTITY };
+          return { data: normalizeSiteContent(MOCK_SITE_IDENTITY) };
         }
         // ---------------------
 
@@ -41,7 +47,9 @@ export const publicApi = createApi({
           .select("*")
           .single();
         if (error) return { error };
-        return { data: data as SiteContent };
+        // profile_data is unconstrained JSONB; normalising here means the
+        // public renderers can rely on the shape SiteContent promises.
+        return { data: normalizeSiteContent(data as Partial<SiteContent>) };
       },
       providesTags: ["SiteContent"],
     }),
@@ -89,9 +97,14 @@ export const publicApi = createApi({
         }
         // ---------------------
 
+        // List view: everything except `content` — read time comes from the
+        // word_count generated column, so full post bodies stay out of the
+        // list payload. Requires the current db/schema.sql to be applied.
         const { data, error } = await supabase
           .from("blog_posts")
-          .select("*")
+          .select(
+            "id, user_id, title, slug, excerpt, cover_image_url, published, published_at, show_toc, tags, views, word_count, created_at, updated_at",
+          )
           .eq("published", true)
           .order("published_at", { ascending: false });
         if (error) return { error };
@@ -159,6 +172,23 @@ export const publicApi = createApi({
       ],
     }),
 
+    getPublishedLifeUpdates: builder.query<LifeUpdate[], void>({
+      queryFn: async () => {
+        if (!supabase) {
+          return { data: MOCK_LIFE_UPDATES };
+        }
+        const { data, error } = await supabase
+          .from("public_notes")
+          .select("*")
+          .eq("is_published", true)
+          .order("is_pinned", { ascending: false })
+          .order("created_at", { ascending: false });
+        if (error) return { error };
+        return { data };
+      },
+      providesTags: ["LifeUpdates"],
+    }),
+
     getSectionsByPath: builder.query<PortfolioSection[], string>({
       queryFn: async (pagePath) => {
         // --- MOCK FALLBACK ---
@@ -222,16 +252,100 @@ export const publicApi = createApi({
             return !p.private;
           });
           return { data: filtered };
-        } catch (error: any) {
+        } catch (error: unknown) {
           return {
             error: {
-              message: error.message,
+              message: error instanceof Error ? error.message : "Unknown error",
               details: "",
               hint: "",
               code: "FETCH_ERROR",
             },
           };
         }
+      },
+    }),
+
+    /**
+     * The only public write path in the app.
+     *
+     * **Dynamic mode** inserts the row and stops. The Discord notification is
+     * sent by an AFTER INSERT trigger reading the webhook URL from an
+     * admin-only table (`db/migrations/007-contact-inbox.sql`). It used to be
+     * sent from here, from the browser, using
+     * `NEXT_PUBLIC_CONTACT_WEBHOOK_URL` — which is compiled into the client
+     * bundle, so anyone could read the URL out of the JS and post arbitrary
+     * embeds into the channel. Moving it into the database also ties the ping
+     * to a row that exists rather than to a caller's word, and applies it to
+     * inserts that never went through this form.
+     *
+     * **Static mode** has no database to trigger from, so the browser call
+     * remains the only way a message can reach anyone. The URL is unavoidably
+     * public in a static deployment; that is a property of having no server,
+     * not a choice made here.
+     *
+     * Length bounds and the rate limit behind them are enforced by the
+     * database. `contactFormSchema` is the courtesy copy that produces a
+     * useful message before the round trip.
+     */
+    submitContactForm: builder.mutation<
+      void,
+      { name: string; email: string; subject: string; message: string }
+    >({
+      queryFn: async (formData) => {
+        if (supabase) {
+          const { error } = await supabase
+            .from("contact_submissions")
+            .insert(formData);
+          if (error) return { error };
+          return { data: undefined };
+        }
+
+        const webhookUrl = process.env.NEXT_PUBLIC_CONTACT_WEBHOOK_URL || "";
+        if (!webhookUrl) {
+          // Nowhere to put it. A success message for a message that went
+          // nowhere is worse than an honest failure.
+          return {
+            error: {
+              message:
+                "This site has no message delivery configured. Please use one of the direct links instead.",
+            },
+          };
+        }
+
+        try {
+          const response = await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: "Portfolio Contact",
+              embeds: [
+                {
+                  title: "New contact form submission",
+                  color: 5814783,
+                  fields: [
+                    { name: "Name", value: formData.name, inline: true },
+                    { name: "Email", value: formData.email, inline: true },
+                    { name: "Subject", value: formData.subject },
+                    // Discord drops the whole embed rather than truncating a
+                    // field over 1024 characters.
+                    { name: "Message", value: formData.message.slice(0, 1000) },
+                  ],
+                  timestamp: new Date().toISOString(),
+                  footer: { text: "Contact Form" },
+                },
+              ],
+            }),
+          });
+          if (!response.ok) {
+            return {
+              error: { message: "The message could not be delivered." },
+            };
+          }
+        } catch {
+          return { error: { message: "The message could not be delivered." } };
+        }
+
+        return { data: undefined };
       },
     }),
 
@@ -247,6 +361,34 @@ export const publicApi = createApi({
       },
       keepUnusedDataFor: 60,
     }),
+
+    /**
+     * One public Library highlight, chosen at random.
+     *
+     * Reaches a database function rather than either table: visitors have no
+     * read policy on the Library, and the function returns only rows the owner
+     * marked public, with only the columns a citation needs.
+     *
+     * Resolves to null on any failure rather than erroring. A quote is
+     * decoration, and it must never be the reason a page shows an error —
+     * including before migration 018 has been run, when the function does not
+     * exist yet.
+     */
+    getRandomHighlight: builder.query<PublicHighlight | null, void>({
+      queryFn: async () => {
+        if (!supabase) return { data: pickRandom(MOCK_HIGHLIGHTS) };
+
+        const { data, error } = await supabase.rpc(
+          "get_random_public_highlight",
+        );
+        if (error) return { data: null };
+
+        const row = Array.isArray(data) ? data[0] : data;
+        return { data: (row as PublicHighlight | undefined) ?? null };
+      },
+      // Not cached between visits: "a different line each time" is the point.
+      keepUnusedDataFor: 0,
+    }),
   }),
 });
 
@@ -256,7 +398,10 @@ export const {
   useGetPublishedBlogPostsQuery,
   useGetBlogPostBySlugQuery,
   useIncrementPostViewMutation,
+  useSubmitContactFormMutation,
+  useGetPublishedLifeUpdatesQuery,
   useGetSectionsByPathQuery,
   useGetGitHubReposQuery,
   useGetLockdownStatusQuery,
+  useGetRandomHighlightQuery,
 } = publicApi;

@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const removeImports = require("next-remove-imports")();
-
 const nextConfig = {
   output: "export",
   reactStrictMode: true,
@@ -13,4 +11,4 @@ const nextConfig = {
   assetPrefix: "",
 };
 
-module.exports = removeImports(nextConfig);
+module.exports = nextConfig;

@@ -1,25 +1,22 @@
-// src/components/GlobalCommandPalette.tsx
-"use client";
-
 import * as React from "react";
-import { useRouter } from "next/router";
+// next/navigation works in both routers (Next ≥13.4) — required because this
+// palette is mounted by the App Router providers as well as pages/_app.
+import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { supabase } from "@/supabase/client";
 import { useAppDispatch } from "@/store/hooks";
 import { startFocus } from "@/store/slices/focusSlice";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DARK_THEME, LIGHT_THEME } from "@/lib/themes";
+import { NAV_GROUPS } from "@/features/admin-shell/nav-config";
+import { cn } from "@/lib/utils"; // Ensure you have this utility
+import { Button } from "@/components/ui/button"; // Import Button for the mobile trigger
 import {
-  Calculator,
-  Calendar,
-  CreditCard,
-  Settings,
   User,
-  LayoutDashboard,
   FileText,
   LogOut,
   Moon,
   Sun,
-  Laptop,
   Plus,
   StickyNote,
   Zap,
@@ -43,7 +40,7 @@ import {
 } from "@/components/ui/command";
 import { toast } from "sonner";
 
-export function GlobalCommandPalette() {
+export default function GlobalCommandPalette() {
   const [open, setOpen] = React.useState(false);
   const [isAdmin, setIsAdmin] = React.useState(false);
   const router = useRouter();
@@ -51,6 +48,7 @@ export function GlobalCommandPalette() {
   const dispatch = useAppDispatch();
   const isMobile = useIsMobile();
 
+  // Handle Keyboard Shortcut (Cmd+K)
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -62,6 +60,7 @@ export function GlobalCommandPalette() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
+  // Handle Custom Event
   React.useEffect(() => {
     const handleCustomOpen = () => setOpen(true);
     document.addEventListener("open-command-palette", handleCustomOpen);
@@ -69,6 +68,7 @@ export function GlobalCommandPalette() {
       document.removeEventListener("open-command-palette", handleCustomOpen);
   }, []);
 
+  // Check Admin Status
   React.useEffect(() => {
     const checkUser = async () => {
       if (!supabase) return;
@@ -114,145 +114,168 @@ export function GlobalCommandPalette() {
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Type a command or search..." />
-      <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
-        <CommandEmpty>No results found.</CommandEmpty>
+    <>
+      {/* 
+        MOBILE TRIGGER:
+        Since mobile users can't press Cmd+K, we add a fixed Floating Action Button.
+        Hidden on Desktop (md:hidden).
+      */}
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => setOpen(true)}
+        className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full bg-background/80 shadow-e3 backdrop-blur-sm md:hidden"
+        aria-label="Open Command Palette"
+      >
+        <Search className="h-5 w-5" />
+      </Button>
 
-        {isAdmin && (
-          <>
-            <CommandGroup heading="Quick Actions">
-              <CommandItem
-                onSelect={() =>
-                  runCommand(() => router.push("/admin/blog?create=true"))
-                }
-              >
-                <PenTool className="mr-2 h-4 w-4" />
-                <span>Write New Post</span>
-                {!isMobile && <CommandShortcut>C P</CommandShortcut>}
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/admin/tasks"))}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                <span>Add Task</span>
-                {!isMobile && <CommandShortcut>C T</CommandShortcut>}
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/admin/notes"))}
-              >
-                <StickyNote className="mr-2 h-4 w-4" />
-                <span>Jot Note</span>
-              </CommandItem>
-              <CommandItem onSelect={() => runCommand(handleQuickFocus)}>
-                <Zap className="mr-2 h-4 w-4 text-yellow-500" />
-                <span>Start Focus Timer</span>
-              </CommandItem>
-            </CommandGroup>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandInput placeholder="Type a command or search..." />
 
-            <CommandSeparator />
-
-            <CommandGroup heading="Admin Navigation">
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/admin"))}
-              >
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Dashboard</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/admin/finance"))}
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                <span>Finance</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() =>
-                  runCommand(() => router.push("/admin/calendar"))
-                }
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                <span>Calendar</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() =>
-                  runCommand(() => router.push("/admin/analytics"))
-                }
-              >
-                <Calculator className="mr-2 h-4 w-4" />
-                <span>Analytics</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() =>
-                  runCommand(() => router.push("/admin/settings"))
-                }
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </CommandItem>
-            </CommandGroup>
-            <CommandSeparator />
-          </>
-        )}
-
-        <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => router.push("/"))}>
-            <Home className="mr-2 h-4 w-4" />
-            <span>Home</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/about"))}>
-            <User className="mr-2 h-4 w-4" />
-            <span>About</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push("/blog"))}>
-            <FileText className="mr-2 h-4 w-4" />
-            <span>Blog</span>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => router.push("/projects"))}
-          >
-            <Briefcase className="mr-2 h-4 w-4" />
-            <span>Projects</span>
-          </CommandItem>
-          {!isAdmin && (
-            <CommandItem
-              onSelect={() => runCommand(() => router.push("/admin/login"))}
-            >
-              <Terminal className="mr-2 h-4 w-4" />
-              <span>Admin Login</span>
-            </CommandItem>
+        {/* 
+           LAYOUT FIX: 
+           On mobile, we use a dynamic height (60vh) so it doesn't get cut off 
+           when the keyboard opens, but still leaves room. 
+           On desktop, we stick to fixed pixels for a tighter look.
+        */}
+        <CommandList
+          className={cn(
+            "overflow-y-auto overflow-x-hidden",
+            "max-h-[55vh] sm:max-h-[300px] lg:max-h-[450px]",
           )}
-        </CommandGroup>
+        >
+          <CommandEmpty>No results found.</CommandEmpty>
 
-        <CommandSeparator />
-
-        <CommandGroup heading="System">
-          <CommandItem onSelect={() => runCommand(() => setTheme("light"))}>
-            <Sun className="mr-2 h-4 w-4" />
-            <span>Light Mode</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setTheme("dark"))}>
-            <Moon className="mr-2 h-4 w-4" />
-            <span>Dark Mode</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => setTheme("system"))}>
-            <Laptop className="mr-2 h-4 w-4" />
-            <span>System Theme</span>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(copyCurrentUrl)}>
-            <Copy className="mr-2 h-4 w-4" />
-            <span>Copy Current URL</span>
-          </CommandItem>
           {isAdmin && (
-            <CommandItem
-              onSelect={() => runCommand(handleLogout)}
-              className="text-destructive"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </CommandItem>
+            <>
+              <CommandGroup heading="Quick Actions">
+                <CommandItem
+                  onSelect={() =>
+                    runCommand(() => router.push("/admin/blog?create=true"))
+                  }
+                >
+                  <PenTool className="mr-2 h-4 w-4" />
+                  <span>Write New Post</span>
+                  {!isMobile && <CommandShortcut>C P</CommandShortcut>}
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => runCommand(() => router.push("/admin/tasks"))}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span>Add Task</span>
+                  {!isMobile && <CommandShortcut>C T</CommandShortcut>}
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => runCommand(() => router.push("/admin/notes"))}
+                >
+                  <StickyNote className="mr-2 h-4 w-4" />
+                  <span>Jot Note</span>
+                </CommandItem>
+                <CommandItem onSelect={() => runCommand(handleQuickFocus)}>
+                  <Zap className="mr-2 h-4 w-4 text-chart-3" />
+                  <span>Start Focus Timer</span>
+                </CommandItem>
+              </CommandGroup>
+
+              <CommandSeparator />
+
+              {/*
+                This palette is the admin's module switcher — v3 removed the
+                sidebar rail, so every module has to be reachable from here.
+                Driven from NAV_GROUPS rather than a hand-written subset, which
+                previously listed only five of the sixteen.
+              */}
+              {NAV_GROUPS.map((group) => (
+                <CommandGroup key={group.label} heading={group.label}>
+                  {group.items.map((item) => (
+                    <CommandItem
+                      key={item.href}
+                      value={`${group.label} ${item.name}`}
+                      onSelect={() => runCommand(() => router.push(item.href))}
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      <span>{item.name}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
+              <CommandSeparator />
+            </>
           )}
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+
+          <CommandGroup heading="Navigation">
+            <CommandItem onSelect={() => runCommand(() => router.push("/"))}>
+              <Home className="mr-2 h-4 w-4" />
+              <span>Home</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => router.push("/about"))}
+            >
+              <User className="mr-2 h-4 w-4" />
+              <span>About</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => router.push("/blog"))}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              <span>Blog</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => router.push("/projects"))}
+            >
+              <Briefcase className="mr-2 h-4 w-4" />
+              <span>Projects</span>
+            </CommandItem>
+            {!isAdmin && (
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/admin/login"))}
+              >
+                <Terminal className="mr-2 h-4 w-4" />
+                <span>Admin Login</span>
+              </CommandItem>
+            )}
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          <CommandGroup heading="System">
+            {/*
+              These used to call setTheme("light" | "dark" | "system"). None of
+              those are members of VALID_THEMES, so next-themes stripped the
+              active `theme-*` class and replaced it with a class that defines
+              no tokens — the site lost its palette until reload. "System" was
+              doubly dead, since the provider runs `enableSystem={false}`.
+              They now select the two real presets that carry the v2 identity.
+            */}
+            <CommandItem
+              onSelect={() => runCommand(() => setTheme(LIGHT_THEME))}
+            >
+              <Sun className="mr-2 h-4 w-4" />
+              <span>Light Mode</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => setTheme(DARK_THEME))}
+            >
+              <Moon className="mr-2 h-4 w-4" />
+              <span>Dark Mode</span>
+            </CommandItem>
+            <CommandItem onSelect={() => runCommand(copyCurrentUrl)}>
+              <Copy className="mr-2 h-4 w-4" />
+              <span>Copy Current URL</span>
+            </CommandItem>
+            {isAdmin && (
+              <CommandItem
+                onSelect={() => runCommand(handleLogout)}
+                className="text-destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </CommandItem>
+            )}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+    </>
   );
 }

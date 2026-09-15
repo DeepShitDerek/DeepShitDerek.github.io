@@ -3,7 +3,14 @@ module.exports = {
   darkMode: ["class"],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    // lib + hooks hold runtime-applied class names (VALID_THEMES,
+    // THEME_PRESETS, typography presets) — without scanning them Tailwind
+    // tree-shakes the corresponding custom styles out of the bundle.
+    "./src/lib/**/*.{js,ts,jsx,tsx}",
+    "./src/hooks/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     container: {
@@ -15,9 +22,16 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        mono: ["IBM Plex Mono", "monospace"],
-        tahu: ["var(--font-tahu)", "sans-serif"],
+        sans: ["var(--font-body)", "Inter", "sans-serif"],
+        heading: ["var(--font-heading)", "Inter", "sans-serif"],
+        mono: [
+          "var(--font-code)",
+          "JetBrains Mono",
+          "IBM Plex Mono",
+          "monospace",
+        ],
+        caveat: ["var(--font-caveat)", "Caveat", "cursive"],
+        handwriting: ["Caveat", "cursive"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -65,6 +79,34 @@ module.exports = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        "2xl": "1rem",
+        "3xl": "1.5rem",
+        // v3 two-tier shape system — see docs/redesign/v3-design-vision.md
+        surface: "var(--r-surface)",
+        control: "var(--r-control)",
+      },
+      boxShadow: {
+        // v3 elevation. Derived from the theme's own foreground so depth reads
+        // correctly on light and dark presets alike.
+        e1: "var(--e-1)",
+        e2: "var(--e-2)",
+        e3: "var(--e-3)",
+      },
+      maxWidth: {
+        content: "var(--w-content)",
+        wide: "var(--w-wide)",
+        prose: "var(--w-prose)",
+      },
+      fontSize: {
+        display: ["var(--t-display)", { lineHeight: "1.05" }],
+        title: ["var(--t-title)", { lineHeight: "1.12" }],
+        heading: ["var(--t-heading)", { lineHeight: "1.25" }],
+        lead: ["var(--t-lead)", { lineHeight: "1.55" }],
+        micro: ["var(--t-micro)", { lineHeight: "1.4" }],
+      },
+      transitionTimingFunction: {
+        enter: "cubic-bezier(0.32, 0.72, 0, 1)",
+        exit: "cubic-bezier(0.4, 0, 1, 1)",
       },
       keyframes: {
         "accordion-down": {
@@ -79,11 +121,29 @@ module.exports = {
           "0%, 70%, 100%": { opacity: "1" },
           "20%, 50%": { opacity: "0" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-20px)" },
+        },
+        "gradient-x": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "caret-blink": "caret-blink 1.2s ease-out infinite",
+        float: "float 6s ease-in-out infinite",
+        "gradient-x": "gradient-x 8s ease infinite",
+        "fade-in-up": "fade-in-up 0.6s ease-out",
       },
     },
   },

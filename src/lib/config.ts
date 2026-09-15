@@ -1,5 +1,11 @@
-interface AppConfig {
-  admin: {};
+import { SESSION_MAX_AGE_MS, BUCKET_NAME } from "./constants";
+import portfolioConfig from "../../portfolio.config";
+
+/** Default site URL for fallback */
+const DEFAULT_SITE_URL = "https://example.com";
+
+export interface AppConfig {
+  admin: Record<string, never>;
   mfa: {
     appName: string;
     issuer: string;
@@ -25,34 +31,31 @@ interface AppConfig {
 export const config: AppConfig = {
   admin: {},
   mfa: {
-    appName: process.env.NEXT_PUBLIC_APP_NAME || "Akshay Bharadva | Portfolio",
-    issuer: process.env.NEXT_PUBLIC_MFA_ISSUER || "Akshay Bharadva | MFA",
+    appName:
+      process.env.NEXT_PUBLIC_APP_NAME || `${portfolioConfig.name} | Portfolio`,
+    issuer:
+      process.env.NEXT_PUBLIC_MFA_ISSUER || `${portfolioConfig.name} | MFA`,
   },
   site: {
-    title: process.env.NEXT_PUBLIC_SITE_TITLE || "Akshay Bharadva | Portfolio",
+    title:
+      process.env.NEXT_PUBLIC_SITE_TITLE ||
+      `${portfolioConfig.name} | Portfolio`,
     description:
-      process.env.NEXT_PUBLIC_SITE_DESCRIPTION ||
-      "A modern portfolio website with blog functionality, built by Akshay Bharadva.",
-    url: process.env.NEXT_PUBLIC_SITE_URL || "https://abharadva.github.io",
-    defaultOgImage: `${process.env.NEXT_PUBLIC_SITE_URL || "https://abharadva.github.io"}/default-og-image.png`,
-    author: "Akshay Bharadva",
+      process.env.NEXT_PUBLIC_SITE_DESCRIPTION || portfolioConfig.description,
+    url: process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL,
+    defaultOgImage: `${process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL}/default-og-image.png`,
+    author: portfolioConfig.name,
   },
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-    bucketName: process.env.NEXT_PUBLIC_BUCKET_NAME || "assets",
+    bucketName: BUCKET_NAME,
   },
   session: {
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: SESSION_MAX_AGE_MS,
   },
 };
 
 // --- CONFIGURATION VALIDATION ---
 export const isSupabaseConfigured =
   !!config.supabase.url && !!config.supabase.anonKey;
-
-if (!isSupabaseConfigured) {
-  console.info(
-    "⚠️ Supabase credentials not found. App running in STATIC MOCK MODE.",
-  );
-}
