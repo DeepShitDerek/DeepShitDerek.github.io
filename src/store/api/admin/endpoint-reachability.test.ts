@@ -29,15 +29,53 @@ const root = resolve(__dirname, "../../../..");
  * being on it is an oversight.
  */
 const DELIBERATELY_UNUSED: Record<string, string> = {
-  // Accounts archive rather than delete, so history and past transactions
-  // survive. The endpoint is kept for a genuine purge that does not exist yet.
-  useDeleteFinanceAccountMutation:
-    "accounts archive instead; see account-form.tsx",
-
   // The dashboard was rebuilt around the day and reads getDashboardData;
   // Analytics fetches its own series. This aggregate is what is left of the
   // v2 dashboard and is called by nothing.
   useGetAnalyticsDataQuery: "superseded — Analytics uses its own queries",
+
+  /*
+    Finance v2 — the data layer for migrations 025–030.
+
+    These are unused because the screens that will call them have not been
+    written yet: the rebuild lands the schema, then the data layer, then the
+    domain logic, then the UI. Each entry goes as its screen arrives, and
+    **the rebuild is not finished while any of them remain** — an allowlist
+    nobody empties is exactly the quiet failure this test exists to catch.
+
+    See docs/redesign/finance-rebuild-plan.md, phase 7.
+  */
+  // The currency list, the settings write and the rate cache all belong to
+  // ui/exchange-section.tsx: which currencies the module works in, and the
+  // quotes every other screen converts with, are the same subject.
+  // Five hooks have left this list, which is how the phase is measured:
+  // ui/finance-page.tsx reads settings, accounts, balances and rates, and
+  // ui/account-form.tsx writes an account. The rebuild is not finished until
+  // the rest follow.
+  // Deleting an account is offered by ui/account-form.tsx, but only for one the
+  // ledger has never touched — the escape hatch for an account added by
+  // mistake. Anything with history can only be archived.
+  // The three category hooks have gone too: ui/categories-section.tsx manages
+  // them and the workspace reads them for the plan section.
+  // Every ledger hook is reached now: the workspace reads the ledger and
+  // deletes, ui/transaction-form.tsx records and updates, and
+  // ui/transfer-form.tsx records the two-posting pair.
+  // Commitments and their skips are read by the workspace now — Overview
+  // derives the confirm queue from them, Activity lists them under the ledger.
+  // Saving and deleting a commitment are reached: ui/commitment-form.tsx and
+  // ui/commitments-section.tsx. The two *queries* behind them are still listed,
+  // because the workspace has not wired them yet — the components take their
+  // data as props.
+  // Rate changes and prepayments are recorded from ui/loans-section.tsx, which
+  // is where a loan's events belong — the schedule is derived from the terms
+  // plus these, so recording one rebuilds every figure on that screen.
+  // Skip and unskip are reached by ui/confirm-queue.tsx — the Undo on a skip
+  // being the reason both exist rather than just the one.
+  // Budgets and goals are reached by ui/budgets-section.tsx,
+  // ui/goals-section.tsx and ui/goal-form.tsx, composed by ui/plan-section.tsx.
+  // The workspace reads all three lists; the sections own their writes.
+  // Scenarios are reached by ui/forecast-section.tsx, which owns its saved
+  // what-ifs the way the forms own their mutations.
 };
 
 const slices = globSync("src/store/api/admin/!(*.test).ts", {

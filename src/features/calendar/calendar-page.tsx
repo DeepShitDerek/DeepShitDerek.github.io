@@ -1,24 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  addDays,
-  addMonths,
-  addWeeks,
-  endOfMonth,
-  format,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
+import dynamic from "next/dynamic";
+import { addDays, addMonths, format } from "date-fns";
 import { ChevronLeft, ChevronRight, PanelRight, Plus } from "lucide-react";
 import { toast } from "sonner";
-import type { CalendarEntry, Task } from "@/types";
+import type { CalendarEntry, CalendarRow, Task } from "@/types";
 import {
   useAddEventMutation,
   useSaveEventExceptionMutation,
   useUpdateEventMutation,
   useGetCalendarDataQuery,
   useGetCalendarSettingsQuery,
+  useSaveCalendarSettingsMutation,
+  useGetFinCommitmentsQuery,
+  useGetFinCommitmentSkipsQuery,
   useGetCalendarsQuery,
   useGetEventExceptionsQuery,
   useGetTasksQuery,
@@ -36,17 +32,35 @@ import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
 import { buildEntries, filterEntries } from "./build-entries";
 import { withCalendarColors } from "./entry-color";
-import { isNoOp, moveToDay, moveToTime, snapMinutes } from "./drag-move";
+import { isNoOp } from "./drag-move";
 import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
-import { WeekGrid } from "./week-grid";
-import { AgendaView } from "./agenda-view";
-import { MonthView } from "./month-view";
 import { CalendarList } from "./calendar-list";
+import { OverlayChips } from "./overlay-chips";
+import { GridStatus } from "./grid-status";
+import { useBelowBreakpoint } from "@/hooks/use-media-query";
+import { DENSITY_OPTIONS, HOUR_HEIGHT, useDensity } from "./density";
+import { stepDays, viewWindow } from "./view-window";
+
+/*
+  Behind a dynamic boundary: FullCalendar and its four plugins are a large
+  client-only dependency, and the admin shell loads on every admin route. This
+  keeps it in the calendar's own chunk rather than in anyone else's first load.
+*/
+const FcCalendar = dynamic(
+  () => import("./fc-calendar").then((mod) => mod.FcCalendar),
+  {
+    ssr: false,
+    loading: () => <LoadingState variant="section" label="Loading" />,
+  },
+);
+import {
+  expectedMoneyDays,
+  majorUnits,
+} from "@/features/finance/calendar-feed";
 import { TaskRail, DEFAULT_BLOCK_MINUTES } from "./task-rail";
 import { QuickAddBar } from "./quick-add-bar";
 import { EventSheet } from "./event-sheet";
 import { FreeTimeBar } from "./free-time-bar";
-import { DENSITY_OPTIONS, HOUR_HEIGHT, useDensity } from "./density";
 
 type View = "day" | "week" | "month" | "agenda";
 
@@ -67,6 +81,18 @@ const VIEWS: { id: View; label: string }[] = [
  */
 export default function CalendarPage() {
   const { data: settings } = useGetCalendarSettingsQuery();
+  const [saveSettings] = useSaveCalendarSettingsMutation();
+  /*
+    The forecast half of the money overlay. `get_calendar_data` summarises money
+    that has already happened, so without these a calendar could show
+    yesterday's spending and say nothing about the rent due on Thursday.
+
+    Projected through `expectedMoneyDays`, finance's one documented contract
+    with this feature — what a commitment means, and when it is due, belongs to
+    that module rather than to this one.
+  */
+  const { data: commitments = [] } = useGetFinCommitmentsQuery();
+  const { data: commitmentSkips = [] } = useGetFinCommitmentSkipsQuery();
   const { data: calendars = [] } = useGetCalendarsQuery();
   const { data: exceptions = [] } = useGetEventExceptionsQuery();
   const { data: tasks = [] } = useGetTasksQuery();
@@ -90,43 +116,48 @@ export default function CalendarPage() {
     | 5
     | 6;
 
-  /** The days on screen, and the range to fetch. */
-  const { days, rangeStart, rangeEnd } = useMemo(() => {
-    if (view === "day") {
-      return { days: [anchor], rangeStart: anchor, rangeEnd: anchor };
-    }
-    if (view === "month") {
-      const first = startOfWeek(startOfMonth(anchor), { weekStartsOn });
-      const last = addDays(
-        startOfWeek(endOfMonth(anchor), { weekStartsOn }),
-        6,
-      );
-      const count =
-        Math.round((last.getTime() - first.getTime()) / 86_400_000) + 1;
-      return {
-        days: Array.from({ length: count }, (_, i) => addDays(first, i)),
-        rangeStart: first,
-        rangeEnd: last,
-      };
-    }
-    if (view === "agenda") {
-      return {
-        days: [],
-        rangeStart: anchor,
-        rangeEnd: addDays(anchor, 30),
-      };
-    }
-    const first = startOfWeek(anchor, { weekStartsOn });
-    return {
-      days: Array.from({ length: 7 }, (_, i) => addDays(first, i)),
-      rangeStart: first,
-      rangeEnd: addDays(first, 6),
-    };
-  }, [view, anchor, weekStartsOn]);
+  /*
+    A week is seven days on a screen with room for seven.
+
+    Below `md` it was still seven, inside an `overflow-hidden` grid — about
+    50px a day on a phone, which is narrower than the time labels in it. Three
+    days is a week view that can actually be read, and it still answers the
+    question the view is for: what is happening around now.
+
+    Anchored to the start of the week on a wide screen and to the anchor day
+    itself on a narrow one — a three-day window that always began on Monday
+    would often not contain today, which is the one day it must.
+  */
+  const narrow = useBelowBreakpoint("md");
+  const weekLength = narrow ? 3 : 7;
+
+  /**
+   * The days on screen, and the range to fetch — one definition, in
+   * `view-window.ts`, because the grid, the query, `buildEntries` and the
+   * heading all have to agree about it.
+   */
+  const {
+    days,
+    from: rangeStart,
+    to: rangeEnd,
+  } = useMemo(
+    () => viewWindow({ view, anchor, weekStartsOn, weekLength }),
+    [view, anchor, weekStartsOn, weekLength],
+  );
 
   const iso = (date: Date) => format(date, "yyyy-MM-dd");
 
-  const { data: rows = [], isLoading } = useGetCalendarDataQuery({
+  /*
+    `error` is read, not dropped. It used to be destructured away, so a raising
+    RPC fell back to an empty array and drew a blank grid in silence — a hard
+    failure and a quiet week looked exactly alike. `GridStatus` tells them
+    apart.
+  */
+  const {
+    data: rows = [],
+    isLoading,
+    error: calendarError,
+  } = useGetCalendarDataQuery({
     start: iso(rangeStart),
     end: iso(rangeEnd),
   });
@@ -139,9 +170,56 @@ export default function CalendarPage() {
     [calendars],
   );
 
+  /*
+    Expected money, as rows in the same shape the RPC returns.
+
+    Modelled as `transaction_summary` rather than a fifth kind on purpose: it is
+    a day's money either way, so the money chip governs it, the colour is
+    already resolved and every view draws it without learning anything new.
+    `data.expected` is what keeps it honest — a forecast and a fact must never
+    be mistaken for one another, and the detail view reads that flag to say
+    which it is showing.
+  */
+  const forecastRows = useMemo<CalendarRow[]>(() => {
+    if (commitments.length === 0) return [];
+
+    return expectedMoneyDays({
+      commitments,
+      skips: commitmentSkips,
+      from: rangeStart,
+      until: rangeEnd,
+    }).map((day) => ({
+      item_id: `money-forecast-${day.date}`,
+      /*
+        Named by what is due, not by the word "Expected". A chip reading
+        "Rent, Insurance" tells you what the day holds; one reading "Expected"
+        makes you open it to find out. The figures are in the sheet, which is
+        where a number belongs when the cell has room for about twenty
+        characters.
+      */
+      title: day.items.map((item) => item.name).join(", "),
+      // Midnight UTC, matching what the RPC sends for a date-only row, so
+      // `buildEntries` applies the same calendar-date rule to both.
+      start_time: `${day.date}T00:00:00+00:00`,
+      end_time: null,
+      item_type: "transaction_summary" as const,
+      is_all_day: true,
+      data: {
+        expected: true,
+        // Through `majorUnits`, not `/ 100`: the yen has no minor unit and the
+        // Kuwaiti dinar has three, and the currency table is what knows.
+        earned: majorUnits(day.inMinor, day.currency),
+        spent: majorUnits(day.outMinor, day.currency),
+        count: day.items.length,
+        currency: day.currency,
+        items: day.items,
+      },
+    }));
+  }, [commitments, commitmentSkips, rangeStart, rangeEnd]);
+
   const entries = useMemo(() => {
     const built = buildEntries({
-      rows,
+      rows: [...rows, ...forecastRows],
       exceptions,
       windowStart: rangeStart,
       windowEnd: addDays(rangeEnd, 1),
@@ -157,6 +235,7 @@ export default function CalendarPage() {
     return withCalendarColors(visible, calendars);
   }, [
     rows,
+    forecastRows,
     exceptions,
     rangeStart,
     rangeEnd,
@@ -183,11 +262,7 @@ export default function CalendarPage() {
     setAnchor((current) =>
       view === "month"
         ? addMonths(current, direction)
-        : view === "day"
-          ? addDays(current, direction)
-          : view === "agenda"
-            ? addDays(current, direction * 30)
-            : addWeeks(current, direction),
+        : addDays(current, direction * stepDays(view, weekLength)),
     );
   };
 
@@ -288,22 +363,6 @@ export default function CalendarPage() {
   };
 
   /** Week and day: the pointer landed on a time. */
-  const moveEntry = (entryId: string, dropAt: Date, grabMinutes: number) => {
-    const entry = entries.find((item) => item.id === entryId);
-    if (!entry) return;
-    // Snapped after the grab offset is subtracted, so the block lands on the
-    // grid rather than at whatever fraction of a minute the pointer was at.
-    const moved = moveToTime(entry, dropAt, snapMinutes(grabMinutes));
-    void commitMove(entryId, moved);
-  };
-
-  /** Month: the pointer landed on a date, so the clock time is preserved. */
-  const moveEntryToDay = (entryId: string, day: Date) => {
-    const entry = entries.find((item) => item.id === entryId);
-    if (!entry) return;
-    void commitMove(entryId, moveToDay(entry, day));
-  };
-
   if (!settings)
     return <LoadingState variant="page" label="Loading calendar" />;
 
@@ -314,7 +373,10 @@ export default function CalendarPage() {
         ? format(anchor, "EEEE d MMMM")
         : view === "agenda"
           ? "Next 30 days"
-          : `${format(days[0], "d MMM")} – ${format(days[6], "d MMM yyyy")}`;
+          : // The last day of the window, not the seventh: a narrow screen shows
+            // three, and `days[6]` there is `undefined` — which `format` turns
+            // into "Invalid Date" in the one place the heading names the range.
+            `${format(days[0], "d MMM")} – ${format(days[days.length - 1], "d MMM yyyy")}`;
 
   const hasHours = view === "week" || view === "day";
 
@@ -354,9 +416,7 @@ export default function CalendarPage() {
 
       {hasHours && (
         <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">
-            Hour size
-          </p>
+          <p className="text-xs font-medium text-muted-foreground">Hour size</p>
           <div
             role="radiogroup"
             aria-label="Density"
@@ -426,6 +486,16 @@ export default function CalendarPage() {
               {heading}
             </h1>
 
+            {/*
+              The overlays, in the header rather than at the bottom of a panel
+              that is hidden below 1280px. Two of the three ship off, so buried
+              they were features that could not be found. See overlay-chips.tsx.
+            */}
+            <OverlayChips
+              settings={settings}
+              onChange={(patch) => void saveSettings(patch)}
+            />
+
             <div
               role="tablist"
               aria-label="View"
@@ -471,41 +541,64 @@ export default function CalendarPage() {
             </Sheet>
           </header>
 
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            {!isLoading && (
+              <GridStatus
+                error={calendarError}
+                rows={rows}
+                entries={entries}
+                hiddenCalendarCount={hiddenCalendars.size}
+                overlays={{
+                  tasks: settings?.show_tasks ?? true,
+                  habits: settings?.show_habits ?? false,
+                  finance: settings?.show_finance ?? false,
+                }}
+              />
+            )}
+
             {isLoading && rows.length === 0 ? (
               <LoadingState variant="section" label="Loading" />
-            ) : view === "agenda" ? (
-              <AgendaView entries={entries} onSelect={setSelected} />
-            ) : view === "month" ? (
-              <MonthView
-                days={days}
+            ) : (
+              <FcCalendar
+                view={view}
                 anchor={anchor}
+                days={days}
                 entries={entries}
+                weekStartsOn={weekStartsOn}
+                dayStartHour={settings.day_start_hour ?? 7}
+                dayEndHour={settings.day_end_hour ?? 22}
+                hourHeight={HOUR_HEIGHT[density]}
                 onSelect={setSelected}
-                onMoveEntryToDay={moveEntryToDay}
-                onCreateOnDay={(day) => {
-                  // A new event on a day picked from the month starts at nine.
-                  const start = new Date(day);
-                  start.setHours(9, 0, 0, 0);
-                  setDraftStart(start);
-                }}
+                /*
+                  Straight into `commitMove`, which already knows the hard part:
+                  that moving one occurrence of a repeating event is a different
+                  act from moving the series, and asks which was meant.
+                */
+                onMove={(entry, start, end) =>
+                  void commitMove(entry.id, {
+                    start,
+                    end:
+                      end ??
+                      new Date(
+                        start.getTime() +
+                          (entry.end.getTime() - entry.start.getTime()),
+                      ),
+                  })
+                }
+                onDropTask={(taskId, start) => void scheduleTask(taskId, start)}
                 onPickDay={(day) => {
                   setAnchor(day);
                   setView("day");
                 }}
-              />
-            ) : (
-              <WeekGrid
-                days={days}
-                entries={entries}
-                settings={settings}
-                homeTimezone={settings.home_timezone ?? null}
-                onSelect={setSelected}
-                onCreate={setDraftStart}
-                onDropTask={(taskId, start) => void scheduleTask(taskId, start)}
-                onMoveEntry={moveEntry}
-                onMoveEntryToDay={moveEntryToDay}
-                hourHeight={HOUR_HEIGHT[density]}
+                onPick={(start, allDay) =>
+                  setDraftStart(
+                    allDay
+                      ? // A day picked in the month grid has no clock time, so
+                        // the sheet opens at nine rather than at midnight.
+                        new Date(new Date(start).setHours(9, 0, 0, 0))
+                      : start,
+                  )
+                }
               />
             )}
           </div>

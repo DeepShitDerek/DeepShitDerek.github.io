@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { CalendarEntry } from "@/types";
-import { useGetFinanceSettingsQuery } from "@/store/api/adminApi";
+import { useGetFinSettingsQuery } from "@/store/api/adminApi";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { detailRows, habitsFrom, moneyFrom } from "./overlay-detail";
@@ -49,7 +49,7 @@ export function OverlayDetailView({ entry }: { entry: CalendarEntry }) {
 
   // Only asked for when there is money to render — the calendar has no other
   // reason to load the finance module's settings.
-  const { data: financeSettings } = useGetFinanceSettingsQuery(undefined, {
+  const { data: financeSettings } = useGetFinSettingsQuery(undefined, {
     skip: money === null,
   });
   const currency = financeSettings?.base_currency ?? "CAD";
@@ -145,14 +145,24 @@ function MoneySummary({
 }) {
   return (
     <div className="space-y-3">
+      {/*
+        A forecast and a record must never read as the same thing. Said first,
+        because every figure below it changes meaning.
+      */}
+      {money.expected && (
+        <p className="rounded-surface bg-secondary/50 p-2.5 text-xs text-muted-foreground">
+          Expected from your recurring rules — nothing has been recorded for
+          this day yet.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Figure
-          label="Earned"
+          label={money.expected ? "Expected in" : "Earned"}
           value={formatMoney({ amount: money.earned, currency })}
           tone={money.earned > 0 ? "positive" : "neutral"}
         />
         <Figure
-          label="Spent"
+          label={money.expected ? "Expected out" : "Spent"}
           value={formatMoney({ amount: money.spent, currency })}
           tone={money.spent > 0 ? "negative" : "neutral"}
         />
@@ -172,9 +182,13 @@ function MoneySummary({
         </span>
       </div>
       <p className="text-xs text-muted-foreground">
-        {money.count === 1
-          ? "1 transaction, transfers excluded."
-          : `${money.count} transactions, transfers excluded.`}
+        {money.expected
+          ? money.count === 1
+            ? "1 recurring rule falls on this day."
+            : `${money.count} recurring rules fall on this day.`
+          : money.count === 1
+            ? "1 transaction, transfers excluded."
+            : `${money.count} transactions, transfers excluded.`}
       </p>
     </div>
   );
