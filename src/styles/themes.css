@@ -57,7 +57,7 @@
   --muted-foreground: 240 5% 64%;
   --accent: 250 25% 20%;
   --accent-foreground: 252 90% 80%;
-  --destructive: 0 75% 62%;
+  --destructive: 0 75% 65%;
   --destructive-foreground: 240 6% 9%;
   --border: 240 5% 27%;
   --input: 240 5% 44%;
@@ -213,7 +213,7 @@ select {
   --muted-foreground: 215 12% 55%;
   --accent: 200 80% 55%;
   --accent-foreground: 220 20% 5%;
-  --destructive: 0 73% 59%;
+  --destructive: 0 73% 62%;
   --destructive-foreground: 210 20% 4%;
   --border: 220 12% 25%;
   --input: 220 15% 42%;
@@ -242,7 +242,7 @@ select {
   --muted-foreground: 213 10% 40%;
   --accent: 137 55% 33%;
   --accent-foreground: 0 0% 99%;
-  --destructive: 0 73% 50%;
+  --destructive: 0 73% 48%;
   --destructive-foreground: 0 0% 100%;
   --border: 210 17% 77%;
   --input: 210 17% 56%;
@@ -270,7 +270,7 @@ select {
   --muted-foreground: 211.6 8.4% 55.5%;
   --accent: 137 55% 55%;
   --accent-foreground: 216 27.8% 7.1%;
-  --destructive: 0 73% 61%;
+  --destructive: 0 73% 65%;
   --destructive-foreground: 216 27.8% 7.1%;
   --border: 210 10% 26%;
   --input: 210 10% 42%;
@@ -299,7 +299,7 @@ select {
   --muted-foreground: 228 8% 67%;
   --accent: 135 94% 65%;
   --accent-foreground: 231 15% 18%;
-  --destructive: 0 100% 71%;
+  --destructive: 0 100% 75%;
   --destructive-foreground: 0 0% 9%;
   --border: 230 12% 35%;
   --input: 230 14% 53%;
@@ -329,7 +329,7 @@ select {
   --muted-foreground: 219 15% 71.5%;
   --accent: 179 25% 65%;
   --accent-foreground: 220 16% 22%;
-  --destructive: 354 42% 72%;
+  --destructive: 354 42% 75%;
   --destructive-foreground: 219 28% 7.5%;
   --border: 220 16% 39%;
   --input: 220 16% 56%;
@@ -359,7 +359,7 @@ select {
   --muted-foreground: 227 12% 60.5%;
   --accent: 266 60% 68%;
   --accent-foreground: 235 21% 13%;
-  --destructive: 348 70% 64%;
+  --destructive: 348 70% 66%;
   --destructive-foreground: 0 0% 9%;
   --border: 234 15% 31%;
   --input: 234 17% 50%;
@@ -419,7 +419,7 @@ select {
   --muted-foreground: 219 10% 66.5%;
   --accent: 95 38% 62%;
   --accent-foreground: 220 13% 18%;
-  --destructive: 355 65% 70%;
+  --destructive: 355 65% 72%;
   --destructive-foreground: 0 0% 9%;
   --border: 220 13% 35%;
   --input: 220 13% 52%;
@@ -479,7 +479,7 @@ select {
   --muted-foreground: 60 5% 64.5%;
   --accent: 190 81% 67%;
   --accent-foreground: 70 8% 15%;
-  --destructive: 338 95% 69%;
+  --destructive: 338 95% 74%;
   --destructive-foreground: 0 0% 9%;
   --border: 70 6% 31%;
   --input: 70 8% 46%;
@@ -509,7 +509,7 @@ select {
   --muted-foreground: 220 10% 59.5%;
   --accent: 200 60% 55%;
   --accent-foreground: 220 29% 6.1%;
-  --destructive: 356 70% 63%;
+  --destructive: 356 70% 66%;
   --destructive-foreground: 40 14% 8%;
   --border: 220 16% 29%;
   --input: 220 18% 46%;
@@ -526,7 +526,7 @@ select {
 /* --- Solarized Light --- */
 .theme-solarized-light {
   --background: 44 87% 94%;
-  --foreground: 194 14% 40%;
+  --foreground: 194 14% 39%;
   --card: 44 87% 91%;
   --card-foreground: 194 14% 40%;
   --popover: 44 87% 94%;
@@ -539,7 +539,7 @@ select {
   --muted-foreground: 195 10% 38.5%;
   --accent: 175 59% 40%;
   --accent-foreground: 44 87% 10.5%;
-  --destructive: 1 71% 48%;
+  --destructive: 1 71% 46%;
   --destructive-foreground: 0 0% 100%;
   --border: 44 30% 70%;
   --input: 46 42% 43%;
@@ -569,7 +569,7 @@ select {
   --muted-foreground: 233 10% 40%;
   --accent: 197 57% 48%;
   --accent-foreground: 220 23% 16%;
-  --destructive: 347 87% 43%;
+  --destructive: 347 87% 41%;
   --destructive-foreground: 0 0% 100%;
   --border: 220 18% 73%;
   --input: 220 20% 54%;
@@ -599,7 +599,7 @@ select {
   --muted-foreground: 215 14% 39%;
   --accent: 190 70% 33.5%;
   --accent-foreground: 0 0% 99%;
-  --destructive: 0 72% 47%;
+  --destructive: 0 72% 44%;
   --destructive-foreground: 0 0% 100%;
   --border: 210 24% 73%;
   --input: 210 28% 53%;
@@ -629,7 +629,7 @@ select {
   --muted-foreground: 20 6% 40%;
   --accent: 24 60% 50%;
   --accent-foreground: 40 33% 10.5%;
-  --destructive: 0 65% 48%;
+  --destructive: 0 65% 47%;
   --destructive-foreground: 40 33% 97%;
   --border: 40 16% 72%;
   --input: 40 20% 49%;
@@ -659,7 +659,7 @@ select {
   --muted-foreground: 270 10% 57%;
   --accent: 180 100% 50%;
   --accent-foreground: 270 20% 6%;
-  --destructive: 0 90% 57%;
+  --destructive: 0 90% 62%;
   --destructive-foreground: 270 20% 6%;
   --border: 270 12% 26%;
   --input: 270 15% 44%;
@@ -689,7 +689,7 @@ select {
   --muted-foreground: 210 15% 56.5%;
   --accent: 165 60% 50%;
   --accent-foreground: 210 50% 7%;
-  --destructive: 5 72% 58%;
+  --destructive: 5 72% 62%;
   --destructive-foreground: 210 50% 7%;
   --border: 210 30% 25%;
   --input: 210 35% 42%;
@@ -719,7 +719,7 @@ select {
   --muted-foreground: 120 20% 48%;
   --accent: 120 60% 35%;
   --accent-foreground: 120 100% 3%;
-  --destructive: 0 80% 58%;
+  --destructive: 0 80% 61%;
   --destructive-foreground: 120 10% 4%;
   --border: 120 10% 22%;
   --input: 120 8% 38%;
@@ -749,7 +749,7 @@ select {
   --muted-foreground: 0 0% 65%;
   --accent: 200 100% 55%;
   --accent-foreground: 0 0% 0%;
-  --destructive: 0 100% 48.5%;
+  --destructive: 0 100% 59.5%;
   --destructive-foreground: 0 0% 0%;
   --border: 0 0% 30%;
   --input: 0 0% 38%;
@@ -811,7 +811,7 @@ select {
   --muted-foreground: 0 0% 34%;
   --accent: 150 80% 28.5%;
   --accent-foreground: 0 0% 98%;
-  --destructive: 0 84% 48.5%;
+  --destructive: 0 84% 38.5%;
   --destructive-foreground: 0 0% 100%;
   --border: 0 0% 8%;
   --input: 60 20% 47%;
@@ -835,13 +835,13 @@ select {
   --popover-foreground: 60 50% 97%;
   --primary: 48 96% 53%;
   --primary-foreground: 0 0% 8%;
-  --secondary: 262 83% 58%;
+  --secondary: 262 45% 20%;
   --secondary-foreground: 0 0% 100%;
   --muted: 240 4% 20%;
   --muted-foreground: 240 5% 91.5%;
   --accent: 150 80% 44%;
   --accent-foreground: 0 0% 8%;
-  --destructive: 0 84% 64%;
+  --destructive: 0 84% 64.5%;
   --destructive-foreground: 0 0% 9%;
   --border: 60 50% 97%;
   --input: 240 4% 45%;
@@ -865,13 +865,13 @@ select {
   --popover-foreground: 60 100% 70%;
   --primary: 340 100% 56%;
   --primary-foreground: 330 10% 7%;
-  --secondary: 60 100% 50%;
-  --secondary-foreground: 0 0% 8%;
+  --secondary: 60 25% 15%;
+  --secondary-foreground: 60 100% 70%;
   --muted: 330 6% 16%;
-  --muted-foreground: 330 5% 57%;
+  --muted-foreground: 330 5% 59.5%;
   --accent: 280 100% 54.5%;
   --accent-foreground: 0 0% 99%;
-  --destructive: 25 100% 44%;
+  --destructive: 25 100% 49%;
   --destructive-foreground: 330 10% 7%;
   --border: 60 100% 70%;
   --input: 330 6% 43%;
@@ -933,7 +933,7 @@ select {
   --muted-foreground: 225 12% 41%;
   --accent: 190 70% 33.5%;
   --accent-foreground: 0 0% 99%;
-  --destructive: 0 72% 48%;
+  --destructive: 0 72% 45%;
   --destructive-foreground: 0 0% 100%;
   --border: 220 18% 76%;
   --input: 220 20% 57%;
@@ -963,7 +963,7 @@ select {
   --muted-foreground: 245 10% 59.5%;
   --accent: 280 75% 65%;
   --accent-foreground: 250 25% 8%;
-  --destructive: 350 80% 59%;
+  --destructive: 350 80% 64%;
   --destructive-foreground: 250 25% 8%;
   --border: 250 14% 27%;
   --input: 250 18% 46%;
@@ -993,7 +993,7 @@ select {
   --muted-foreground: 205 15% 57.5%;
   --accent: 155 65% 50%;
   --accent-foreground: 205 45% 8%;
-  --destructive: 5 75% 60%;
+  --destructive: 5 75% 64%;
   --destructive-foreground: 200 20% 7.5%;
   --border: 205 25% 25%;
   --input: 205 30% 41%;
@@ -1025,7 +1025,7 @@ select {
   --muted-foreground: 270 12% 58%;
   --accent: 190 100% 55%;
   --accent-foreground: 270 30% 6%;
-  --destructive: 0 85% 59%;
+  --destructive: 0 85% 63%;
   --destructive-foreground: 270 30% 6%;
   --border: 270 18% 27%;
   --input: 270 20% 45%;
@@ -1055,7 +1055,7 @@ select {
   --muted-foreground: 30 15% 54.5%;
   --accent: 16 85% 55%;
   --accent-foreground: 30 15% 6%;
-  --destructive: 0 80% 61%;
+  --destructive: 0 80% 64%;
   --destructive-foreground: 30 15% 6%;
   --border: 30 10% 25%;
   --input: 30 10% 40%;
@@ -1085,7 +1085,7 @@ select {
   --muted-foreground: 150 15% 49%;
   --accent: 80 70% 55%;
   --accent-foreground: 160 15% 4%;
-  --destructive: 0 75% 58%;
+  --destructive: 0 75% 61%;
   --destructive-foreground: 160 15% 4%;
   --border: 150 10% 22%;
   --input: 160 10% 37%;
@@ -1108,7 +1108,7 @@ select {
 /* --- Solarized Dark — Ethan Schoonover's base03 canvas --- */
 .theme-solarized-dark {
   --background: 192 100% 11%;
-  --foreground: 180 6.9% 60.4%;
+  --foreground: 180 6.9% 64.9%;
   --card: 192 81% 14%;
   --card-foreground: 180 6.9% 60.4%;
   --popover: 192 81% 14%;
@@ -1120,10 +1120,10 @@ select {
   --muted: 192.2 80.8% 14.3%;
   /* Between base0 and base1, on a base02 muted ground: base0 itself is
      4.2:1 on base02, and base1 is the body text, so muted sits between. */
-  --muted-foreground: 183 7.5% 58.3%;
+  --muted-foreground: 183 7.5% 62.8%;
   --accent: 192 70% 20%;
   --accent-foreground: 205 69% 68%;
-  --destructive: 1 71% 69%;
+  --destructive: 1 71% 73%;
   --destructive-foreground: 0 0% 9%;
   --border: 192 60% 26%;
   --input: 192 50% 41%;
@@ -1152,7 +1152,7 @@ select {
   --muted-foreground: 40 20% 66%;
   --accent: 27 40% 24%;
   --accent-foreground: 27 99% 66%;
-  --destructive: 6 96% 69%;
+  --destructive: 6 96% 73%;
   --destructive-foreground: 0 0% 9%;
   --border: 20 5% 33%;
   --input: 20 5% 50%;
@@ -1241,7 +1241,7 @@ select {
   --muted-foreground: 39 12% 72%;
   --accent: 88 18% 27%;
   --accent-foreground: 88 30% 72%;
-  --destructive: 3 60% 74%;
+  --destructive: 3 60% 78%;
   --destructive-foreground: 0 0% 9%;
   --border: 195 10% 37%;
   --input: 195 10% 54%;
@@ -1270,7 +1270,7 @@ select {
   --muted-foreground: 45 10% 64%;
   --accent: 219 22% 26%;
   --accent-foreground: 219 45% 75%;
-  --destructive: 349 60% 66%;
+  --destructive: 349 60% 69%;
   --destructive-foreground: 240 13% 12%;
   --border: 240 8% 32%;
   --input: 240 8% 49%;
@@ -1448,7 +1448,7 @@ select {
   --muted-foreground: 0 0% 27%;
   --accent: 313 100% 90%;
   --accent-foreground: 313 90% 30%;
-  --destructive: 0 84% 45%;
+  --destructive: 0 84% 31%;
   --destructive-foreground: 0 0% 100%;
   --border: 0 0% 8%;
   --input: 0 0% 45%;
@@ -1477,7 +1477,7 @@ select {
   --muted-foreground: 0 0% 32%;
   --accent: 48 100% 88%;
   --accent-foreground: 212 100% 26%;
-  --destructive: 357 85% 42%;
+  --destructive: 357 85% 38%;
   --destructive-foreground: 0 0% 100%;
   --border: 0 0% 8%;
   --input: 0 0% 45%;
@@ -1506,7 +1506,7 @@ select {
   --muted-foreground: 0 0% 31%;
   --accent: 52 100% 62%;
   --accent-foreground: 0 0% 8%;
-  --destructive: 12 88% 45%;
+  --destructive: 12 88% 31%;
   --destructive-foreground: 0 0% 100%;
   --border: 0 0% 8%;
   --input: 0 0% 45%;
@@ -1535,7 +1535,7 @@ select {
   --muted-foreground: 0 0% 32%;
   --accent: 186 100% 88%;
   --accent-foreground: 202 100% 26%;
-  --destructive: 14 90% 44%;
+  --destructive: 14 90% 34%;
   --destructive-foreground: 0 0% 100%;
   --border: 0 0% 8%;
   --input: 0 0% 45%;
@@ -1593,7 +1593,7 @@ select {
   --muted-foreground: 0 0% 32%;
   --accent: 75 90% 85%;
   --accent-foreground: 272 85% 32%;
-  --destructive: 336 85% 45%;
+  --destructive: 336 85% 42%;
   --destructive-foreground: 0 0% 100%;
   --border: 0 0% 8%;
   --input: 0 0% 45%;
@@ -1622,7 +1622,7 @@ select {
   --muted-foreground: 192 15% 32%;
   --accent: 12 90% 88%;
   --accent-foreground: 8 85% 32%;
-  --destructive: 8 85% 42%;
+  --destructive: 8 85% 36%;
   --destructive-foreground: 0 0% 100%;
   --border: 192 45% 10%;
   --input: 192 15% 45%;
@@ -1712,7 +1712,7 @@ select {
   --muted-foreground: 248 12.2% 45.3%;
   --accent: 10 8.6% 86.3%;
   --accent-foreground: 247.7 19% 32%;
-  --destructive: 343 35.1% 49.7%;
+  --destructive: 343 35.1% 46.7%;
   --destructive-foreground: 32.3 56.5% 95.5%;
   --border: 10 8.6% 86.3%;
   --input: 248 12.2% 51.8%;
@@ -1742,7 +1742,7 @@ select {
   --muted-foreground: 230.8 16.6% 64.9%;
   --accent: 228.8 14.3% 22%;
   --accent-foreground: 208.7 74.2% 93.9%;
-  --destructive: 329.1 52.8% 64%;
+  --destructive: 329.1 52.8% 68%;
   --destructive-foreground: 226.2 19.4% 13.1%;
   --border: 228.8 14.3% 22%;
   --input: 209.2 19.6% 46.5%;
@@ -1769,7 +1769,7 @@ select {
   --secondary: 50.8 20.6% 87.6%;
   --secondary-foreground: 0 3.2% 6.1%;
   --muted: 50.8 33.3% 92.4%;
-  --muted-foreground: 50 2.8% 41.9%;
+  --muted-foreground: 50 2.8% 38.9%;
   --accent: 50.8 20.6% 87.6%;
   --accent-foreground: 0 3.2% 6.1%;
   --destructive: 3.1 62% 42.4%;
@@ -1804,7 +1804,7 @@ select {
   --muted-foreground: 42.9 2.8% 55.6%;
   --accent: 30 2.6% 15.3%;
   --accent-foreground: 54.5 10.1% 78.6%;
-  --destructive: 5 61% 58.2%;
+  --destructive: 5 61% 62.2%;
   --destructive-foreground: 0 3.2% 6.1%;
   --border: 40 3% 19.8%;
   --input: 45 2.4% 40.3%;

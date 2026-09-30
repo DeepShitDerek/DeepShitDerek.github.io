@@ -111,3 +111,11 @@ export function postProblems(
   }
   return problems;
 }
+
+/**
+ * What publishing does on a static site (ADM-009): the post is readable at
+ * once, through the client-rendered /blog/view/ route, but its own prerendered
+ * page and link-preview card only exist after the next deploy.
+ */
+export const PUBLISHED_UNTIL_DEPLOY =
+  "Live now. Its own page and link preview arrive with the next deploy.";

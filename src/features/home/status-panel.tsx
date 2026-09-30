@@ -59,7 +59,7 @@ function ProjectStrip({ panel }: { panel: StatusPanelData }) {
         </span>
       </span>
       {href && (
-        <span className="ml-auto flex size-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground shadow-e1 transition-[background-color,color] duration-200 ease-enter group-hover:bg-primary group-hover:text-primary-foreground">
+        <span className="ml-auto flex size-9 shrink-0 items-center justify-center rounded-full bg-card text-foreground shadow-e1 transition-[background-color,color] duration-base ease-enter group-hover:bg-primary group-hover:text-primary-foreground">
           <ArrowUpRight className="size-4" aria-hidden />
         </span>
       )}
@@ -76,7 +76,7 @@ function ProjectStrip({ panel }: { panel: StatusPanelData }) {
           : panel.latestProject.name
       }
       className={cn(
-        "group transition-colors duration-200 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        "group transition-colors duration-base hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         strip,
       )}
     >
@@ -174,12 +174,12 @@ function SpotlightPanel({ panel }: { panel: StatusPanelData }) {
           {href && (
             <a
               href={href}
-              className="group mt-6 inline-flex items-center gap-2 rounded-full bg-background px-5 py-2.5 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-foreground"
+              className="group mt-6 inline-flex items-center gap-2 rounded-full bg-background px-5 py-2.5 text-sm font-semibold text-foreground transition-colors duration-base hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-foreground"
             >
               {panel.latestProject.linkText || "Take a look"}
               <ArrowUpRight
                 aria-hidden
-                className="size-4 transition-transform duration-200 ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                className="size-4 transition-transform duration-base ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
               />
             </a>
           )}
@@ -223,7 +223,7 @@ function StackPanel({ panel }: { panel: StatusPanelData }) {
   const project = panel.latestProject.name;
 
   const overlap =
-    "-mt-7 transition-[margin] duration-300 ease-enter group-hover/stack:mt-2 group-focus-within/stack:mt-2 motion-reduce:transition-none";
+    "-mt-7 transition-[margin] duration-slow ease-enter group-hover/stack:mt-2 group-focus-within/stack:mt-2 motion-reduce:transition-none";
 
   const front = (
     <>

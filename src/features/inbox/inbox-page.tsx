@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlParam } from "@/hooks/use-url-param";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Bell, CheckCheck, Inbox as InboxIcon } from "lucide-react";
@@ -23,6 +24,7 @@ import {
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
@@ -30,6 +32,7 @@ import { useBelowBreakpoint } from "@/hooks/use-media-query";
 import {
   INBOX_FILTERS,
   inboxCounts,
+  nextSelection,
   visibleMessages,
   INBOX_SORTS,
   type InboxFilter,
@@ -49,7 +52,7 @@ import { NotificationSettings } from "./notification-settings";
  * the badge, the tabs and the ordering cannot disagree.
  */
 export default function InboxPage() {
-  const { data: messages = [], isLoading } = useGetContactSubmissionsQuery();
+  const { data: messages = [], isLoading, error: loadError, refetch } = useGetContactSubmissionsQuery();
   const [updateMessage, { isLoading: isUpdating }] =
     useUpdateContactSubmissionMutation();
   const [updateMany] = useUpdateContactSubmissionsMutation();
@@ -64,7 +67,13 @@ export default function InboxPage() {
    */
   const [sort, setSort] = useState<InboxSort>("newest");
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // In the URL (ADM-004): a message can be linked to, and Back leaves it.
+  const [selectedId, setSelectedId] = useUrlParam("message");
+  /**
+   * Whether the open message was chosen by the reader rather than filled in
+   * by the page. Only a message the reader opened is marked read (ADM-021).
+   */
+  const [chosen, setChosen] = useState(false);
   const narrow = useBelowBreakpoint("lg");
 
   const counts = useMemo(() => inboxCounts(messages), [messages]);
@@ -83,27 +92,35 @@ export default function InboxPage() {
    *
    * Archiving the open message, or switching filters, would otherwise leave the
    * detail pane showing a message the list no longer contains.
+   *
+   * Only on a wide screen, where the pane is always there, does the page fill
+   * it with the first message. On a narrow one the message is a sheet over
+   * the list: filling it in opened the sheet on arrival and reopened it the
+   * moment it was closed, so the list could never be reached (ADM-021). There,
+   * a message that leaves the view just closes the sheet.
    */
   useEffect(() => {
-    if (visible.length === 0) {
-      setSelectedId(null);
-      return;
-    }
-    if (!visible.some((message) => message.id === selectedId)) {
-      setSelectedId(visible[0].id);
-    }
-  }, [visible, selectedId]);
+    const next = nextSelection(
+      visible.map((message) => message.id),
+      selectedId,
+      narrow,
+    );
+    if (next === undefined) return;
+    setSelectedId(next, "replace");
+    setChosen(false);
+  }, [visible, selectedId, narrow]);
 
   /**
    * Opening a message marks it read — but read is not replied, so it stays in
    * the attention view. An inbox that empties itself when you glance at
-   * something is how enquiries get lost.
+   * something is how enquiries get lost. Only a message the reader chose:
+   * the one the page shows on arrival stays unread until it is opened.
    */
   useEffect(() => {
-    if (selected && !selected.is_read) {
+    if (chosen && selected && !selected.is_read) {
       void updateMessage({ id: selected.id, is_read: true });
     }
-  }, [selected, updateMessage]);
+  }, [chosen, selected, updateMessage]);
 
   const patch = async (changes: Partial<ContactSubmission>) => {
     if (!selected) return;
@@ -146,6 +163,14 @@ export default function InboxPage() {
   const emptyFor =
     INBOX_FILTERS.find((entry) => entry.id === filter)?.empty ??
     "Nothing here.";
+
+  if (loadError && messages.length === 0) {
+    return (
+      <ManagerWrapper>
+        <LoadError what="the inbox" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
 
   if (isLoading)
     return <LoadingState variant="page" label="Loading messages" />;
@@ -206,7 +231,7 @@ export default function InboxPage() {
                   aria-selected={active}
                   onClick={() => setFilter(entry.id)}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-200 ease-enter",
+                    "flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-base ease-enter",
                     active
                       ? "bg-card text-foreground shadow-e2"
                       : "text-muted-foreground hover:text-foreground",
@@ -256,7 +281,10 @@ export default function InboxPage() {
             <MessageList
               messages={visible}
               selectedId={selectedId}
-              onSelect={(message) => setSelectedId(message.id)}
+              onSelect={(message) => {
+                setSelectedId(message.id);
+                setChosen(true);
+              }}
               emptyMessage={emptyFor}
             />
           </div>
@@ -294,7 +322,7 @@ export default function InboxPage() {
         <Sheet
           open={Boolean(selected)}
           onOpenChange={(open) => {
-            if (!open) setSelectedId(null);
+            if (!open) setSelectedId(null, "replace");
           }}
         >
           <SheetContent

@@ -61,7 +61,7 @@ export function ContactCta() {
                 Get in touch
                 <ArrowRight
                   aria-hidden
-                  className="ml-2 size-4 transition-transform duration-200 ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  className="ml-2 size-4 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
                 />
               </Link>
             </Button>

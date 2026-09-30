@@ -14,6 +14,7 @@ import { TagInput } from "@/components/ui/tag-input";
 import { addTags } from "@/lib/tag-input";
 import { safeImageUrl } from "@/lib/safe-url";
 import { cn } from "@/lib/cn";
+import { slugify } from "@/lib/utils";
 import { LAYOUT_OPTIONS } from "./layout-registry";
 import NovelEditor from "@/components/admin/novel-editor";
 import {
@@ -379,6 +380,16 @@ function getHints(layoutStyle?: string): LayoutHints {
     : DEFAULT_HINTS;
 }
 
+/** A slug the database accepts: `^[a-z0-9]+(-[a-z0-9]+)*$`, ≤ 80 chars. */
+function caseStudySlug(title: string): string {
+  return slugify(title)
+    .replace(/_/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80)
+    .replace(/-$/, "");
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function FieldLabel({
@@ -447,6 +458,8 @@ export function ItemEditorSheet({
     image_url: item?.image_url ?? "",
     internal_notes: item?.internal_notes ?? "",
     merged_into_id: item?.merged_into_id ?? "",
+    slug: item?.slug ?? "",
+    case_study: item?.case_study ?? "",
   });
   // Chips, like every other tag field — plus whatever is half-typed, which
   // is kept on save rather than dropped.
@@ -456,6 +469,9 @@ export function ItemEditorSheet({
   const previewImage = safeImageUrl(formData.image_url);
 
   const [notesOpen, setNotesOpen] = useState(!!item?.internal_notes);
+  const [storyOpen, setStoryOpen] = useState(
+    !!(item?.slug || item?.case_study),
+  );
 
   const set =
     (key: keyof typeof formData) =>
@@ -479,6 +495,8 @@ export function ItemEditorSheet({
       // Empty string is "nothing selected" in a native select; the column
       // wants NULL, and an empty string would fail the foreign key.
       merged_into_id: formData.merged_into_id || null,
+      slug: formData.slug.trim() || null,
+      case_study: formData.case_study.trim() ? formData.case_study : null,
     };
 
     const parsed = portfolioItemSchema.safeParse(candidate);
@@ -759,6 +777,90 @@ export function ItemEditorSheet({
                 </p>
               </div>
             )}
+
+            {/*
+              ── Case study page (V2-042) ──
+
+              Any item can have one; the case-study layout and the home page's
+              Selected work link to it. There is no draft state for items, so
+              the page is public as soon as it has both an address and text —
+              the hint says so rather than letting it be a surprise.
+            */}
+            <Collapsible open={storyOpen} onOpenChange={setStoryOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-1 h-7 gap-1.5 text-xs text-muted-foreground"
+                >
+                  <ChevronRight
+                    className={cn(
+                      "size-3.5 transition-transform motion-reduce:transition-none",
+                      storyOpen && "rotate-90",
+                    )}
+                    aria-hidden
+                  />
+                  Case study page
+                  {formData.slug && formData.case_study.trim() && (
+                    <span className="inline-block size-1.5 rounded-full bg-primary" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3 space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="item-slug">Page address</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 text-sm text-muted-foreground">
+                      /work/
+                    </span>
+                    <Input
+                      id="item-slug"
+                      value={formData.slug}
+                      onChange={set("slug")}
+                      placeholder="e.g. voice-rag-assistant"
+                      maxLength={80}
+                      spellCheck={false}
+                      aria-describedby="item-slug-hint"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={!formData.title.trim()}
+                      onClick={() =>
+                        setFormData((f) => ({
+                          ...f,
+                          slug: caseStudySlug(f.title),
+                        }))
+                      }
+                    >
+                      From title
+                    </Button>
+                  </div>
+                  <p id="item-slug-hint" className="text-xs text-muted-foreground">
+                    Lower-case letters, numbers and hyphens. Changing it breaks
+                    links already shared.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Write-up (markdown)</Label>
+                  <NovelEditor
+                    value={formData.case_study}
+                    onChange={(val) =>
+                      setFormData((f) => ({ ...f, case_study: val }))
+                    }
+                    placeholder="The problem, what you did, the result…"
+                    minHeight="14rem"
+                    variant="field"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Public as soon as it has an address and text.
+                  </p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* ── Internal notes (collapsible) ── */}
             <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>

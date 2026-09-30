@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
+import { socialMetadata } from "@/lib/og/metadata";
+import { ogPageImage } from "@/lib/og/pages";
 import { config as appConfig } from "@/lib/config";
 import { HomePage } from "@/features/home/home-page";
+import { pagePreload } from "@/lib/public-preload-server";
+import { PublicPreload } from "@/store/public-preload";
 
 export const metadata: Metadata = {
   // site.title already reads "{name} | Portfolio" — bypass the "%s | {author}"
   // root template so the home tab isn't doubled.
   title: { absolute: appConfig.site.title },
   description: appConfig.site.description,
-  openGraph: {
+  ...socialMetadata({
     title: appConfig.site.title,
     description: appConfig.site.description,
-    url: appConfig.site.url,
-    siteName: appConfig.site.title,
-    locale: "en_US",
-    type: "website",
-  },
+    path: "/",
+    image: ogPageImage("home"),
+  }),
 };
 
-export default function Page() {
-  return <HomePage />;
+export default async function Page() {
+  const data = await pagePreload({ sections: ["/", "/showcase"], posts: true });
+  const builtSlugs = (data.posts ?? []).map((post) => post.slug);
+  return (
+    <PublicPreload data={data}>
+      <HomePage builtSlugs={builtSlugs} />
+    </PublicPreload>
+  );
 }

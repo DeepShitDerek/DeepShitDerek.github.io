@@ -1,6 +1,7 @@
-import { format, subDays, addDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { supabase } from "@/supabase/client";
-import type { AnalyticsData, DashboardData } from "@/types";
+import type { AnalyticsData, Calendar, CalendarRow, DashboardData, EventException } from "@/types";
+import { todaysEvents } from "@/features/dashboard/todays-events";
 import { adminApi } from "./baseApi";
 import { NO_DB_ERROR } from "./query-helpers";
 
@@ -12,66 +13,32 @@ export const dashboardApi = adminApi.injectEndpoints({
 
         const now = new Date();
         const todayISO = format(now, "yyyy-MM-dd");
-        // Real instants for the day's bounds. A bare "2026-08-15T00:00:00" is
-        // read in the *server's* zone, which is UTC — so "today" would start
-        // and end at the wrong moment for anyone not on it.
-        const dayStart = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-        ).toISOString();
-        const dayEnd = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          23,
-          59,
-          59,
-        ).toISOString();
-        const firstDayOfMonth = format(
-          new Date(now.getFullYear(), now.getMonth(), 1),
-          "yyyy-MM-dd",
-        );
         const sevenDaysAgoISO = format(subDays(now, 7), "yyyy-MM-dd");
-        const sevenDaysFromNowISO = format(addDays(now, 7), "yyyy-MM-dd");
 
+        /*
+          Only what the page shows (ADM-014). Blog views, pinned notes, recent
+          posts, tasks due this week and the month's net were fetched on every
+          load and rendered by nothing.
+        */
         const promises = [
-          supabase.rpc("get_total_blog_views"),
           supabase
             .from("tasks")
-            .select("id, title, due_date")
+            .select("*")
             .lt("due_date", todayISO)
             .neq("status", "done"),
           supabase
             .from("tasks")
-            .select("id, title")
+            .select("*")
             .eq("due_date", todayISO)
-            .neq("status", "done"),
-          supabase
-            .from("tasks")
-            .select("id, title, due_date")
-            .gte("due_date", todayISO)
-            .lte("due_date", sevenDaysFromNowISO)
-            .neq("status", "done")
-            .order("due_date"),
-          supabase
-            .from("notes")
-            .select("id, title, content")
-            .eq("is_pinned", true)
-            .limit(5),
-          supabase
-            .from("blog_posts")
-            .select("id, title, updated_at, slug, published")
-            .order("updated_at", { ascending: false })
-            .limit(3),
+            .order("created_at"),
           /*
             One call where there were five.
 
             Three of those read v1's `transactions` — the month's totals and two
             seven-day series — and did the same summing three times with three
-            different filters. `fin_day_money` answers all of it per day from the
-            v2 ledger, over the wider of the two windows, and the dashboard slices
-            what it needs out of the result.
+            different filters. `money_day_flows` answers all of it per day from the
+            ledger (V2-080) for the last seven days, which is all the dashboard
+            shows.
 
             It is also the *same* function the calendar's `get_calendar_data`
             calls, which is the point: the two used to disagree. The calendar
@@ -83,11 +50,8 @@ export const dashboardApi = adminApi.injectEndpoints({
             simply gone. Both were fetched, typed into `DashboardData`, and
             rendered by nothing.
           */
-          supabase.rpc("fin_day_money", {
-            p_from:
-              firstDayOfMonth < sevenDaysAgoISO
-                ? firstDayOfMonth
-                : sevenDaysAgoISO,
+          supabase.rpc("money_day_flows", {
+            p_from: sevenDaysAgoISO,
             p_to: todayISO,
           }),
           // The workbench answers "what needs me now", so it needs the four
@@ -97,12 +61,32 @@ export const dashboardApi = adminApi.injectEndpoints({
             .from("habits")
             .select(`*, habit_logs(id, habit_id, completed_date, value, note)`)
             .is("archived_at", null),
-          supabase
-            .from("events")
-            .select("id, title, start_time, end_time, is_all_day")
-            .gte("start_time", dayStart)
-            .lte("start_time", dayEnd)
-            .order("start_time"),
+          // Through the calendar's own pipeline, so repeating events,
+          // moved or cancelled occurrences and hidden calendars come out
+          // exactly as the calendar shows them (ADM-011).
+          (async () => {
+            const [rowsRes, exceptionsRes, calendarsRes] = await Promise.all([
+              supabase.rpc("get_calendar_data", {
+                start_date_param: todayISO,
+                end_date_param: todayISO,
+              }),
+              supabase.from("event_exceptions").select("*"),
+              supabase.from("calendars").select("id, is_visible"),
+            ]);
+            const failed = rowsRes.error ?? exceptionsRes.error ?? calendarsRes.error;
+            if (failed) return { data: [], error: failed };
+            return {
+              data: todaysEvents({
+                rows: (rowsRes.data ?? []) as CalendarRow[],
+                exceptions: (exceptionsRes.data ?? []) as EventException[],
+                calendars: (calendarsRes.data ?? []) as Pick<Calendar, "id" | "is_visible">[],
+                // Local midnights, as real instants: a bare date string would be
+                // read in UTC and put "today" at the wrong hours.
+                dayStart: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+                dayEnd: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+              }),
+            };
+          })(),
           supabase
             .from("contact_submissions")
             .select("id", { count: "exact", head: true })
@@ -115,6 +99,16 @@ export const dashboardApi = adminApi.injectEndpoints({
             // filter is on a date that has arrived, not on the absence of one.
             .lte("due_date", todayISO)
             .is("archived_at", null),
+          // Work sessions logged since local midnight (ADM-020). `start_time`
+          // is written when the session is logged, i.e. when it ended.
+          supabase
+            .from("focus_logs")
+            .select("duration_minutes")
+            .eq("mode", "work")
+            .gte(
+              "start_time",
+              new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString(),
+            ),
         ];
 
         const results = await Promise.all(promises);
@@ -136,17 +130,14 @@ export const dashboardApi = adminApi.injectEndpoints({
         if (errors.length === results.length) return { error: errors[0] };
 
         const [
-          { data: totalViewsRes },
           { data: overdueTasksData },
           { data: tasksDueTodayData },
-          { data: tasksDueSoonData },
-          { data: pinnedNotesData },
-          { data: recentPostsData },
           { data: dayMoneyData },
           { data: habitsData },
           { data: todaysEventsData },
           { count: unreadMessages },
           { count: reviewsDue },
+          { data: focusData },
         ] = results as {
           data: unknown;
           count?: number | null;
@@ -175,41 +166,20 @@ export const dashboardApi = adminApi.injectEndpoints({
           spent: Number(row.spent) || 0,
         }));
 
-        let monthlyEarnings = 0,
-          monthlyExpenses = 0;
-        for (const row of dayMoney) {
-          if (row.day < firstDayOfMonth) continue;
-          monthlyEarnings += row.earned;
-          monthlyExpenses += row.spent;
-        }
-
-        // The series are the last seven days only; the query's window is the
-        // wider of the two, so the month's earlier days are filtered out here.
-        const inLastSeven = dayMoney.filter(
-          (row) => row.day >= sevenDaysAgoISO,
-        );
-        const dailyEarnings = inLastSeven.map((row) => ({
+        const dailyEarnings = dayMoney.map((row) => ({
           day: row.day,
           total: row.earned,
         }));
-        const dailyExpenses = inLastSeven.map((row) => ({
+        const dailyExpenses = dayMoney.map((row) => ({
           day: row.day,
           total: row.spent,
         }));
 
         const data: DashboardData = {
-          stats: {
-            monthlyNet: monthlyEarnings - monthlyExpenses,
-            totalBlogViews: (totalViewsRes as number) || 0,
-          },
-          recentPosts: (recentPostsData as DashboardData["recentPosts"]) || [],
-          pinnedNotes: (pinnedNotesData as DashboardData["pinnedNotes"]) || [],
           overdueTasks:
             (overdueTasksData as DashboardData["overdueTasks"]) || [],
           tasksDueToday:
             (tasksDueTodayData as DashboardData["tasksDueToday"]) || [],
-          tasksDueSoon:
-            (tasksDueSoonData as DashboardData["tasksDueSoon"]) || [],
           dailyExpenses,
           dailyEarnings,
           habits: (habitsData as DashboardData["habits"]) || [],
@@ -219,19 +189,28 @@ export const dashboardApi = adminApi.injectEndpoints({
           // ask for beyond the round trip.
           unreadMessages: unreadMessages ?? 0,
           reviewsDue: reviewsDue ?? 0,
+          focusMinutesToday: ((focusData as { duration_minutes: number }[] | null) ?? []).reduce(
+            (sum, row) => sum + (row.duration_minutes ?? 0),
+            0,
+          ),
         };
 
         return { data };
       },
+      // Everything the dashboard shows. Task and event changes invalidate
+      // "Calendar", habit logs "Dashboard", messages "Inbox"; without these the
+      // dashboard kept a stale copy for up to a minute (ADM-012).
       providesTags: [
         "Dashboard",
         "AdminPosts",
         "Notes",
         "Tasks",
-        "Transactions",
+        "Calendar",
+        "Habits",
+        "Inbox",
+        "MoneyLedger",
         "Learning",
         "PortfolioContent",
-        "Goals",
       ],
     }),
     getAnalyticsData: builder.query<AnalyticsData, void>({

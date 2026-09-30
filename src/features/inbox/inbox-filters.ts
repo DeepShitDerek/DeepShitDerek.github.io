@@ -216,3 +216,19 @@ export function replyMailto(message: ContactSubmission): string {
 
   return `mailto:${encodeURIComponent(message.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
+
+/**
+ * What the open message should become when the list changes (ADM-021).
+ * `undefined` means leave it as it is.
+ *
+ * A wide screen always has a detail pane, so it is filled with the first
+ * message. A narrow screen shows the message as a sheet over the list, so
+ * nothing is ever opened for the reader; a message that leaves the view
+ * closes the sheet.
+ */
+export function nextSelection(visibleIds: readonly string[], selectedId: string | null, narrow: boolean): string | null | undefined {
+  if (visibleIds.length === 0) return selectedId === null ? undefined : null;
+  if (selectedId !== null && visibleIds.includes(selectedId)) return undefined;
+  if (narrow) return selectedId === null ? undefined : null;
+  return visibleIds[0];
+}

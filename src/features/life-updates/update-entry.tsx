@@ -47,7 +47,7 @@ export function UpdateEntry({
     <article
       aria-label={headline.text}
       className={cn(
-        "rounded-surface p-3 transition-shadow duration-200 ease-enter sm:p-4",
+        "rounded-surface p-3 transition-shadow duration-base ease-enter sm:p-4",
         draft ? "bg-secondary/50" : "bg-card shadow-e1 hover:shadow-e2",
       )}
     >

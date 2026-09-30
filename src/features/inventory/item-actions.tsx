@@ -12,13 +12,28 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+/** `inventory_items.archived_reason`'s CHECK list. */
+export const ARCHIVE_REASONS = ["sold", "gifted", "lost", "discarded", "returned"] as const;
+export type ArchiveReason = (typeof ARCHIVE_REASONS)[number];
+const REASON_LABELS: Record<ArchiveReason, string> = {
+  sold: "Sold",
+  gifted: "Gifted",
+  lost: "Lost",
+  discarded: "Discarded",
+  returned: "Returned",
+};
 import { cn } from "@/lib/utils";
 
 interface ItemActionsProps {
   onEdit: () => void;
-  onArchive: () => void;
+  /** Archive (with why, when known) or restore. */
+  onArchive: (reason?: ArchiveReason) => void;
   onDelete: () => void;
   /** True when the item is already archived, so the action offers the way back. */
   isArchived?: boolean;
@@ -50,17 +65,27 @@ export function ItemActions({
         </DropdownMenuItem>
         {/* Archive first: it is the right answer for anything sold or
             discarded, and it keeps what the thing cost. */}
-        <DropdownMenuItem onClick={onArchive}>
-          {isArchived ? (
-            <>
-              <ArchiveRestore className="mr-2 size-4" /> Restore
-            </>
-          ) : (
-            <>
+        {isArchived ? (
+          <DropdownMenuItem onClick={() => onArchive()}>
+            <ArchiveRestore className="mr-2 size-4" /> Restore
+          </DropdownMenuItem>
+        ) : (
+          // Why it went is recorded (ADM-024): the column existed, and
+          // nothing ever wrote it.
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
               <Archive className="mr-2 size-4" /> Archive
-            </>
-          )}
-        </DropdownMenuItem>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {ARCHIVE_REASONS.map((reason) => (
+                <DropdownMenuItem key={reason} onClick={() => onArchive(reason)}>
+                  {REASON_LABELS[reason]}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onClick={() => onArchive()}>No reason</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
         <DropdownMenuItem className="text-destructive" onClick={onDelete}>
           <Trash2 className="mr-2 size-4" /> Delete
         </DropdownMenuItem>

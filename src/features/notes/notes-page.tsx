@@ -1,5 +1,7 @@
 "use client";
 
+import { useUrlParam } from "@/hooks/use-url-param";
+import { useCreateIntent } from "@/features/admin-shell/create-intent";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NotebookPen } from "lucide-react";
 import { toast } from "sonner";
@@ -12,8 +14,12 @@ import {
   useUpdateNoteMutation,
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
-import { LoadingState, ManagerWrapper } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import {
+  LoadingState,
+  ManagerWrapper,
+  LoadError,
+} from "@/components/admin/shared";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
 import { buildLinkGraph } from "./note-links";
@@ -35,13 +41,14 @@ import { loadNovelEditor } from "@/components/admin/novel-editor/load-editor";
  */
 export default function NotesPage() {
   const confirm = useConfirm();
-  const { data: notes = [], isLoading } = useGetNotesQuery();
+  const { data: notes = [], isLoading, error: loadError, refetch } = useGetNotesQuery();
   const [addNote, { isLoading: isCreating }] = useAddNoteMutation();
   const [updateNote] = useUpdateNoteMutation();
   const [archiveNote] = useArchiveNoteMutation();
   const [deleteNote] = useDeleteNoteMutation();
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The open note lives in the URL, so a reload reopens it (ADM-004).
+  const [selectedId, setSelectedId] = useUrlParam("note", "replace");
   /** The row just created, until the list refetches with it. */
   const [created, setCreated] = useState<Note | null>(null);
   /** A new note, and whether it is still blank. Only ever the open one. */
@@ -88,6 +95,8 @@ export default function NotesPage() {
   const reportEmpty = useCallback((empty: boolean) => {
     if (fresh.current) fresh.current.empty = empty;
   }, []);
+
+  useCreateIntent("note", () => void handleNew());
 
   const handleNew = async (title?: string) => {
     try {
@@ -146,6 +155,14 @@ export default function NotesPage() {
     }
   };
 
+  if (loadError && notes.length === 0) {
+    return (
+      <ManagerWrapper>
+        <LoadError what="your notes" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
+
   if (isLoading && notes.length === 0) {
     return (
       <ManagerWrapper>
@@ -156,6 +173,9 @@ export default function NotesPage() {
 
   return (
     <ManagerWrapper>
+      {/* The list and the note are the page; the heading is for screen
+          readers, since the top bar's module name is no longer one (ADM-005). */}
+      <h1 className="sr-only">Notes</h1>
       <div className="grid items-start gap-6 md:grid-cols-[17rem_minmax(0,1fr)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
         <NoteList
           className={selected ? "hidden md:flex" : "flex"}

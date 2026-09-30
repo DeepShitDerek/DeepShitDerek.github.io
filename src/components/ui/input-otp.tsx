@@ -44,7 +44,7 @@ const InputOTPSlot = React.forwardRef<
         // One box per digit, not a strip with shared edges: each reads as a
         // place a digit goes, and the active one lifts.
         "relative flex h-12 w-11 items-center justify-center rounded-control border border-input bg-background text-lg font-semibold tabular-nums transition-[box-shadow,border-color]",
-        isActive && "z-10 border-transparent ring-2 ring-ring",
+        isActive && "z-raised border-transparent ring-2 ring-ring",
         className,
       )}
       {...props}

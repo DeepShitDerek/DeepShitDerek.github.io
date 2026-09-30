@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   Check,
+  Download,
+  Upload,
   Info,
   KeyRound,
   Loader2,
@@ -26,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { ManagerWrapper, PageHeader } from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
@@ -36,6 +38,9 @@ import {
   lockdownMeta,
 } from "./lockdown";
 import { assessPassword, passwordFormError } from "./password-strength";
+import { AddFactorDialog } from "./add-factor-dialog";
+import { exportWorkspace, parseBackup, restoreWorkspace } from "./workspace-export";
+import { downloadText } from "@/lib/download";
 
 function Section({
   title,
@@ -59,6 +64,75 @@ export default function SecurityPage() {
   const confirm = useConfirm();
   const router = useRouter();
 
+  const [addingFactor, setAddingFactor] = useState(false);
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
+
+  const [restoring, setRestoring] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<string | null>(null);
+
+  // Restore (runbook gap after ADM-008): merge only, one transaction.
+  const handleRestore = async (file: File) => {
+    if (!supabase) return;
+    setRestoreResult(null);
+    const parsed = parseBackup(await file.text());
+    if (!parsed.ok) {
+      toast.error("Can't restore that file", { description: parsed.reason });
+      return;
+    }
+    const ok = await confirm({
+      title: "Restore from this backup?",
+      description: `It holds ${parsed.rows} row${parsed.rows === 1 ? "" : "s"} across ${parsed.tables} table${parsed.tables === 1 ? "" : "s"}, from ${new Date(parsed.backup.exported_at).toLocaleString()}. Anything missing here is added back. Nothing that exists is changed or removed, so restoring twice is safe.`,
+      confirmText: "Restore",
+    });
+    if (!ok) return;
+    setRestoring(true);
+    try {
+      const added = await restoreWorkspace(supabase, parsed.backup);
+      const total = Object.values(added).reduce((a, b) => a + b, 0);
+      setRestoreResult(
+        total === 0
+          ? "Nothing to add: everything in the backup is already here."
+          : `Added ${total} row${total === 1 ? "" : "s"}: ${Object.entries(added)
+              .filter(([, n]) => n > 0)
+              .map(([t, n]) => `${t.replace(/_/g, " ")} ${n}`)
+              .join(", ")}.`,
+      );
+      toast.success(total === 0 ? "Already up to date" : "Backup restored");
+    } catch (err) {
+      toast.error("Couldn't restore the backup", {
+        description: `${getErrorMessage(err)} Nothing was changed.`,
+      });
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!supabase) return;
+    setExportProgress("Starting…");
+    try {
+      const backup = await exportWorkspace(supabase, (done, total) =>
+        setExportProgress(`Reading ${done} of ${total}…`),
+      );
+      downloadText(
+        `workspace-${backup.exported_at.slice(0, 10)}.json`,
+        JSON.stringify(backup, null, 2),
+        "application/json",
+      );
+      const failed = Object.keys(backup.errors);
+      if (failed.length > 0) {
+        toast.warning("Backup saved, with gaps", {
+          description: `Couldn't read: ${failed.join(", ")}. The file lists why.`,
+        });
+      } else {
+        toast.success("Backup saved");
+      }
+    } catch (err) {
+      toast.error("Couldn't make the backup", { description: getErrorMessage(err) });
+    } finally {
+      setExportProgress(null);
+    }
+  };
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -254,8 +328,9 @@ export default function SecurityPage() {
 
           {/*
             The honest part. Maintenance is a client-side check on a static
-            export — it hides the interface, not the data — and level 2 only
-            refuses writes once the enforcement migration has been applied.
+            export — it hides the interface, not the data. Level 2's write
+            block is restrictive RLS in db/schema.sql (V2-016), so it holds
+            only on a database that has had the current schema applied.
             A security screen that overstates what it does is worse than one
             that does less.
           */}
@@ -272,13 +347,14 @@ export default function SecurityPage() {
               )}
               {activeMeta.enforcement === "database" && (
                 <>
-                  Write blocking is enforced by the database, and only once{" "}
+                  The database refuses every admin write, including uploads,
+                  while this level is set. Reads still work, and visitors can
+                  still send messages. Requires the current{" "}
                   <code className="rounded bg-background px-1">
-                    db/migrations/006-lockdown-enforcement.sql
+                    db/schema.sql
                   </code>{" "}
-                  has been applied. Until then this level behaves exactly like
-                  maintenance. Changing the level is never blocked, so lockdown
-                  cannot trap you.
+                  to have been run on your project. Changing the level is never
+                  blocked, so lockdown cannot trap you.
                 </>
               )}
               {activeMeta.enforcement === "none" && (
@@ -345,6 +421,81 @@ export default function SecurityPage() {
               ))}
             </ul>
           )}
+          {!isLoadingFactors && verified.length === 1 && (
+            // Supabase has no recovery codes: a second factor is the only
+            // way back in without the dashboard (ADM-025).
+            <Alert className="mt-3">
+              <AlertCircle className="size-4" aria-hidden />
+              <AlertDescription>
+                This is your only method. If you lose this device, getting back
+                in means resetting it from the Supabase dashboard. Add a second
+                one — another phone, or your password manager.
+              </AlertDescription>
+            </Alert>
+          )}
+          {!isLoadingFactors && verified.length > 0 && (
+            <Button
+              variant="outline"
+              className="mt-3"
+              onClick={() => setAddingFactor(true)}
+            >
+              Add another method
+            </Button>
+          )}
+          <AddFactorDialog
+            open={addingFactor}
+            onOpenChange={setAddingFactor}
+            existingNames={factors.map((f) => f.friendly_name ?? "")}
+          />
+        </Section>
+
+        <Section
+          title="Your data"
+          description="Everything you have written here, in one JSON file you keep. Secrets and visitor analytics are left out."
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={exportProgress !== null}
+            >
+              {exportProgress !== null ? (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              ) : (
+                <Download className="mr-2 size-4" aria-hidden />
+              )}
+              Download a backup
+            </Button>
+            <span role="status" className="text-xs text-muted-foreground">
+              {exportProgress ?? "The ledger also exports as CSV from Money → Transactions."}
+            </span>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button variant="outline" asChild disabled={restoring}>
+              <label className={cn("cursor-pointer focus-within:ring-2 focus-within:ring-ring", restoring && "pointer-events-none opacity-50")}>
+                {restoring ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Upload className="mr-2 size-4" aria-hidden />
+                )}
+                Restore from a backup
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  className="sr-only"
+                  disabled={restoring}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void handleRestore(file);
+                  }}
+                />
+              </label>
+            </Button>
+            <span role="status" className="text-xs text-muted-foreground">
+              {restoreResult ?? "Adds back what is missing; never changes or removes what is here."}
+            </span>
+          </div>
         </Section>
 
         <Section

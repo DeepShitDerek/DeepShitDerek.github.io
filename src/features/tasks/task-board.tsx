@@ -138,10 +138,16 @@ export function TaskBoard({
                 Nothing here
               </p>
             ) : (
-              columnTasks.map((task) => (
+              columnTasks.map((task, index) => (
                 <TaskCard
                   key={task.id}
                   task={task}
+                  onMoveUp={index > 0 ? () => reorderWithin(status, task.id, columnTasks[index - 1].id) : undefined}
+                  onMoveDown={
+                    index < columnTasks.length - 1
+                      ? () => reorderWithin(status, task.id, columnTasks[index + 2]?.id ?? null)
+                      : undefined
+                  }
                   project={
                     task.project_id
                       ? projectsById.get(task.project_id)

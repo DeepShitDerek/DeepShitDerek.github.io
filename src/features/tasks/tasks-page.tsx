@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRememberedChoice } from "@/hooks/use-remembered-choice";
+import { useUrlParam } from "@/hooks/use-url-param";
+import { useCreateIntent } from "@/features/admin-shell/create-intent";
+import { useSetTaskStatus } from "./use-task-status";
+import { useEffect, useMemo, useState } from "react";
 import { FolderKanban, ListTodo, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { SubTask, Task } from "@/types";
@@ -19,13 +23,14 @@ import {
   useUpdateTaskMutation,
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   FormSheet,
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
 import { useAppDispatch } from "@/store/hooks";
 import { startFocus } from "@/store/slices/focusSlice";
@@ -47,7 +52,6 @@ import {
   type TaskGroupBy,
   type TaskSortBy,
 } from "./task-filters";
-import { nextOccurrence } from "./task-recurrence";
 import { TaskBoard } from "./task-board";
 import { TaskList } from "./task-list";
 import { TaskTable } from "./task-table";
@@ -62,7 +66,7 @@ export default function TasksPage() {
   const confirm = useConfirm();
   const dispatch = useAppDispatch();
 
-  const [view, setView] = useState<ViewMode>("board");
+  const [view, setView] = useRememberedChoice<ViewMode>("tasks", "board", ["board", "list", "table", "timeline"]);
   const [groupBy, setGroupBy] = useState<TaskGroupBy>("status");
   const [sortBy, setSortBy] = useState<TaskSortBy>("manual");
   const [filters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
@@ -83,8 +87,11 @@ export default function TasksPage() {
     null,
   );
 
-  const { data: tasks = [], isLoading } = useGetTasksQuery();
+  const { data: tasks = [], isLoading, error: loadError, refetch } = useGetTasksQuery();
   const { data: projects = [] } = useGetTaskProjectsQuery();
+  // Archived projects leave the rail and the pickers (ADM-017); their tasks
+  // keep the project, and the board still labels them by it.
+  const activeProjects = useMemo(() => projects.filter((p) => !p.is_archived), [projects]);
   const { data: dependencies = [] } = useGetTaskDependenciesQuery();
 
   const [addTask] = useAddTaskMutation();
@@ -151,6 +158,8 @@ export default function TasksPage() {
     return counts;
   }, [tasks]);
 
+  useCreateIntent("task", () => openNew());
+
   const openNew = (status: TaskStatus = "todo") => {
     setSheetMode("edit");
     setEditingTaskId(null);
@@ -169,32 +178,31 @@ export default function TasksPage() {
     setEditingTaskId(task.id);
     setDraftDefaults(null);
     setIsSheetOpen(true);
+    setTaskParam(task.id);
   };
+
+  // The open task lives in the URL, so a reload or a link reopens it
+  // (ADM-004). Replace, not push: Back must not close a sheet mid-edit.
+  const [taskParam, setTaskParam] = useUrlParam("task", "replace");
+  const linked = taskParam ? byId.get(taskParam) : undefined;
+  useEffect(() => {
+    if (linked && !isSheetOpen) openTask(linked);
+    // Only when the URL names a task that is not already open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linked]);
+  // Whichever way the sheet closes (dismissed, saved, deleted), the URL follows.
+  useEffect(() => {
+    if (!isSheetOpen && taskParam) setTaskParam(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSheetOpen]);
 
   /**
    * Completing a repeating task creates the next instance rather than resetting
    * this one, so what was actually finished stays in the history.
    */
-  const applyStatus = async (task: Task, status: TaskStatus) => {
-    try {
-      await updateTask({ id: task.id, status }).unwrap();
-
-      if (status === "done" && task.recurrence) {
-        const next = nextOccurrence(task);
-        if (next) {
-          await addTask(next).unwrap();
-          toast.success("Completed — next one scheduled", {
-            description: `Due ${next.due_date}`,
-          });
-          return;
-        }
-      }
-    } catch (err) {
-      toast.error("Couldn't update the task", {
-        description: getErrorMessage(err),
-      });
-    }
-  };
+  const setTaskStatus = useSetTaskStatus();
+  const applyStatus = (task: Task, status: TaskStatus) =>
+    setTaskStatus(task, status, tasks);
 
   const handleStartTimer = (task: Task) => {
     dispatch(
@@ -292,8 +300,14 @@ export default function TasksPage() {
     }
   };
 
-  const handleToggleSubtask = (subtask: SubTask) => {
-    updateSubTask({ id: subtask.id, is_completed: !subtask.is_completed });
+  // The optimistic change rolls back on failure; say so rather than let the
+  // tick silently reappear (ADM-017).
+  const handleToggleSubtask = async (subtask: SubTask) => {
+    try {
+      await updateSubTask({ id: subtask.id, is_completed: !subtask.is_completed }).unwrap();
+    } catch (err) {
+      toast.error("Couldn't update the subtask", { description: getErrorMessage(err) });
+    }
   };
 
   const activeFilterCount =
@@ -302,6 +316,14 @@ export default function TasksPage() {
     (filters.tag !== "all" ? 1 : 0) +
     (filters.blockedOnly ? 1 : 0) +
     (filters.overdueOnly ? 1 : 0);
+
+  if (loadError && tasks.length === 0) {
+    return (
+      <ManagerWrapper>
+        <LoadError what="your tasks" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
 
   if (isLoading) return <LoadingState label="Loading tasks" />;
 
@@ -314,9 +336,9 @@ export default function TasksPage() {
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setIsProjectsOpen(true)}>
               <FolderKanban className="mr-2 size-4" aria-hidden /> Projects
-              {projects.length > 0 && (
+              {activeProjects.length > 0 && (
                 <span className="ml-1.5 tabular-nums text-muted-foreground">
-                  {projects.length}
+                  {activeProjects.length}
                 </span>
               )}
             </Button>
@@ -329,7 +351,7 @@ export default function TasksPage() {
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <TaskProjectRail
-          projects={projects}
+          projects={activeProjects}
           counts={taskCounts}
           totalCount={tasks.length}
           unassignedCount={tasks.filter((t) => !t.project_id).length}
@@ -447,7 +469,10 @@ export default function TasksPage() {
           <TaskForm
             key={editingTaskId ?? "new"}
             task={editingTask}
-            projects={projects}
+            // The task's own project stays choosable even once archived.
+            projects={projects.filter(
+              (p) => !p.is_archived || p.id === editingTask?.project_id,
+            )}
             blockers={
               editingTaskId
                 ? (depIndex.blockedBy.get(editingTaskId) ?? [])
@@ -476,7 +501,12 @@ export default function TasksPage() {
                 description: "This cannot be undone.",
                 variant: "destructive",
               });
-              if (ok) deleteSubTask(id);
+              if (!ok) return;
+              try {
+                await deleteSubTask(id).unwrap();
+              } catch (err) {
+                toast.error("Couldn't delete the subtask", { description: getErrorMessage(err) });
+              }
             }}
             onAddBlocker={handleAddBlocker}
             onRemoveBlocker={handleRemoveBlocker}

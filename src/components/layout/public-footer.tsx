@@ -24,6 +24,7 @@ import { Band } from "@/components/layout/band";
 import { Reveal } from "@/components/layout/motion";
 import { isInternalUrl, safeLinkUrl } from "@/lib/safe-url";
 import { PRODUCT } from "@/lib/product";
+import { footerLinks } from "./nav-links";
 import { cn } from "@/lib/cn";
 
 const FOCUS =
@@ -54,7 +55,11 @@ export default function PublicFooter() {
 
   if (isLoading || !identity) {
     return (
-      <Band as="footer" weight="content" className="border-t border-border/60 !pt-16">
+      <Band
+        as="footer"
+        weight="content"
+        className="border-t border-border/60 !pt-16"
+      >
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
           <Skeleton className="h-12 w-48" />
           <Skeleton className="h-16 w-64" />
@@ -84,7 +89,10 @@ const useIsoLayoutEffect =
  * The answer depends only on the text and the face, never on the box, which
  * is the point: see `Wordmark`.
  */
-export function wordmarkCqw(textWidth: number, measuredAt: number): number | null {
+export function wordmarkCqw(
+  textWidth: number,
+  measuredAt: number,
+): number | null {
   if (textWidth <= 0 || measuredAt <= 0) return null;
   return Math.floor((measuredAt / textWidth) * 0.985 * 100 * 100 + 1e-6) / 100;
 }
@@ -129,7 +137,8 @@ function Wordmark({ text }: { text: string }) {
       el.style.fontSize = `${MEASURE_AT}px`;
       const next = wordmarkCqw(el.getBoundingClientRect().width, MEASURE_AT);
       el.style.fontSize = previous;
-      if (next !== null) setCqw((current) => (current === next ? current : next));
+      if (next !== null)
+        setCqw((current) => (current === next ? current : next));
     };
 
     measure();
@@ -137,7 +146,9 @@ function Wordmark({ text }: { text: string }) {
     void fonts?.ready.then(measure);
     fonts?.addEventListener?.("loadingdone", measure);
     const presets =
-      typeof MutationObserver !== "undefined" ? new MutationObserver(measure) : undefined;
+      typeof MutationObserver !== "undefined"
+        ? new MutationObserver(measure)
+        : undefined;
     presets?.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
@@ -203,7 +214,11 @@ export function FooterView({
     `${logo?.main ?? ""}${logo?.highlight ?? ""}`.trim() || profile_data.name;
   const role = profile_data.title?.split("|")[0]?.trim();
   const availability = profile_data.status_panel?.availability?.trim();
-  const pages = (links ?? []).filter((link) => safeLinkUrl(link.href));
+  // The nav, plus footer-only pages (Updates by default) that left the
+  // header in the work-led IA but stay one click away.
+  const pages = footerLinks(links ?? [], footer_data.links).filter((link) =>
+    safeLinkUrl(link.href),
+  );
   const socials = social_links
     .filter((social) => social.is_visible)
     .map((social) => ({ ...social, href: safeLinkUrl(social.url) }))
@@ -253,7 +268,7 @@ export function FooterView({
                         className={cn(
                           // An underline that draws itself from the left.
                           "bg-gradient-to-r from-primary to-primary bg-[length:0%_1px] bg-left-bottom bg-no-repeat pb-0.5 text-sm text-foreground/80",
-                          "transition-[background-size,color] duration-300 ease-enter hover:bg-[length:100%_1px] hover:text-foreground motion-reduce:transition-none",
+                          "transition-[background-size,color] duration-slow ease-enter hover:bg-[length:100%_1px] hover:text-foreground motion-reduce:transition-none",
                           "rounded-sm",
                           FOCUS,
                         )}
@@ -281,7 +296,7 @@ export function FooterView({
                         aria-label={social.label}
                         title={social.label}
                         className={cn(
-                          "flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors duration-200 hover:bg-secondary hover:text-foreground",
+                          "flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors duration-base hover:bg-secondary hover:text-foreground",
                           FOCUS,
                         )}
                       >
@@ -334,17 +349,20 @@ export function FooterView({
         <button
           type="button"
           onClick={() =>
-            window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })
+            window.scrollTo({
+              top: 0,
+              behavior: reduceMotion ? "auto" : "smooth",
+            })
           }
           className={cn(
-            "group inline-flex shrink-0 items-center gap-2 self-start rounded-full py-1 font-medium text-foreground/80 transition-colors duration-200 hover:text-foreground sm:self-auto",
+            "group inline-flex shrink-0 items-center gap-2 self-start rounded-full py-1 font-medium text-foreground/80 transition-colors duration-base hover:text-foreground sm:self-auto",
             FOCUS,
           )}
         >
           Back to top
-          <span className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground">
+          <span className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors duration-base group-hover:bg-primary group-hover:text-primary-foreground">
             <ArrowUp
-              className="size-4 transition-transform duration-200 ease-enter group-hover:-translate-y-0.5 motion-reduce:transition-none"
+              className="size-4 transition-transform duration-base ease-enter group-hover:-translate-y-0.5 motion-reduce:transition-none"
               aria-hidden
             />
           </span>

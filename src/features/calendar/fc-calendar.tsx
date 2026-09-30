@@ -206,7 +206,7 @@ export function FcCalendar({
           const entry = arg.event.extendedProps.entry as CalendarEntry;
           const colors = entryClasses(entry.colorToken);
           return [
-            "overflow-hidden rounded-control text-left transition-shadow duration-150",
+            "overflow-hidden rounded-control text-left transition-shadow duration-fast",
             isExpected(entry)
               ? cn("border border-dashed bg-transparent", colors.ring)
               : cn("border-l-[3px]", colors.bg, colors.border),

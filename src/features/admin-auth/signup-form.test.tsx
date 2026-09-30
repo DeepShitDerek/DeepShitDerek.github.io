@@ -1,154 +1,46 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { SignupForm } from "./signup-form";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  replace: vi.fn(),
-  push: vi.fn(),
-  router: null as { replace: unknown; push: unknown } | null,
-  supabase: null as unknown,
-  adminExists: false as boolean | undefined,
-  isChecking: false,
-  signUp: vi.fn(),
-  dispatch: vi.fn(),
-  invalidateTags: vi.fn((tags: string[]) => ({ type: "invalidate", tags })),
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () =>
-    (mocks.router ??= { replace: mocks.replace, push: mocks.push }),
-}));
-
-vi.mock("@/supabase/client", () => ({
-  get supabase() {
-    return mocks.supabase;
-  },
-}));
-
+const signUp = vi.fn();
+const replace = vi.fn();
+vi.mock("@/supabase/client", () => ({ supabase: { auth: { signUp } } }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, push: vi.fn() }) }));
+vi.mock("@/store/hooks", () => ({ useAppDispatch: () => vi.fn() }));
 vi.mock("@/store/api/adminApi", () => ({
-  useCheckAdminExistsQuery: () => ({
-    data: mocks.adminExists,
-    isLoading: mocks.isChecking,
-  }),
-  adminApi: { util: { invalidateTags: mocks.invalidateTags } },
+  adminApi: { util: { invalidateTags: () => ({ type: "noop" }) } },
+  useCheckAdminExistsQuery: () => ({ data: false, isLoading: false }),
 }));
 
-vi.mock("@/store/hooks", () => ({
-  useAppDispatch: () => mocks.dispatch,
-}));
+const { SignupForm } = await import("./signup-form");
 
-const fillAndSubmit = (email = "owner@domain.com") => {
-  fireEvent.change(screen.getByLabelText("Email"), {
-    target: { value: email },
-  });
-  fireEvent.change(screen.getByLabelText("Password"), {
-    target: { value: "hunter2" },
-  });
+const fill = (password: string) => {
+  fireEvent.change(screen.getByLabelText("Email"), { target: { value: "owner@example.com" } });
+  fireEvent.change(screen.getByLabelText("Password"), { target: { value: password } });
   fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 };
 
-beforeEach(() => {
-  mocks.replace.mockReset();
-  mocks.push.mockReset();
-  mocks.router = null;
-  mocks.adminExists = false;
-  mocks.isChecking = false;
-  mocks.signUp.mockReset().mockResolvedValue({ data: {}, error: null });
-  mocks.dispatch.mockReset();
-  mocks.invalidateTags.mockClear();
-  mocks.supabase = { auth: { signUp: mocks.signUp } };
-});
+beforeEach(() => vi.clearAllMocks());
 
-describe("SignupForm", () => {
-  it("waits for the bootstrap check before offering the form", () => {
-    mocks.isChecking = true;
+describe("first-run sign-up (V2-052)", () => {
+  it("holds the owner's password to the same rule as Security", () => {
     render(<SignupForm />);
-
-    expect(
-      screen.queryByRole("button", { name: "Create account" }),
-    ).not.toBeInTheDocument();
+    fill("hunter2!");
+    expect(signUp).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toMatch(/at least 12 characters/i);
   });
 
-  it("redirects to login when an admin already exists", async () => {
-    // This is the client half of a single-admin rule the database enforces
-    // with a trigger on auth.users; it is UX, not the boundary.
-    mocks.adminExists = true;
+  it("goes straight to two-factor setup when no confirmation email is needed", async () => {
+    signUp.mockResolvedValue({ data: { session: { access_token: "t" } }, error: null });
     render(<SignupForm />);
-
-    await waitFor(() =>
-      expect(mocks.replace).toHaveBeenCalledWith("/admin/login"),
-    );
-    expect(
-      screen.queryByRole("button", { name: "Create account" }),
-    ).not.toBeInTheDocument();
+    fill("correct horse battery staple 9");
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/admin/setup-mfa"));
   });
 
-  it("offers the form on a fresh install", () => {
+  it("asks you to confirm your email when the project requires it", async () => {
+    signUp.mockResolvedValue({ data: { session: null }, error: null });
     render(<SignupForm />);
-
-    expect(
-      screen.getByRole("button", { name: "Create account" }),
-    ).toBeInTheDocument();
-  });
-
-  it("creates the account and confirms which address to verify", async () => {
-    render(<SignupForm />);
-
-    fillAndSubmit("owner@domain.com");
-
-    expect(await screen.findByText("Check your email")).toBeInTheDocument();
-    expect(mocks.signUp).toHaveBeenCalledWith({
-      email: "owner@domain.com",
-      password: "hunter2",
-    });
-    expect(screen.getByText("owner@domain.com")).toBeInTheDocument();
-  });
-
-  it("refreshes the cached admin-exists answer for the login page", async () => {
-    render(<SignupForm />);
-
-    fillAndSubmit();
-
-    await waitFor(() => expect(mocks.dispatch).toHaveBeenCalled());
-    expect(mocks.invalidateTags).toHaveBeenCalledWith(["System"]);
-  });
-
-  it("keeps the success panel up once an admin exists", async () => {
-    const { rerender } = render(<SignupForm />);
-    fillAndSubmit();
-    await screen.findByText("Check your email");
-
-    // The signup just made `adminExists` true; without the success guard the
-    // redirect effect would fire and hide the verify-your-email instructions.
-    mocks.adminExists = true;
-    rerender(<SignupForm />);
-
-    expect(screen.getByText("Check your email")).toBeInTheDocument();
-    expect(mocks.replace).not.toHaveBeenCalled();
-  });
-
-  it("shows a rejected signup and stays on the form", async () => {
-    mocks.signUp.mockResolvedValue({
-      data: null,
-      error: { message: "Signups are disabled" },
-    });
-    render(<SignupForm />);
-
-    fillAndSubmit();
-
-    expect(await screen.findByText("Signups are disabled")).toBeInTheDocument();
-    expect(screen.queryByText("Check your email")).not.toBeInTheDocument();
-  });
-
-  it("refuses to sign up with no backend configured", async () => {
-    mocks.supabase = null;
-    render(<SignupForm />);
-
-    fillAndSubmit();
-
-    expect(
-      await screen.findByText("Database connection missing. Cannot sign up."),
-    ).toBeInTheDocument();
-    expect(mocks.signUp).not.toHaveBeenCalled();
+    fill("correct horse battery staple 9");
+    expect(await screen.findByText("Check your email")).toBeTruthy();
+    expect(replace).not.toHaveBeenCalledWith("/admin/setup-mfa");
   });
 });

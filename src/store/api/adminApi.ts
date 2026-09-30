@@ -15,6 +15,7 @@ export * from "./admin/calendarApi";
 export * from "./admin/blogAdminApi";
 export * from "./admin/notesApi";
 export * from "./admin/whiteboardApi";
+export * from "./admin/mapsApi";
 export * from "./admin/tasksApi";
 export * from "./admin/learningApi";
 export * from "./admin/siteApi";
@@ -31,4 +32,3 @@ export * from "./admin/libraryApi";
 // Finance (migrations 025–032). The only finance slice: the four v1 ones —
 // financeApi, financeSetupApi, loansApi and importApi — were deleted when the
 // rebuilt module took over `/admin/finance`.
-export * from "./admin/financeV2Api";

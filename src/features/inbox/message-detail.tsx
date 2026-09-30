@@ -13,7 +13,8 @@ import {
 import { toast } from "sonner";
 import type { ContactSubmission } from "@/types";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { contactTopicLabel } from "@/lib/contact-topics";
 import { messageState, replyMailto } from "./inbox-filters";
 
 /**
@@ -60,9 +61,12 @@ export function MessageDetail({
     if (ok) onDelete();
   };
 
+  const topic = contactTopicLabel(message.topic);
+
   return (
     <article className="flex h-full flex-col gap-5 rounded-surface bg-card p-5 shadow-e2 sm:p-6">
       <header className="space-y-3">
+        {topic && <p className="t-eyebrow">{topic}</p>}
         <h2 className="text-lg font-semibold leading-tight text-foreground">
           {message.subject}
         </h2>

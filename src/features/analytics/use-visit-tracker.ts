@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { supabase } from "@/supabase/client";
+import { hasStoredSession, rest } from "@/lib/rest";
 import { summarizeAgent } from "./visitor-agent";
 import { classifySource, countryFromTimezone } from "./visitor-source";
 
@@ -99,7 +99,7 @@ export function useVisitTracker(): void {
   useEffect(() => {
     // No database, no analytics. Static mode keeps working; it just has
     // nowhere to record anything.
-    if (!supabase) return;
+    if (!rest) return;
 
     // Off in development, because a page you reload forty times while building
     // it is not forty visits. `NEXT_PUBLIC_ANALYTICS_DEBUG` turns it back on
@@ -123,8 +123,12 @@ export function useVisitTracker(): void {
        * and every one of those was landing in the figures. There is exactly
        * one account, so a session is proof of who this is.
        */
-      const { data: auth } = await supabase!.auth.getSession();
-      if (auth.session && !debug) return;
+      // Read from storage, not through supabase-js, which would cost every
+      // visitor ~59 KB for this one yes/no (V2-026).
+      if (hasStoredSession() && !debug) return;
+      // Automated browsers (checks, crawlers driven by WebDriver) are not
+      // visitors; the build's own checks were landing in the figures.
+      if (navigator.webdriver && !debug) return;
       if (cancelled) return;
 
       const geo = await lookupGeo();
@@ -150,7 +154,7 @@ export function useVisitTracker(): void {
         origin: window.location.origin,
       });
 
-      await supabase!.from("site_visits").insert({
+      await rest!.from("site_visits").insert({
         path: (pathname || "/").slice(0, 512),
         referrer_host: clamp(referrerHost, 255),
         source: clamp(source, 128),

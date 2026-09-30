@@ -75,7 +75,7 @@ export function ReadingProgress({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(progress * 100)}
-      className="fixed inset-x-0 top-0 z-30 h-0.5 bg-transparent"
+      className="fixed inset-x-0 top-0 z-chrome h-0.5 bg-transparent"
     >
       <div
         className="h-full origin-left bg-primary transition-transform duration-75 motion-reduce:transition-none"

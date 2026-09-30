@@ -12,12 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
 import { LIFE_UPDATE_CATEGORY_OPTIONS } from "@/lib/constants";
 import { byNewest, groupByMonth, matchesSearch } from "@/lib/life-update";
@@ -43,7 +44,7 @@ export default function LifeUpdatesPage() {
   const [category, setCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: updates = [], isLoading } = useGetLifeUpdatesQuery();
+  const { data: updates = [], isLoading, error: loadError, refetch } = useGetLifeUpdatesQuery();
   const [updateLifeUpdate] = useUpdateLifeUpdateMutation();
   const [deleteLifeUpdate] = useDeleteLifeUpdateMutation();
 
@@ -150,7 +151,7 @@ export default function LifeUpdatesPage() {
   return (
     <ManagerWrapper>
       <PageHeader
-        title="Life Updates"
+        title="Updates"
         description="Short news for /updates — what you're doing, watching and thinking."
         actions={
           <Button variant="outline" asChild>
@@ -167,6 +168,8 @@ export default function LifeUpdatesPage() {
 
         {isLoading ? (
           <LoadingState label="Loading updates" />
+        ) : loadError && updates.length === 0 ? (
+          <LoadError what="your updates" error={loadError} onRetry={refetch} />
         ) : updates.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
             Nothing yet. Whatever you write above stays a draft until you

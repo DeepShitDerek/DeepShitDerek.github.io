@@ -1,13 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowUpRight, Check, Quote } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ArrowUpRight, Check, Quote } from "lucide-react";
 import type { PortfolioItem } from "@/types";
 import { safeImageUrl } from "@/lib/safe-url";
 import { cn } from "@/lib/cn";
 import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/layout/motion";
 import { timelineDuration } from "./timeline-model";
 import { useNow } from "./use-now";
+import { useBuiltCaseStudySlugs } from "@/store/public-preload";
+import { caseStudyHref } from "@/features/work/case-study-href";
 import {
   CARD,
   ItemDates,
@@ -46,15 +49,23 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
  * as text, and a placeholder would waste the top of the card. The project link
  * goes through `TextLink`'s allowlist; `link_url` is unconstrained TEXT and
  * the seed stores `javascript:` values in it.
+ *
+ * An item with a written case study (V2-042) leads with "Read case study";
+ * the project link then steps down to a secondary action.
  */
 export function CaseStudyLayout({ items }: LayoutProps) {
+  const built = useBuiltCaseStudySlugs();
   return (
     <div className="space-y-10">
       {items.map((item) => {
         const tags = cleanTags(item.tags);
         const hasDates = !!(item.date_from?.trim() || item.date_to?.trim());
         const linked = isLinkable(item.link_url);
-        const hasRail = hasDates || tags.length > 0 || linked;
+        const story =
+          item.has_case_study && item.slug
+            ? caseStudyHref(item.slug, built)
+            : null;
+        const hasRail = hasDates || tags.length > 0 || linked || !!story;
 
         return (
           <Reveal
@@ -103,10 +114,25 @@ export function CaseStudyLayout({ items }: LayoutProps) {
                       <ItemTags tags={tags} max={10} />
                     </Meta>
                   )}
+                  {story && (
+                    <Link
+                      href={story}
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity duration-base hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      Read case study
+                      <span className="sr-only">: {item.title}</span>
+                      <ArrowRight aria-hidden className="size-4" />
+                    </Link>
+                  )}
                   {linked && (
                     <TextLink
                       href={item.link_url}
-                      className="inline-flex items-center gap-1.5 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity duration-200 hover:opacity-90"
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-sm font-semibold",
+                        story
+                          ? "w-fit text-primary hover:underline"
+                          : "rounded-control bg-primary px-4 py-2 text-primary-foreground transition-opacity duration-base hover:opacity-90",
+                      )}
                     >
                       View project
                       <ArrowUpRight aria-hidden className="size-4" />

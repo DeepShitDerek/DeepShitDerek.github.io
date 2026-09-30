@@ -13,7 +13,7 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { getErrorMessage } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
 import ExcalidrawCanvasLazy from "./excalidraw-canvas-lazy";
@@ -91,7 +91,7 @@ export function BoardEditor({ boardId, open, onClose }: BoardEditorProps) {
        * the home indicator on a tablet in portrait.
        */
       style={{ touchAction: "none", overscrollBehavior: "none" }}
-      className="fixed inset-0 z-50 flex select-none flex-col bg-background outline-none [-webkit-touch-callout:none]"
+      className="fixed inset-0 z-overlay flex select-none flex-col bg-background outline-none [-webkit-touch-callout:none]"
     >
       {isReady ? (
         <BoardSurface

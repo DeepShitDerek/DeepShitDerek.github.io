@@ -21,11 +21,17 @@ import { cn } from "@/lib/cn";
 export function TaskRail({
   tasks,
   scheduledTaskIds,
+  onSchedule,
   className,
 }: {
   tasks: Task[];
   /** Task ids that already have a block on the calendar. */
   scheduledTaskIds: ReadonlySet<string>;
+  /**
+   * Block time for a task without dragging (WCAG 2.1.1 and 2.5.7, V2-060):
+   * the drag is a mouse-only gesture, so every card also has a button.
+   */
+  onSchedule: (taskId: string) => void;
   className?: string;
 }) {
   const unscheduled = useMemo(
@@ -57,7 +63,7 @@ export function TaskRail({
           To schedule
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Drag one onto the grid to block time for it.
+          Drag one onto the grid, or use its + button, to block time for it.
         </p>
       </div>
 
@@ -81,16 +87,21 @@ export function TaskRail({
                   event.dataTransfer.setData("application/x-task-id", task.id);
                   event.dataTransfer.effectAllowed = "move";
                 }}
-                className="group cursor-grab rounded-surface bg-card p-2.5 shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2 active:cursor-grabbing"
+                className="group cursor-grab rounded-surface bg-card p-2.5 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 active:cursor-grabbing"
               >
                 <p className="flex items-start gap-2 text-xs font-medium text-foreground">
-                  <CalendarPlus
-                    className="mt-0.5 size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                    aria-hidden
-                  />
                   <span className="min-w-0 flex-1 break-words">
                     {task.title}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => onSchedule(task.id)}
+                    aria-label={`Block time for “${task.title}” at the next half hour`}
+                    title="Block time at the next half hour"
+                    className="-m-1 inline-flex size-6 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <CalendarPlus className="size-3.5" aria-hidden />
+                  </button>
                 </p>
                 <p className="mt-1 flex flex-wrap items-center gap-x-2 pl-5 text-[11px] text-muted-foreground">
                   {task.estimate_minutes ? (

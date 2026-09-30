@@ -1,5 +1,6 @@
 "use client";
 
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useRef, useState } from "react";
 import type React from "react";
 import { ImagePlus, Link2, Loader2, Pin, X } from "lucide-react";
@@ -77,6 +78,14 @@ export function UpdateComposer({
   const isSaving = isAdding || isUpdating;
 
   const isEmpty = !title.trim() && !content.trim() && !imageUrl.trim();
+
+  const dirty = isEdit
+    ? title !== (update?.title ?? "") ||
+      content !== (update?.content ?? "") ||
+      imageUrl !== (update?.image_url ?? "") ||
+      tags.join("|") !== (update?.tags ?? []).join("|")
+    : !isEmpty || tags.length > 0;
+  useUnsavedGuard(dirty && !isSaving);
 
   /**
    * A row can hold a category outside the five — the CHECK constraint arrived

@@ -27,6 +27,10 @@ import {
  * value). All three run once, on the house curve, and are absent under
  * reduced motion — the content is simply there, never waiting on an observer
  * that might not fire.
+ *
+ * Reveal and StaggerItem prerender with an inline `opacity: 0`. Each carries
+ * `data-motion`, which the root layout's <noscript> stylesheet forces visible,
+ * so a visitor without JavaScript never sees blank bands (V2-046).
  */
 
 /** The house curve — the same one as `--m-enter`. */
@@ -70,6 +74,7 @@ export function Reveal({
 
   return (
     <Comp
+      data-motion=""
       className={className}
       initial={{ opacity: 0, ...offset }}
       whileInView={{ opacity: 1, x: 0, y: 0 }}
@@ -116,7 +121,10 @@ export function Stagger({
       initial="hidden"
       whileInView="shown"
       viewport={VIEWPORT}
-      variants={{ hidden: {}, shown: { transition: { staggerChildren: stagger } } }}
+      variants={{
+        hidden: {},
+        shown: { transition: { staggerChildren: stagger } },
+      }}
     >
       {children}
     </Comp>
@@ -132,7 +140,7 @@ export function StaggerItem({ as = "div", className, children }: BlockProps) {
   }
   const Comp = TAGS[as] as typeof motion.div;
   return (
-    <Comp className={className} variants={ITEM}>
+    <Comp data-motion="" className={className} variants={ITEM}>
       {children}
     </Comp>
   );

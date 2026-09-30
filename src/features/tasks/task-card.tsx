@@ -75,6 +75,9 @@ export interface TaskCardProps {
   /** Set by the board so a drop on a card reorders within its column. */
   onDragOver?: (event: React.DragEvent<HTMLElement>) => void;
   onDrop?: (event: React.DragEvent<HTMLElement>) => void;
+  /** Reorder within the column without dragging (WCAG 2.5.7, V2-060); absent at the ends. */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   className?: string;
 }
 
@@ -97,6 +100,8 @@ export function TaskCard({
   onDragStart,
   onDragOver,
   onDrop,
+  onMoveUp,
+  onMoveDown,
   className,
 }: TaskCardProps) {
   const priority = (task.priority ?? "medium") as TaskPriority;
@@ -124,7 +129,7 @@ export function TaskCard({
       tabIndex={0}
       aria-label={task.title}
       className={cn(
-        "cursor-pointer rounded-surface border-l-2 bg-card p-3 text-left shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "cursor-pointer rounded-surface border-l-2 bg-card p-3 text-left shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         TASK_PRIORITY_META[priority].edge,
         task.status === "done" && "opacity-60",
         className,
@@ -168,6 +173,9 @@ export function TaskCard({
               <DropdownMenuItem onSelect={onStartTimer}>
                 <Play className="mr-2 size-4" aria-hidden /> Start focus timer
               </DropdownMenuItem>
+              {(onMoveUp || onMoveDown) && <DropdownMenuSeparator />}
+              {onMoveUp && <DropdownMenuItem onSelect={onMoveUp}>Move up</DropdownMenuItem>}
+              {onMoveDown && <DropdownMenuItem onSelect={onMoveDown}>Move down</DropdownMenuItem>}
               <DropdownMenuSeparator />
               {TASK_STATUSES.filter((s) => s !== task.status).map((status) => (
                 <DropdownMenuItem

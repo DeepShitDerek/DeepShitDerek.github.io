@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -12,6 +13,9 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PurchasePicker } from "./purchase-picker";
+import type { PurchaseOption } from "./purchase-link";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
 import { Calendar } from "@/components/ui/calendar";
@@ -115,10 +119,31 @@ export function InventoryForm({ item, onSuccess }: InventoryFormProps) {
     },
   });
 
+  // Outside the form schema: optional, and blank means the base currency.
+  const [currency, setCurrency] = useState(item?.currency ?? "");
+  const currencyCode = currency.trim().toUpperCase();
+  const currencyInvalid = currencyCode !== "" && !/^[A-Z]{3}$/.test(currencyCode);
+
+  // The ledger expense that bought it (ADM-024).
+  const [transactionId, setTransactionId] = useState<string | null>(item?.transaction_id ?? null);
+  const linkPurchase = (option: PurchaseOption | null) => {
+    setTransactionId(option?.id ?? null);
+    if (!option) return;
+    // Fill what is still blank from the purchase; never overwrite.
+    if (!form.getValues("purchase_date")) form.setValue("purchase_date", option.date, { shouldDirty: true });
+    if (!form.getValues("purchase_price")) form.setValue("purchase_price", option.amount, { shouldDirty: true });
+    if (!currencyCode) setCurrency(option.currency);
+  };
+
   const handleSubmit = async (values: FormValues) => {
+    if (currencyInvalid) return;
     try {
       const payload = {
         ...values,
+        // Sent only once a currency is in play, so saving keeps working on a
+        // database that has not yet had the column added (ADM-024).
+        ...(currencyCode || item?.currency ? { currency: currencyCode || null } : {}),
+        transaction_id: transactionId,
         // Only fall back to the purchase price when no current value was given
         // at all. Previously `||` meant an explicit 0 was overwritten, so an
         // item could never be recorded as worthless.
@@ -228,13 +253,44 @@ export function InventoryForm({ item, onSuccess }: InventoryFormProps) {
           />
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="inventory-purchase">Bought with</Label>
+          <PurchasePicker id="inventory-purchase" value={transactionId} onChange={linkPurchase} />
+          <p className="text-xs text-muted-foreground">
+            The expense in Money that paid for it. Fills in the date, price and currency if they are blank.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="inventory-currency">Currency</Label>
+          <Input
+            id="inventory-currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            maxLength={3}
+            placeholder="Your base currency"
+            autoCapitalize="characters"
+            aria-invalid={currencyInvalid || undefined}
+            aria-describedby="inventory-currency-hint"
+            className="w-40 uppercase"
+          />
+          <p
+            id="inventory-currency-hint"
+            className={cn("text-xs", currencyInvalid ? "text-destructive" : "text-muted-foreground")}
+          >
+            {currencyInvalid
+              ? "Three letters, like CAD, USD or INR."
+              : "What it was bought in. Leave blank for your base currency."}
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="purchase_price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Purchase Price ($)</FormLabel>
+                <FormLabel>Purchase price</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" {...field} />
                 </FormControl>
@@ -247,7 +303,7 @@ export function InventoryForm({ item, onSuccess }: InventoryFormProps) {
             name="current_value"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Current Value ($)</FormLabel>
+                <FormLabel>Current value</FormLabel>
                 <FormControl>
                   {/* Null means "not appraised" and must render as an empty
                       input, not as React's uncontrolled-input warning. */}

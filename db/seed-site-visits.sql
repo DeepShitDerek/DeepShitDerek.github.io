@@ -22,6 +22,10 @@
 -- every generated row onto today and defeat the point. Disabled for the insert
 -- and restored immediately after — the rate limiter would also refuse this
 -- volume, so it goes too.
+-- One transaction: if the insert fails, the triggers must not stay disabled —
+-- that would switch off the rate limit and IP hashing on the real table.
+BEGIN;
+
 ALTER TABLE site_visits DISABLE TRIGGER enrich_site_visit;
 ALTER TABLE site_visits DISABLE TRIGGER limit_site_visits;
 ALTER TABLE site_visits DISABLE TRIGGER notify_site_visit;
@@ -111,6 +115,8 @@ FROM generate_series(0, 89) AS day,
 ALTER TABLE site_visits ENABLE TRIGGER enrich_site_visit;
 ALTER TABLE site_visits ENABLE TRIGGER limit_site_visits;
 ALTER TABLE site_visits ENABLE TRIGGER notify_site_visit;
+
+COMMIT;
 
 SELECT
   count(*) FILTER (WHERE NOT is_bot) AS seeded_views,

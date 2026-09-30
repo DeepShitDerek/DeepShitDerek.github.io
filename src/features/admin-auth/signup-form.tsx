@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MailCheck } from "lucide-react";
 import { supabase } from "@/supabase/client";
@@ -16,6 +16,7 @@ import {
   AuthPending,
   PasswordInput,
 } from "./auth-card";
+import { assessPassword, PASSWORD_MIN_LENGTH } from "@/features/security/password-strength";
 
 /**
  * The first screen of a new install: create the one account the site will
@@ -30,6 +31,11 @@ export function SignupForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // The rule Security applies when the password is changed (V2-052). Sign-up
+  // accepted Supabase's 6-character floor for the one account that controls
+  // the whole site.
+  const assessment = useMemo(() => assessPassword(password), [password]);
 
   const { data: adminExists, isLoading: isChecking } =
     useCheckAdminExistsQuery();
@@ -48,10 +54,14 @@ export function SignupForm() {
       setError("Database connection missing. Cannot sign up.");
       return;
     }
+    if (!assessment.acceptable) {
+      setError(assessment.suggestions[0] ?? `Use at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
     setIsSubmitting(true);
     setError("");
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -68,6 +78,10 @@ export function SignupForm() {
 
     // Refresh the cached admin-exists answer for the sign-in page.
     dispatch(adminApi.util.invalidateTags(["System"]));
+
+    // A project with email confirmation off signs you in at once; "check your
+    // email" would send you looking for a message that never comes.
+    if (data.session) router.replace("/admin/setup-mfa");
   };
 
   if ((isChecking || adminExists) && !success) {
@@ -121,13 +135,17 @@ export function SignupForm() {
           <PasswordInput
             id="signup-password"
             autoComplete="new-password"
-            minLength={6}
+            minLength={PASSWORD_MIN_LENGTH}
             value={password}
             onChange={setPassword}
             describedBy="signup-password-hint"
           />
-          <p id="signup-password-hint" className="text-xs text-muted-foreground">
-            At least 6 characters. A long passphrase is easiest to remember.
+          <p id="signup-password-hint" className="text-xs text-muted-foreground" aria-live="polite">
+            {password && !assessment.acceptable
+              ? assessment.suggestions[0]
+              : password
+                ? `${assessment.label}.${assessment.suggestions[0] ? ` ${assessment.suggestions[0]}.` : ""}`
+                : `At least ${PASSWORD_MIN_LENGTH} characters. A long passphrase is easiest to remember.`}
           </p>
         </div>
 

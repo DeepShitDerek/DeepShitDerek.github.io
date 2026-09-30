@@ -259,7 +259,7 @@ function TocList({
   activeId: string;
   onNavigate?: () => void;
   /** The scrolling ancestor, when the list lives in one. */
-  scrollRef?: RefObject<HTMLElement>;
+  scrollRef?: RefObject<HTMLElement | null>;
 }) {
   /**
    * Keep the active entry visible inside the rail.
@@ -366,12 +366,12 @@ export function TableOfContents({
       </nav>
 
       {/* Mobile trigger */}
-      <div className="fixed bottom-5 right-5 z-30 lg:hidden">
+      <div className="fixed bottom-5 right-5 z-chrome lg:hidden">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full bg-card px-4 py-2.5 text-sm font-medium shadow-e3 transition-transform duration-200 ease-enter active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+              className="flex items-center gap-2 rounded-full bg-card px-4 py-2.5 text-sm font-medium shadow-e3 transition-transform duration-base ease-enter active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
             >
               <List className="size-4" aria-hidden />
               On this page

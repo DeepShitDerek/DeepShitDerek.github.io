@@ -1,5 +1,6 @@
 "use client";
 
+import { useRememberedChoice } from "@/hooks/use-remembered-choice";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { addDays, addMonths, format } from "date-fns";
@@ -13,8 +14,6 @@ import {
   useGetCalendarDataQuery,
   useGetCalendarSettingsQuery,
   useSaveCalendarSettingsMutation,
-  useGetFinCommitmentsQuery,
-  useGetFinCommitmentSkipsQuery,
   useGetCalendarsQuery,
   useGetEventExceptionsQuery,
   useGetTasksQuery,
@@ -33,7 +32,7 @@ import { cn } from "@/lib/cn";
 import { buildEntries, filterEntries } from "./build-entries";
 import { withCalendarColors } from "./entry-color";
 import { isNoOp } from "./drag-move";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useChoice } from "@/components/providers/confirm-dialog-provider";
 import { CalendarList } from "./calendar-list";
 import { OverlayChips } from "./overlay-chips";
 import { GridStatus } from "./grid-status";
@@ -53,10 +52,12 @@ const FcCalendar = dynamic(
     loading: () => <LoadingState variant="section" label="Loading" />,
   },
 );
+import { expectedMoneyDays, majorUnits } from "@/features/money/calendar-feed";
 import {
-  expectedMoneyDays,
-  majorUnits,
-} from "@/features/finance/calendar-feed";
+  useGetAccountsQuery,
+  useGetSchedulesQuery,
+  useGetSkipsQuery,
+} from "@/features/money/data/money-api";
 import { TaskRail, DEFAULT_BLOCK_MINUTES } from "./task-rail";
 import { QuickAddBar } from "./quick-add-bar";
 import { EventSheet } from "./event-sheet";
@@ -87,21 +88,22 @@ export default function CalendarPage() {
     that has already happened, so without these a calendar could show
     yesterday's spending and say nothing about the rent due on Thursday.
 
-    Projected through `expectedMoneyDays`, finance's one documented contract
-    with this feature — what a commitment means, and when it is due, belongs to
-    that module rather than to this one.
+    Projected through `expectedMoneyDays`, the money module's one documented
+    contract with this feature — what a schedule means, and when it is due,
+    belongs to that module rather than to this one.
   */
-  const { data: commitments = [] } = useGetFinCommitmentsQuery();
-  const { data: commitmentSkips = [] } = useGetFinCommitmentSkipsQuery();
+  const { data: schedules = [] } = useGetSchedulesQuery();
+  const { data: skipKeys = [] } = useGetSkipsQuery();
+  const { data: moneyAccounts = [] } = useGetAccountsQuery();
   const { data: calendars = [] } = useGetCalendarsQuery();
   const { data: exceptions = [] } = useGetEventExceptionsQuery();
   const { data: tasks = [] } = useGetTasksQuery();
   const [addEvent] = useAddEventMutation();
   const [updateEvent] = useUpdateEventMutation();
   const [saveException] = useSaveEventExceptionMutation();
-  const confirm = useConfirm();
+  const choose = useChoice();
 
-  const [view, setView] = useState<View>("week");
+  const [view, setView] = useRememberedChoice<View>("calendar", "week", ["day", "week", "month", "agenda"]);
   const [anchor, setAnchor] = useState(() => new Date());
   const [selected, setSelected] = useState<CalendarEntry | null>(null);
   const [draftStart, setDraftStart] = useState<Date | null>(null);
@@ -181,11 +183,13 @@ export default function CalendarPage() {
     which it is showing.
   */
   const forecastRows = useMemo<CalendarRow[]>(() => {
-    if (commitments.length === 0) return [];
+    if (schedules.length === 0) return [];
+    const currency = new Map(moneyAccounts.map((a) => [a.id, a.currency]));
 
     return expectedMoneyDays({
-      commitments,
-      skips: commitmentSkips,
+      schedules,
+      currencyOf: (id) => currency.get(id),
+      skips: new Set(skipKeys),
       from: rangeStart,
       until: rangeEnd,
     }).map((day) => ({
@@ -215,7 +219,7 @@ export default function CalendarPage() {
         items: day.items,
       },
     }));
-  }, [commitments, commitmentSkips, rangeStart, rangeEnd]);
+  }, [schedules, skipKeys, moneyAccounts, rangeStart, rangeEnd]);
 
   const entries = useMemo(() => {
     const built = buildEntries({
@@ -316,13 +320,15 @@ export default function CalendarPage() {
     if (isNoOp(entry, next.start)) return;
 
     if (entry.rrule && entry.occurrenceStart) {
-      const wholeSeries = await confirm({
+      const choice = await choose({
         title: "Move the whole series?",
         description:
           "This event repeats. Moving the series shifts every occurrence; moving just this one leaves the rest where they are.",
         confirmText: "Whole series",
-        cancelText: "Just this one",
+        alternativeText: "Just this one",
       });
+      if (!choice) return;
+      const wholeSeries = choice === "confirm";
 
       try {
         if (wholeSeries) {
@@ -430,7 +436,7 @@ export default function CalendarPage() {
                 aria-checked={option.id === density}
                 onClick={() => setDensity(option.id)}
                 className={cn(
-                  "rounded-control px-2 py-1 text-xs font-medium transition-[box-shadow,color] duration-200 ease-enter",
+                  "rounded-control px-2 py-1 text-xs font-medium transition-[box-shadow,color] duration-base ease-enter",
                   option.id === density
                     ? "bg-card text-foreground shadow-e1"
                     : "text-muted-foreground hover:text-foreground",
@@ -444,7 +450,17 @@ export default function CalendarPage() {
       )}
 
       <CalendarList calendars={calendars} settings={settings} />
-      <TaskRail tasks={tasks} scheduledTaskIds={scheduledTaskIds} />
+      <TaskRail
+        tasks={tasks}
+        scheduledTaskIds={scheduledTaskIds}
+        onSchedule={(taskId) => {
+          // The next half hour from now; the block can be moved afterwards.
+          const start = new Date();
+          start.setSeconds(0, 0);
+          start.setMinutes(start.getMinutes() < 30 ? 30 : 60);
+          void scheduleTask(taskId, start);
+        }}
+      />
     </div>
   );
 
@@ -509,7 +525,7 @@ export default function CalendarPage() {
                   aria-selected={entry.id === view}
                   onClick={() => setView(entry.id)}
                   className={cn(
-                    "rounded-control px-2.5 py-1 text-xs font-medium transition-[box-shadow,color] duration-200 ease-enter",
+                    "rounded-control px-2.5 py-1 text-xs font-medium transition-[box-shadow,color] duration-base ease-enter",
                     entry.id === view
                       ? "bg-card text-foreground shadow-e1"
                       : "text-muted-foreground hover:text-foreground",

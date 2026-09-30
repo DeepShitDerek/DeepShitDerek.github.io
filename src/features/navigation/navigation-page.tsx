@@ -1,5 +1,6 @@
 "use client";
 
+import { PublishSiteButton } from "@/components/admin/publish-site-button";
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import {
   ArrowDown,
@@ -22,13 +23,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   FormSheet,
   ManagerWrapper,
   PageHeader,
   LoadingState,
+  LoadError,
 } from "@/components/admin/shared";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { NavLinkForm } from "./nav-link-form";
@@ -95,7 +97,7 @@ function NavRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-surface bg-card p-3 shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2 sm:flex-nowrap",
+        "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-surface bg-card p-3 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 sm:flex-nowrap",
         isDragging && "opacity-50",
         !link.is_visible && "opacity-70",
       )}
@@ -225,7 +227,7 @@ export default function NavigationPage() {
   const [localLinks, setLocalLinks] = useState<NavLink[]>([]);
   const [draggedLinkId, setDraggedLinkId] = useState<string | null>(null);
 
-  const { data: links = [], isLoading } = useGetNavLinksAdminQuery();
+  const { data: links = [], isLoading, error: loadError, refetch } = useGetNavLinksAdminQuery();
   const { data: sections = [] } = useGetPortfolioContentQuery();
   const [saveNavLink] = useSaveNavLinkMutation();
   const [deleteNavLink] = useDeleteNavLinkMutation();
@@ -387,13 +389,18 @@ export default function NavigationPage() {
       />
 
       {/* Stated once, at the top, rather than repeated on every row. */}
-      <p className="mb-4 rounded-surface bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-        The site is a static export, so menu and page changes go live with the
-        next deploy — not immediately.
-      </p>
+      <div className="mb-4 space-y-2 rounded-surface bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+        <p>
+          The site is a static export, so menu and page changes go live with
+          the next deploy — not immediately.
+        </p>
+        <PublishSiteButton />
+      </div>
 
       {isLoading ? (
         <LoadingState variant="section" label="Loading navigation" />
+      ) : loadError && links.length === 0 ? (
+        <LoadError what="the navigation" error={loadError} onRetry={refetch} />
       ) : localLinks.length === 0 ? (
         <EmptyState
           icon={Link2}

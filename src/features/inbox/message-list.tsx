@@ -3,6 +3,7 @@
 import { Archive, CornerUpLeft, Mail, MailOpen } from "lucide-react";
 import type { ContactSubmission } from "@/types";
 import { cn } from "@/lib/cn";
+import { contactTopicLabel } from "@/lib/contact-topics";
 import { inboxTimestamp, messageState, type InboxState } from "./inbox-filters";
 
 /**
@@ -87,6 +88,7 @@ function MessageRow({
   const meta = STATE_META[state];
   const Icon = meta.icon;
   const unread = state === "unread";
+  const topic = contactTopicLabel(message.topic);
 
   return (
     <button
@@ -152,6 +154,11 @@ function MessageRow({
               unread ? "text-foreground" : "text-muted-foreground",
             )}
           >
+            {topic && (
+              <span className="mr-1.5 rounded-full bg-secondary px-1.5 py-px text-[0.6875rem] font-medium text-secondary-foreground">
+                {topic}
+              </span>
+            )}
             {message.subject}
           </p>
 

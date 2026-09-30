@@ -6,13 +6,20 @@ import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "next-themes";
 import { Provider } from "react-redux";
 import { store } from "@/store/store";
-import { LearningSessionManager } from "@/components/LearningSessionManager";
 import { useGetSiteIdentityQuery } from "@/store/api/publicApi";
-import { VALID_THEMES, DEFAULT_THEME, THEME_STORAGE_KEY } from "@/lib/themes";
+import {
+  VALID_THEMES,
+  THEME_STORAGE_KEY,
+  resolveThemeClass,
+} from "@/lib/themes";
 import { useThemeSync } from "@/hooks/use-theme-sync";
+import { watchDarkClass } from "@/lib/themes";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
-import { ConfirmDialogProvider } from "@/components/providers/ConfirmDialogProvider";
-import GlobalCommandPalette from "@/components/GlobalCommandPalette";
+import { ConfirmDialogProvider } from "@/components/providers/confirm-dialog-provider";
+import {
+  useSeedPublicCache,
+  type PublicPreloadData,
+} from "@/store/public-preload";
 
 /**
  * The handwriting face for Updates. Self-hosted by next/font at build time, so
@@ -25,6 +32,12 @@ const caveatFont = Caveat({
   display: "swap",
 });
 
+/** Keeps `dark` on <html> matching the active theme, however it was set (V2-060). */
+function DarkClassSync() {
+  React.useEffect(() => watchDarkClass(), []);
+  return null;
+}
+
 /** Owner-selected theme/typography from site_identity, applied to <html>. */
 function ThemeSync({ children }: { children: React.ReactNode }) {
   const { data: siteIdentity } = useGetSiteIdentityQuery();
@@ -32,31 +45,61 @@ function ThemeSync({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+/**
+ * Writes the build-time site data into the cache before anything below reads
+ * it — the header, footer and theme all do — then revalidates once mounted.
+ */
+function SeedSiteData({
+  data,
+  children,
+}: {
+  data: PublicPreloadData | undefined;
+  children: React.ReactNode;
+}) {
+  useSeedPublicCache(data);
+  return <>{children}</>;
+}
+
+export function Providers({
+  children,
+  preload,
+}: {
+  children: React.ReactNode;
+  preload?: PublicPreloadData;
+}) {
+  // The owner's theme as of the build, so a first visit paints in it rather
+  // than in the default preset and then switching once site_identity loads.
+  const buildTheme = resolveThemeClass(
+    preload?.siteIdentity?.profile_data?.default_theme,
+  );
+
   return (
     <Provider store={store}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme={DEFAULT_THEME}
-        enableSystem={false}
-        storageKey={THEME_STORAGE_KEY}
-        themes={VALID_THEMES}
-      >
-        {/* Honors the OS "reduce motion" setting for every framer-motion animation. */}
-        <MotionConfig reducedMotion="user">
-          <ConfirmDialogProvider>
-            <ThemeSync>
-              {/* Font-variable carrier only — page landmarks live in the route layouts. */}
-              <div className={caveatFont.variable}>
-                <LearningSessionManager />
-                {children}
-                <GlobalCommandPalette />
-                <SonnerToaster />
-              </div>
-            </ThemeSync>
-          </ConfirmDialogProvider>
-        </MotionConfig>
-      </ThemeProvider>
+      <SeedSiteData data={preload}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme={buildTheme}
+          enableSystem={false}
+          storageKey={THEME_STORAGE_KEY}
+          themes={VALID_THEMES}
+        >
+          {/* Honors the OS "reduce motion" setting for every framer-motion animation. */}
+          <MotionConfig reducedMotion="user">
+            <ConfirmDialogProvider>
+              <DarkClassSync />
+              <ThemeSync>
+                {/* Font-variable carrier only — page landmarks live in the route layouts.
+                    Admin-only globals (command palette, learning-session timer)
+                    live in AdminShell, so visitors never load them (V2-024). */}
+                <div className={caveatFont.variable}>
+                  {children}
+                  <SonnerToaster />
+                </div>
+              </ThemeSync>
+            </ConfirmDialogProvider>
+          </MotionConfig>
+        </ThemeProvider>
+      </SeedSiteData>
     </Provider>
   );
 }

@@ -68,5 +68,8 @@ export const SITE_IDENTITY_DEFAULTS = {
     { id: "linkedin", label: "LinkedIn", url: "", is_visible: true },
     { id: "email", label: "Email", url: "", is_visible: true },
   ],
-  footer_data: { copyright_text: "" },
+  footer_data: {
+    copyright_text: "",
+    links: [{ label: "Updates", href: "/updates" }],
+  },
 } as const;

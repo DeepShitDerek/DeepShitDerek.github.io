@@ -36,3 +36,23 @@ export function firstMeaningfulLine(content: string): string {
 
   return "";
 }
+
+/**
+ * Markdown flattened to one paragraph of plain text, for card previews where
+ * rendered markdown would be noise and a CSS line clamp does the truncating.
+ * Link and image syntax keeps its visible text; code, emphasis, heading and
+ * list markers go.
+ */
+export function plainPreview(markdown: string | null | undefined): string {
+  if (!markdown) return "";
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/^\s*#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*([-*+]|\d+[.)])\s+/gm, "")
+    .replace(/[*_`~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

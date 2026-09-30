@@ -30,7 +30,10 @@ function measure(): number {
 }
 
 export function useColumnCount(): number {
-  const [columns, setColumns] = React.useState<number>(measure);
+  // Not useState(measure): the first client render has to match the
+  // prerendered single column, or hydration fails and React throws the
+  // server HTML away. The effect below measures right after mount.
+  const [columns, setColumns] = React.useState<number>(1);
 
   React.useEffect(() => {
     if (typeof window === "undefined") {

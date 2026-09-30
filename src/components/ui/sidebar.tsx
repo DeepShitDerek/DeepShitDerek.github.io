@@ -234,7 +234,7 @@ const Sidebar = React.forwardRef<
       >
         <div
           className={cn(
-            "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
+            "relative h-svh bg-transparent transition-[width] duration-base ease-linear",
             "w-[--sidebar-width]",
             "group-data-[collapsible=offcanvas]:w-0",
             variant === "floating" || variant === "inset"
@@ -244,7 +244,7 @@ const Sidebar = React.forwardRef<
         />
         <aside
           className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh flex-col transition-[left,right,width] duration-200 ease-linear md:flex",
+            "fixed inset-y-0 z-raised hidden h-svh flex-col transition-[left,right,width] duration-base ease-linear md:flex",
             "w-[--sidebar-width]",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
@@ -320,7 +320,7 @@ const SidebarRail = React.forwardRef<
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-2 -translate-x-1/2 cursor-col-resize transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-px after:bg-border hover:after:bg-accent group-data-[side=left]:-right-2 group-data-[side=right]:left-0 sm:flex",
+        "absolute inset-y-0 z-sticky hidden w-2 -translate-x-1/2 cursor-col-resize transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-px after:bg-border hover:after:bg-accent group-data-[side=left]:-right-2 group-data-[side=right]:left-0 sm:flex",
         "group-data-[collapsible=offcanvas]:hidden",
         className,
       )}
@@ -456,7 +456,7 @@ const SidebarGroupLabel = React.forwardRef<
       ref={ref}
       data-sidebar="group-label"
       className={cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground outline-none transition-[margin,opacity] ease-linear",
+        "duration-base flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground outline-none transition-[margin,opacity] ease-linear",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:invisible",
         className,
       )}
@@ -533,7 +533,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem";
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium outline-none ring-ring transition-colors duration-150 hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-accent/80 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[state=open]:bg-secondary group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium outline-none ring-ring transition-colors duration-fast hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-accent/80 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[state=open]:bg-secondary group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -589,7 +589,7 @@ const SidebarMenuButton = React.forwardRef<
       >
         {React.Children.map(children, (child) => {
           if (
-            React.isValidElement(child) &&
+            React.isValidElement<{ children?: unknown; className?: string }>(child) &&
             child.type === "span" &&
             typeof child.props.children === "string"
           ) {

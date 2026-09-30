@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { TaskProject } from "@/types";
 import {
@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { FormSheet } from "@/components/admin/shared";
 import { taskProjectSchema } from "@/lib/schemas";
 import { getErrorMessage } from "@/lib/utils";
@@ -44,6 +44,7 @@ interface ProjectRowProps {
   taskCount: number;
   onRename: (name: string) => void;
   onRecolour: (color: string) => void;
+  onArchive: () => void;
   onDelete: () => void;
 }
 
@@ -66,6 +67,7 @@ function ProjectRow({
   taskCount,
   onRename,
   onRecolour,
+  onArchive,
   onDelete,
 }: ProjectRowProps) {
   const [editing, setEditing] = useState(false);
@@ -141,6 +143,24 @@ function ProjectRow({
             <Check className="size-4" aria-hidden />
           ) : (
             <Pencil className="size-4" aria-hidden />
+          )}
+        </Button>
+
+        {/* Archive before delete: a finished project keeps its history
+            (ADM-017). The column existed; nothing could set it. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 shrink-0"
+          aria-label={
+            project.is_archived ? `Restore ${project.name}` : `Archive ${project.name}`
+          }
+          onClick={onArchive}
+        >
+          {project.is_archived ? (
+            <ArchiveRestore className="size-4" aria-hidden />
+          ) : (
+            <Archive className="size-4" aria-hidden />
           )}
         </Button>
 
@@ -247,6 +267,32 @@ export function TaskProjectsSheet({
     }
   };
 
+  const handleArchive = async (project: TaskProject) => {
+    const archiving = !project.is_archived;
+    try {
+      await updateProject({ id: project.id, is_archived: archiving }).unwrap();
+      toast.success(archiving ? "Project archived." : "Project restored.");
+    } catch (err) {
+      toast.error("Couldn't update the project", {
+        description: getErrorMessage(err),
+      });
+    }
+  };
+
+  const active = projects.filter((p) => !p.is_archived);
+  const archived = projects.filter((p) => p.is_archived);
+  const row = (project: TaskProject) => (
+    <ProjectRow
+      key={project.id}
+      project={project}
+      taskCount={taskCounts.get(project.id) ?? 0}
+      onRename={(name) => void handleRename(project, name)}
+      onRecolour={(color) => void updateProject({ id: project.id, color })}
+      onArchive={() => void handleArchive(project)}
+      onDelete={() => void handleDelete(project)}
+    />
+  );
+
   const handleDelete = async (project: TaskProject) => {
     const count = taskCounts.get(project.id) ?? 0;
     const ok = await confirm({
@@ -277,7 +323,10 @@ export function TaskProjectsSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="Projects"
-      description="Group tasks into projects. Deleting one keeps its tasks."
+      description="Group tasks into projects. Archiving or deleting one keeps its tasks."
+      // Renames and colours save as they happen; only an unsent new name is
+      // at risk when the sheet closes.
+      dirty={newName.trim() !== ""}
     >
       <div className="space-y-4 pt-2">
         <div className="space-y-2">
@@ -316,20 +365,17 @@ export function TaskProjectsSheet({
             project&rdquo;.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {projects.map((project) => (
-              <ProjectRow
-                key={project.id}
-                project={project}
-                taskCount={taskCounts.get(project.id) ?? 0}
-                onRename={(name) => void handleRename(project, name)}
-                onRecolour={(color) =>
-                  void updateProject({ id: project.id, color })
-                }
-                onDelete={() => void handleDelete(project)}
-              />
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-2">{active.map(row)}</ul>
+            {archived.length > 0 && (
+              <section aria-labelledby="archived-projects" className="space-y-2">
+                <h3 id="archived-projects" className="text-xs font-medium text-muted-foreground">
+                  Archived
+                </h3>
+                <ul className="space-y-2 opacity-80">{archived.map(row)}</ul>
+              </section>
+            )}
+          </>
         )}
       </div>
     </FormSheet>

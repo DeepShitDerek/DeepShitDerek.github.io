@@ -16,8 +16,8 @@ import {
   useGetIntegrationSettingsQuery,
   useSaveDiscoverPlaceMutation,
   useSaveDiscoverTopicMutation,
-  useGetFinSettingsQuery,
 } from "@/store/api/adminApi";
+import { useGetMoneySettingsQuery } from "@/features/money/data/money-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,8 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PageHeader } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { LoadError, PageHeader } from "@/components/admin/shared";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { discoverPlaceSchema, discoverTopicSchema } from "@/lib/schemas";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
@@ -82,9 +82,12 @@ const LANES = [
 type Lane = (typeof LANES)[number]["id"];
 
 export default function DiscoverPage() {
-  const { data: places = [] } = useGetDiscoverPlacesQuery();
-  const { data: topics = [] } = useGetDiscoverTopicsQuery();
-  const { data: finance } = useGetFinSettingsQuery();
+  const { data: places = [], error: placesError, refetch: refetchPlaces } = useGetDiscoverPlacesQuery();
+  const { data: topics = [], error: topicsError, refetch: refetchTopics } = useGetDiscoverTopicsQuery();
+  // Your places and topics shape every lane; without them the lanes fall back
+  // to defaults, which would pass for your choices unless this says otherwise.
+  const listsError = placesError ?? topicsError;
+  const { data: money } = useGetMoneySettingsQuery();
   const { data: integrations } = useGetIntegrationSettingsQuery();
 
   const [lane, setLane] = useState<Lane>("money");
@@ -96,8 +99,8 @@ export default function DiscoverPage() {
     Asking again here would be a second answer to a settled question, and the
     two would drift.
   */
-  const base = finance?.base_currency ?? "CAD";
-  const home = finance?.home_currency ?? null;
+  const base = money?.baseCurrency ?? "CAD";
+  const home = money?.saved ? money.homeCurrency : null;
 
   return (
     <div className="space-y-5 pb-10">
@@ -117,6 +120,19 @@ export default function DiscoverPage() {
         title="Discover"
         description="Markets, the job market, and what happened while you were not looking."
       />
+
+      {listsError ? (
+        <div className="mb-4">
+          <LoadError
+            what="your places and topics"
+            error={listsError}
+            onRetry={() => {
+              void refetchPlaces();
+              void refetchTopics();
+            }}
+          />
+        </div>
+      ) : null}
 
       {/*
         A segmented control that scrolls sideways rather than wrapping.
@@ -139,7 +155,7 @@ export default function DiscoverPage() {
             aria-selected={option.id === lane}
             onClick={() => setLane(option.id)}
             className={cn(
-              "shrink-0 whitespace-nowrap rounded-control px-3 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-200 ease-enter",
+              "shrink-0 whitespace-nowrap rounded-control px-3 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-base ease-enter",
               option.id === lane
                 ? "bg-card text-foreground shadow-e2"
                 : "text-muted-foreground hover:text-foreground",
@@ -264,7 +280,7 @@ function WorldLane({
             aria-checked={option.id === window}
             onClick={() => onWindow(option.id)}
             className={cn(
-              "rounded-control px-3 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-200 ease-enter",
+              "rounded-control px-3 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-base ease-enter",
               option.id === window
                 ? "bg-card text-foreground shadow-e2"
                 : "text-muted-foreground hover:text-foreground",

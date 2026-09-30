@@ -16,7 +16,12 @@ export interface TaskFilters {
   blockedOnly: boolean;
   /** Only tasks past their due date and not yet done. */
   overdueOnly: boolean;
-  /** Completed tasks are hidden by default — a done list grows without bound. */
+  /**
+   * Completed tasks are shown by default, so the board's Done column is a
+   * column and a card dragged into it does not vanish. The toolbar toggle
+   * hides them once the list has grown long (ADM-016: this comment used to
+   * claim the opposite of the default).
+   */
   showDone: boolean;
 }
 

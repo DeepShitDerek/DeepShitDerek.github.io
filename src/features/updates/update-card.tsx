@@ -5,7 +5,13 @@ import type { LifeUpdate } from "@/types";
 import { Markdown } from "@/components/ui/markdown";
 import { safeImageUrl } from "@/lib/safe-url";
 import { cn } from "@/lib/cn";
-import { categoryOption, fullDate, relativeDate } from "@/lib/life-update";
+import {
+  categoryOption,
+  fullDate,
+  relativeDate,
+  shortDate,
+} from "@/lib/life-update";
+import { useHydrated } from "@/hooks/use-hydrated";
 
 /**
  * One update as a visitor reads it.
@@ -35,6 +41,9 @@ export function UpdateCard({
   activeTag?: string | null;
 }) {
   const option = categoryOption(update.category);
+  // "3d ago" depends on the clock: a stable UTC date until hydrated.
+  const hydrated = useHydrated();
+  const timeZone = hydrated ? undefined : "UTC";
   // Owner-entered, rendered publicly: through the image allowlist.
   const image = safeImageUrl(update.image_url);
   const feature = variant === "feature";
@@ -67,8 +76,13 @@ export function UpdateCard({
             {option.label}
           </span>
           {showDate && update.created_at && (
-            <time dateTime={update.created_at} title={fullDate(update.created_at)}>
-              {relativeDate(update.created_at)}
+            <time
+              dateTime={update.created_at}
+              title={fullDate(update.created_at, timeZone)}
+            >
+              {hydrated
+                ? relativeDate(update.created_at)
+                : shortDate(update.created_at, timeZone)}
             </time>
           )}
           {update.is_pinned && (

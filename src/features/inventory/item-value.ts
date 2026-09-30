@@ -1,4 +1,5 @@
 import type { InventoryItem } from "@/types";
+import { formatMoney } from "@/lib/money";
 
 /**
  * Money helpers for inventory rows.
@@ -37,7 +38,12 @@ export function depreciationPercent(item: InventoryItem): number | null {
   return Math.round(((paid - now) / paid) * 100);
 }
 
-/** Formatted for display, without a currency symbol. */
-export function formatValue(value: number): string {
-  return value.toLocaleString();
+/** The item's currency, the base currency when none was recorded (ADM-024). */
+export function itemCurrency(item: Pick<InventoryItem, "currency">, base: string): string {
+  return item.currency || base;
+}
+
+/** Formatted in its currency (ADM-024); it used to be bare digits. */
+export function formatValue(value: number, currency: string): string {
+  return formatMoney({ amount: value, currency });
 }

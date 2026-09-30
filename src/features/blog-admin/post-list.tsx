@@ -156,7 +156,7 @@ export function PostRow({
   };
 
   return (
-    <li className="flex items-center gap-2 rounded-surface bg-card p-2 shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2 sm:gap-4 sm:p-3">
+    <li className="flex items-center gap-2 rounded-surface bg-card p-2 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 sm:gap-4 sm:p-3">
       <button
         type="button"
         onClick={() => onEdit(post)}

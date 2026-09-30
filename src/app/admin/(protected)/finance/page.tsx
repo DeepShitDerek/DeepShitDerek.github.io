@@ -1,20 +1,17 @@
 "use client";
 
-import FinancePage from "@/features/finance/ui/finance-page";
+import { Suspense } from "react";
+import MoneyPage from "@/features/money/ui/money-page";
 
 /**
- * The finance module, now the rebuilt one.
- *
- * This route rendered v1 throughout the rebuild while `/admin/finance-v2`
- * previewed the replacement — deliberately, because pointing the live route at a
- * module missing half its sections would have taken working screens away from
- * the owner to no purpose. The preview route is gone; there is one module again.
- *
- * **Requires migrations 025–032.** The screens read `fin_*` tables and the
- * dashboard and calendar now read `fin_day_money`. Until those have been run the
- * screens render their empty states, which is the honest outcome rather than a
- * bug to chase.
+ * The money module (finance v3, V2-080). Needs the `money_*` tables from
+ * db/schema.sql; without them the page says so rather than showing empty
+ * screens. The area lives in the query string, which needs Suspense.
  */
 export default function Page() {
-  return <FinancePage />;
+  return (
+    <Suspense>
+      <MoneyPage />
+    </Suspense>
+  );
 }

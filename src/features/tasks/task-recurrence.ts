@@ -95,6 +95,18 @@ export function nextOccurrence(task: Task): Partial<Task> | null {
   };
 }
 
+/**
+ * Whether the series already has the task `nextOccurrence` would create
+ * (ADM-015). Un-completing a repeating task and completing it again used to
+ * add a second "next" task each time.
+ */
+export function hasNextOccurrence(tasks: readonly Task[], completed: Task, next: Partial<Task>): boolean {
+  const series = next.recurrence_parent_id ?? completed.id;
+  return tasks.some(
+    (t) => t.id !== completed.id && (t.recurrence_parent_id ?? t.id) === series && t.due_date === next.due_date,
+  );
+}
+
 export function daysBetween(fromIso: string, toIsoDate: string): number {
   const [fy, fm, fd] = fromIso.split("-").map(Number);
   const [ty, tm, td] = toIsoDate.split("-").map(Number);

@@ -11,7 +11,7 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
 import { fetchJson } from "./sources";

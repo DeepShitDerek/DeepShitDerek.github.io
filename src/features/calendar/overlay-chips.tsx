@@ -71,7 +71,7 @@ export function OverlayChips({
             disabled={!settings}
             onClick={() => onChange({ [overlay.key]: !on })}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-control px-2 py-1 text-xs font-medium transition-[box-shadow,color,background-color] duration-200 ease-enter",
+              "inline-flex items-center gap-1.5 rounded-control px-2 py-1 text-xs font-medium transition-[box-shadow,color,background-color] duration-base ease-enter",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
               // Filled when on, so "off" reads as a deliberate empty state
               // rather than as a control nobody has noticed. Same treatment the

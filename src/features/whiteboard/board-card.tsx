@@ -84,7 +84,7 @@ export function BoardCard({
   };
 
   return (
-    <article className="group relative overflow-hidden rounded-surface bg-card shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2 focus-within:shadow-e2">
+    <article className="group relative overflow-hidden rounded-surface bg-card shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 focus-within:shadow-e2">
       <button
         type="button"
         onClick={onOpen}

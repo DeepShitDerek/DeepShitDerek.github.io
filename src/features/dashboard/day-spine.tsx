@@ -85,7 +85,7 @@ export function DaySpine({
                 height: `${event.height * 100}%`,
               }}
               className={cn(
-                "absolute inset-x-0 flex flex-col justify-center overflow-hidden rounded-control px-3 py-1 transition-shadow duration-200 ease-enter hover:shadow-e2",
+                "absolute inset-x-0 flex flex-col justify-center overflow-hidden rounded-control px-3 py-1 transition-shadow duration-base ease-enter hover:shadow-e2",
                 event.isNow
                   ? // The one thing on the page that is happening right now
                     // earns the accent. Everything else is quieter than it.
@@ -117,7 +117,7 @@ export function DaySpine({
           {now !== null && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
+              className="pointer-events-none absolute inset-x-0 z-raised flex items-center"
               style={{ top: `${now * 100}%` }}
             >
               <span className="size-1.5 rounded-full bg-chart-3" />

@@ -88,7 +88,7 @@ export function FreeTimeBar({
       >
         <div
           className={cn(
-            "h-full rounded-full transition-[width] duration-300 ease-enter",
+            "h-full rounded-full transition-[width] duration-slow ease-enter",
             // Past about three-quarters booked, the remaining gaps are mostly
             // too fragmented to do anything with.
             bookedShare > 0.75

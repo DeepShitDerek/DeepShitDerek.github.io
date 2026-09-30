@@ -40,7 +40,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { safeImageUrl } from "@/lib/safe-url";
 import { getErrorMessage, readTimeFromWordCount } from "@/lib/utils";
@@ -49,11 +49,13 @@ import {
   countWords,
   draftFromPost,
   postProblems,
+  PUBLISHED_UNTIL_DEPLOY,
   recordFromDraft,
   sameDraft,
   slugify,
   type PostDraft,
 } from "./post-draft";
+import { clearRecovery, keepRecovery, readRecovery, type Recovery, recoveryKey } from "./post-recovery";
 import { livePath } from "./post-list";
 import { PostSettingsPanel } from "./post-settings-panel";
 import { useBlogImageUpload } from "./use-blog-image-upload";
@@ -146,6 +148,11 @@ export default function BlogEditor({
 
   const published = !!current?.published;
   const dirty = !sameDraft(draft, savedDraft.current);
+
+  // Unsaved edits kept from the last time this post was open (ADM-001).
+  const [recovery, setRecovery] = useState<Recovery | null>(() => readRecovery(post));
+  /** Set when the owner chose to discard; closing then keeps nothing. */
+  const discarded = useRef(false);
   const words = countWords(draft.content);
 
   const change = (patch: Partial<PostDraft>) => {
@@ -193,14 +200,16 @@ export default function BlogEditor({
         setSavedAt(new Date());
         if (!quiet) {
           if (supabase) void supabase.rpc("update_asset_usage");
+          const firstPublish = publish && !previous?.published;
           toast.success(
-            publish && !previous?.published
+            firstPublish
               ? "Published."
               : !publish && previous?.published
                 ? "Moved back to drafts."
                 : publish
                   ? "Update published."
                   : "Saved.",
+            firstPublish ? { description: PUBLISHED_UNTIL_DEPLOY } : undefined,
           );
         }
         return true;
@@ -241,6 +250,32 @@ export default function BlogEditor({
     setSaveError(null);
   }, [draft]);
 
+  // Saved: nothing left to recover.
+  useEffect(() => {
+    if (savedAt) clearRecovery(recoveryKey(currentRef.current));
+  }, [savedAt]);
+
+  /**
+   * Leaving through the sidebar, launcher or palette unmounts the editor
+   * without asking (ADM-001). Keep what is unsaved in this browser, and save a
+   * titled draft on the way out, as notes do. A published post is never saved
+   * here: that would change the live post, so its edits wait to be restored.
+   */
+  useEffect(
+    () => () => {
+      const unsaved = latest.current;
+      if (discarded.current || sameDraft(unsaved, savedDraft.current)) return;
+      const key = recoveryKey(currentRef.current);
+      keepRecovery(key, unsaved);
+      if (!currentRef.current?.published && unsaved.title.trim() && !savingRef.current) {
+        void saveRef.current({ publish: false, quiet: true }).then((ok) => {
+          if (ok) clearRecovery(key);
+        });
+      }
+    },
+    [],
+  );
+
   // A closed tab or a reload runs no cleanup, so ask while anything is unsaved.
   useEffect(() => {
     if (!dirty) return;
@@ -262,6 +297,13 @@ export default function BlogEditor({
     return () => window.removeEventListener("keydown", onKey);
   }, [focusMode]);
 
+  // Chosen, not accidental: nothing is kept to be offered back.
+  const discardAndClose = () => {
+    discarded.current = true;
+    clearRecovery(recoveryKey(currentRef.current));
+    onClose();
+  };
+
   const leave = async () => {
     if (!dirty) return onClose();
     if (published) {
@@ -272,18 +314,18 @@ export default function BlogEditor({
         confirmText: "Discard changes",
         variant: "destructive",
       });
-      if (ok) onClose();
+      if (ok) discardAndClose();
       return;
     }
     if (!draft.title.trim()) {
-      if (!draft.content.trim() && !draft.excerpt.trim()) return onClose();
+      if (!draft.content.trim() && !draft.excerpt.trim()) return discardAndClose();
       const ok = await confirm({
         title: "Discard this draft?",
         description: "It has no title yet, so it can't be saved.",
         confirmText: "Discard",
         variant: "destructive",
       });
-      if (ok) onClose();
+      if (ok) discardAndClose();
       return;
     }
     if (await save({ publish: false, quiet: true })) return onClose();
@@ -293,7 +335,7 @@ export default function BlogEditor({
       confirmText: "Leave anyway",
       variant: "destructive",
     });
-    if (ok) onClose();
+    if (ok) discardAndClose();
   };
 
   const onCoverFile = async (file: File) => {
@@ -337,7 +379,7 @@ export default function BlogEditor({
       className={cn(
         // Focus mode covers the admin chrome, which this page does not own,
         // rather than reaching up into the shell to hide it.
-        focusMode && "fixed inset-0 z-40 overflow-y-auto bg-background px-4 sm:px-6",
+        focusMode && "fixed inset-0 z-rail overflow-y-auto bg-background px-4 sm:px-6",
       )}
       onKeyDown={(event) => {
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
@@ -349,7 +391,7 @@ export default function BlogEditor({
       {/* Pinned under the admin topbar (h-14), in the same fill. */}
       <div
         className={cn(
-          "sticky top-14 z-20 -mx-4 flex h-14 items-center gap-2 border-b bg-card px-4 sm:-mx-6 sm:px-6",
+          "sticky top-14 z-sticky -mx-4 flex h-14 items-center gap-2 border-b bg-card px-4 sm:-mx-6 sm:px-6",
           focusMode && "hidden",
         )}
       >
@@ -502,7 +544,7 @@ export default function BlogEditor({
           variant="secondary"
           size="sm"
           onClick={() => setFocusMode(false)}
-          className="fixed right-4 top-4 z-50 shadow-e2"
+          className="fixed right-4 top-4 z-overlay shadow-e2"
         >
           <Minimize2 className="mr-1.5 size-3.5" aria-hidden />
           Done
@@ -520,6 +562,35 @@ export default function BlogEditor({
       >
         <div className="min-w-0 flex-1 pb-32 pt-8 sm:pt-12">
           <div className="mx-auto max-w-[46rem]">
+            {recovery && (
+              <div role="status" className="mb-6 flex flex-wrap items-center gap-3 rounded-surface border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+                <span className="min-w-0 flex-1">
+                  Changes you hadn&apos;t saved were kept when you left this post on{" "}
+                  {new Date(recovery.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setDraft(recovery.draft);
+                    setRecovery(null);
+                  }}
+                >
+                  Restore
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    clearRecovery(recoveryKey(post));
+                    setRecovery(null);
+                  }}
+                >
+                  Discard
+                </Button>
+              </div>
+            )}
             {cover ? (
               <div className="group relative mb-8 overflow-hidden rounded-surface bg-secondary">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

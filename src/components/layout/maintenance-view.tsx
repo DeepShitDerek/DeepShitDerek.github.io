@@ -17,7 +17,7 @@ export default function MaintenanceView({ level }: { level: number }) {
   const Icon = isLockdown ? Lock : Wrench;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-background p-6 text-foreground">
+    <div className="fixed inset-0 z-top flex items-center justify-center overflow-hidden bg-background p-6 text-foreground">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_0%,hsl(var(--primary)/0.14),transparent_70%)]"

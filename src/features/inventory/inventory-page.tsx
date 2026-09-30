@@ -1,5 +1,6 @@
 "use client";
 
+import { useRememberedChoice } from "@/hooks/use-remembered-choice";
 import { useMemo, useState } from "react";
 import {
   Archive,
@@ -18,13 +19,14 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   FormSheet,
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
@@ -33,6 +35,8 @@ import { InventoryTable } from "./inventory-table";
 import { InventoryGrid } from "./inventory-grid";
 import { InventoryToolbar } from "./inventory-toolbar";
 import { formatValue } from "./item-value";
+import type { ArchiveReason } from "./item-actions";
+import { useGetMoneySettingsQuery } from "@/features/money/data/money-api";
 import {
   DEFAULT_INVENTORY_FILTERS,
   daysUntilExpiry,
@@ -76,9 +80,12 @@ export default function InventoryPage() {
     DEFAULT_INVENTORY_FILTERS,
   );
   const [sortBy, setSortBy] = useState<InventorySortBy>("recent");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = useRememberedChoice<"grid" | "table">("inventory", "grid", ["grid", "table"]);
 
-  const { data: items = [], isLoading } = useGetInventoryQuery();
+  const { data: items = [], isLoading, error: loadError, refetch } = useGetInventoryQuery();
+  // An item with no currency of its own is in the base currency (ADM-024).
+  const { data: moneySettings } = useGetMoneySettingsQuery();
+  const baseCurrency = moneySettings?.baseCurrency ?? "CAD";
   const [archiveItem] = useArchiveInventoryItemMutation();
   const [deleteItem] = useDeleteInventoryItemMutation();
 
@@ -91,7 +98,15 @@ export default function InventoryPage() {
     [items, filters, sortBy, today],
   );
 
-  const summary = useMemo(() => totals(live), [live]);
+  const summary = useMemo(() => totals(live, baseCurrency), [live, baseCurrency]);
+  // The base currency (or the largest) leads; the rest are listed under it.
+  const [lead, ...others] = summary.byCurrency;
+  const moneyStat = (pick: (t: (typeof summary.byCurrency)[number]) => number) => ({
+    value: lead ? formatValue(pick(lead), lead.currency) : "—",
+    hint: others.length
+      ? `+ ${others.map((t) => formatValue(pick(t), t.currency)).join(" · ")}`
+      : undefined,
+  });
   const categories = useMemo(() => distinctValues(live, "category"), [live]);
   const locations = useMemo(() => distinctValues(live, "location"), [live]);
 
@@ -111,10 +126,10 @@ export default function InventoryPage() {
     setIsSheetOpen(true);
   };
 
-  const handleArchive = async (item: InventoryItem) => {
+  const handleArchive = async (item: InventoryItem, reason?: ArchiveReason) => {
     const archived = !!item.archived_at;
     try {
-      await archiveItem({ id: item.id, archived: !archived }).unwrap();
+      await archiveItem({ id: item.id, archived: !archived, reason }).unwrap();
       toast.success(archived ? "Item restored." : "Item archived.");
     } catch (err) {
       toast.error("Couldn't update the item", {
@@ -144,6 +159,14 @@ export default function InventoryPage() {
       });
     }
   };
+
+  if (loadError && items.length === 0) {
+    return (
+      <ManagerWrapper>
+        <LoadError what="your inventory" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
 
   if (isLoading && items.length === 0) {
     return (
@@ -225,11 +248,11 @@ export default function InventoryPage() {
                 : undefined
             }
           />
-          <Stat label="Worth now" value={formatValue(summary.worth)} />
-          <Stat label="Paid" value={formatValue(summary.paid)} />
+          <Stat label="Worth now" {...moneyStat((t) => t.worth)} />
+          <Stat label="Paid" {...moneyStat((t) => t.paid)} />
           <Stat
             label="Lost to depreciation"
-            value={formatValue(summary.depreciation)}
+            {...moneyStat((t) => t.depreciation)}
           />
         </div>
       )}
@@ -302,6 +325,7 @@ export default function InventoryPage() {
               today={today}
               onEdit={openEdit}
               onArchive={handleArchive}
+              baseCurrency={baseCurrency}
               onDelete={handleDelete}
             />
           ) : (
@@ -310,6 +334,7 @@ export default function InventoryPage() {
               today={today}
               onEdit={openEdit}
               onArchive={handleArchive}
+              baseCurrency={baseCurrency}
               onDelete={handleDelete}
             />
           )}

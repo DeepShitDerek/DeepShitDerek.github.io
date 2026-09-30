@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Eye, EyeOff, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { supabase } from "@/supabase/client";
 import { config } from "@/lib/config";
 import { useSignOutMutation } from "@/store/api/adminApi";
@@ -14,6 +12,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { AuthError, AuthNote, AuthPanel, AuthPending } from "./auth-card";
+import { TotpSecret } from "./totp-secret";
 
 function Step({
   number,
@@ -55,7 +54,6 @@ export function MfaSetup() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(true);
-  const [showSecret, setShowSecret] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,15 +145,6 @@ export function MfaSetup() {
     router.replace("/admin/login");
   };
 
-  const copySecret = async () => {
-    try {
-      await navigator.clipboard.writeText(manualEntryKey);
-      toast.success("Secret copied to clipboard");
-    } catch {
-      setError("Failed to copy. Please copy the key manually.");
-    }
-  };
-
   if (isBusy && !qrCodeUrl && !error) {
     return <AuthPending text="Preparing your two-factor code…" />;
   }
@@ -184,50 +173,7 @@ export function MfaSetup() {
             With an authenticator app — Google Authenticator, Authy, 1Password
             or similar.
           </p>
-          {qrCodeUrl ? (
-            // White behind the code on every theme: scanners need contrast.
-            <div className="mt-4 inline-flex rounded-surface bg-white p-3 shadow-e1">
-              {/* Supabase returns the QR as an SVG data URL. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrCodeUrl} alt="QR code for MFA enrollment" className="size-40" />
-            </div>
-          ) : (
-            <div className="mt-4 flex size-44 items-center justify-center rounded-surface bg-secondary">
-              <Loader2 className="animate-spin text-muted-foreground" aria-label="Loading QR code" />
-            </div>
-          )}
-          <div className="mt-4">
-            <p className="text-sm text-muted-foreground">
-              Can&apos;t scan? Enter this key instead.
-            </p>
-            <div className="mt-2 flex items-center gap-1 rounded-control bg-secondary py-1.5 pl-3 pr-1">
-              <code className="min-w-0 flex-1 break-all text-sm tracking-widest text-foreground">
-                {showSecret
-                  ? manualEntryKey.match(/.{1,4}/g)?.join(" ")
-                  : "•••• •••• •••• ••••"}
-              </code>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => setShowSecret((v) => !v)}
-                aria-label={showSecret ? "Hide secret key" : "Show secret key"}
-              >
-                {showSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={copySecret}
-                aria-label="Copy secret key"
-              >
-                <Copy className="size-4" />
-              </Button>
-            </div>
-          </div>
+          <TotpSecret qrCodeUrl={qrCodeUrl} secret={manualEntryKey} />
         </Step>
 
         <Step number={2} title="Enter the code it shows">

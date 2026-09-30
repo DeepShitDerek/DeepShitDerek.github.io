@@ -57,6 +57,19 @@ export function isSatisfiedOn(
   return value >= targetValue(habit);
 }
 
+/**
+ * The value a tap in the history grid sets for a day (ADM-019).
+ *
+ * A done day clears; anything short of done — including a partial day, 3 of
+ * 8 glasses — becomes done. It used to clear whenever any log existed, so
+ * tapping a partial day played the "completed" confetti and then deleted the
+ * partial count. A quit habit's log is a slip: a tap records one, or clears it.
+ */
+export function toggledValue(habit: Habit, logs: Map<string, HabitLog>, iso: string): number {
+  if ((habit.kind ?? "build") === "quit") return valueOn(logs, iso) > 0 ? 0 : 1;
+  return isSatisfiedOn(habit, logs, iso) ? 0 : targetValue(habit);
+}
+
 export interface DayProgress {
   value: number;
   target: number;

@@ -5,7 +5,7 @@ import SiteHeader from "@/components/layout/site-header";
 import PublicFooter from "@/components/layout/public-footer";
 import MaintenanceView from "@/components/layout/maintenance-view";
 import { useGetLockdownStatusQuery } from "@/store/api/publicApi";
-import { useSupabaseSession } from "@/hooks/use-auth-guard";
+import { usePublicSession } from "@/hooks/use-public-session";
 import { useVisitTracker } from "@/features/analytics/use-visit-tracker";
 
 /** Injects `<meta name="robots" content="noindex">` while mounted. */
@@ -33,7 +33,7 @@ export default function PublicChrome({
   children: React.ReactNode;
 }) {
   const { data: lockdownLevel = 0 } = useGetLockdownStatusQuery();
-  const { session, isLoading: isSessionLoading } = useSupabaseSession();
+  const { session, isLoading: isSessionLoading } = usePublicSession();
 
   // Every public page, not only the home page — the previous notifier fired
   // once per session from the hero, so a visitor who landed on a blog post and
@@ -57,7 +57,7 @@ export default function PublicChrome({
     <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-control focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-e3"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-skip focus:rounded-control focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-e3"
       >
         Skip to content
       </a>

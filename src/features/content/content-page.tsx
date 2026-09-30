@@ -36,7 +36,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   LoadingState,
@@ -501,7 +501,7 @@ export default function ContentPage() {
   if (isLoading) {
     return (
       <ManagerWrapper>
-        <PageHeader title="Content" />
+        <PageHeader title="Pages" />
         <LoadingState label="Loading content" />
       </ManagerWrapper>
     );
@@ -510,7 +510,7 @@ export default function ContentPage() {
   if (error) {
     return (
       <ManagerWrapper>
-        <PageHeader title="Content" />
+        <PageHeader title="Pages" />
         <EmptyState
           variant="card"
           icon={LayoutTemplate}
@@ -525,7 +525,7 @@ export default function ContentPage() {
     return (
       <ManagerWrapper>
         <PageHeader
-          title="Content"
+          title="Pages"
           actions={
             <Button onClick={() => setSheetState({ type: "new-section" })}>
               <Plus className="mr-2 size-4" aria-hidden /> New section

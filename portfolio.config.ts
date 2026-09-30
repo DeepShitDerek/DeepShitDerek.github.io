@@ -15,14 +15,21 @@ const portfolioConfig = {
 
   // The one line a visitor should leave with: the home page's main heading,
   // with your name as the byline under it. Leave empty to lead with your name.
-  headline: "Most AI projects never leave a notebook. I build the ones that do.",
+  headline:
+    "Most AI projects never leave a notebook. I build the ones that do.",
 
   // Results you can stand behind, shown as a strip under the hero (up to 4).
   // A figure a client can check beats any adjective.
   proof: [
-    { value: "30%", label: "less time on routine tasks with the “Hey Ami!” assistant" },
+    {
+      value: "30%",
+      label: "less time on routine tasks with the “Hey Ami!” assistant",
+    },
     { value: "20%", label: "Q1 revenue growth from a flagship feature I led" },
-    { value: "3 yrs", label: "shipping full-stack products before moving into AI" },
+    {
+      value: "3 yrs",
+      label: "shipping full-stack products before moving into AI",
+    },
     { value: "2", label: "postgraduate certificates — AI and cybersecurity" },
   ],
   profilePicture: "https://github.com/akshay-bharadva.png",
@@ -68,7 +75,11 @@ const portfolioConfig = {
   // SOCIAL LINKS
   // ---------------------------------------------------------------------------
   socialLinks: [
-    { id: "github", label: "GitHub", url: "https://github.com/akshay-bharadva" },
+    {
+      id: "github",
+      label: "GitHub",
+      url: "https://github.com/akshay-bharadva",
+    },
     {
       id: "linkedin",
       label: "LinkedIn",
@@ -107,16 +118,18 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   // NAVIGATION
   // ---------------------------------------------------------------------------
+  // Work-led: four destinations, and the /contact link renders as the
+  // header's call to action. The logo is the way home.
   navLinks: [
-    { label: "Home", href: "/" },
-    { label: "Showcase", href: "/showcase" },
+    { label: "Work", href: "/work" },
     { label: "About", href: "/about" },
-    { label: "Projects", href: "/projects" },
-    { label: "Blog", href: "/blog" },
-    { label: "Updates", href: "/updates" },
-    { label: "Foliokit", href: "/kit" },
-    { label: "Contact", href: "/contact" },
+    { label: "Writing", href: "/blog" },
+    { label: "Work with me", href: "/contact" },
   ],
+
+  // Pages that live in the footer only. (The Foliokit credit is separate —
+  // see `product.show`.)
+  footerLinks: [{ label: "Updates", href: "/updates" }],
 
   // ---------------------------------------------------------------------------
   // EXPERIENCE
@@ -155,12 +168,30 @@ const portfolioConfig = {
   // TECH STACK
   // ---------------------------------------------------------------------------
   techStack: [
-    { title: "RAG / LangChain", description: "Ingestion → embedding → retrieval tuning → LLM response" },
-    { title: "Python", description: "Production AI services, tooling, and data pipelines" },
-    { title: "TypeScript / React / Next.js", description: "Full-stack product frontends" },
-    { title: "PGVector / PostgreSQL", description: "Vector search, schema design, high-volume data" },
-    { title: "PyTorch / Hugging Face", description: "Model fine-tuning and NLP workflows" },
-    { title: "Docker & Spring Boot", description: "Microservices, containerization, backend depth" },
+    {
+      title: "RAG / LangChain",
+      description: "Ingestion → embedding → retrieval tuning → LLM response",
+    },
+    {
+      title: "Python",
+      description: "Production AI services, tooling, and data pipelines",
+    },
+    {
+      title: "TypeScript / React / Next.js",
+      description: "Full-stack product frontends",
+    },
+    {
+      title: "PGVector / PostgreSQL",
+      description: "Vector search, schema design, high-volume data",
+    },
+    {
+      title: "PyTorch / Hugging Face",
+      description: "Model fine-tuning and NLP workflows",
+    },
+    {
+      title: "Docker & Spring Boot",
+      description: "Microservices, containerization, backend depth",
+    },
   ],
 
   // ---------------------------------------------------------------------------
@@ -168,9 +199,16 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   tools: [
     { title: "Splunk", description: "Log analysis and security monitoring." },
-    { title: "Wireshark", description: "Network protocol analysis — attack surfaces, not just benchmarks." },
+    {
+      title: "Wireshark",
+      description:
+        "Network protocol analysis — attack surfaces, not just benchmarks.",
+    },
     { title: "Nessus", description: "Vulnerability scanning and assessment." },
-    { title: "PFsense / Snort", description: "Firewalling and intrusion detection." },
+    {
+      title: "PFsense / Snort",
+      description: "Firewalling and intrusion detection.",
+    },
   ],
 
   // ---------------------------------------------------------------------------
@@ -315,6 +353,7 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   // BLOG POSTS
   // ---------------------------------------------------------------------------
+  // Add `draft: true` to a post to keep it off the site until it is ready.
   blogPosts: [
     {
       title: 'RAG Lessons from Shipping "Hey Ami!" to Production',

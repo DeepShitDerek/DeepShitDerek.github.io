@@ -93,7 +93,7 @@ export function BubbleToolbar({
         if (e.isActive("codeBlock")) return false;
         return e.view.hasFocus();
       }}
-      className="z-50"
+      className="z-overlay"
     >
       <div className="rounded-control bg-popover p-1 text-popover-foreground shadow-e3">
         {panel === "link" ? (

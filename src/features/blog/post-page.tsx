@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -14,12 +14,15 @@ import {
 } from "@/store/api/publicApi";
 import { isSupabaseConfigured } from "@/lib/config";
 import { safeImageUrl } from "@/lib/safe-url";
+import { sizedImageUrl } from "@/lib/image-size";
 import { Band } from "@/components/layout/band";
 import { Reveal } from "@/components/layout/motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
-import { readTime } from "./blog-list-page";
+import { useDisplayTimeZone } from "@/hooks/use-hydrated";
+import { readTime } from "./post-meta";
+import { contentHash } from "./content-hash";
 import { loadPostContent } from "./post-content-loader";
 import { ReadingProgress } from "./reading-progress";
 import { TableOfContents, useHeadings } from "./table-of-contents";
@@ -30,10 +33,13 @@ const ARTICLE_ID = "post-article";
 // The markdown pipeline (raw → sanitize → prism/refractor → slug) is by far the
 // heaviest thing on this route, and nothing above the article body needs it.
 // Splitting it lets the title and cover paint on the light chunk.
+//
+// Rendered at build, not only in the browser (V2-025): a prerendered post's
+// body is in its HTML — the part of a blog search engines and link previews
+// actually read. The chunk is still split; first-load JS is unchanged.
 const PostContent = dynamic(
   () => loadPostContent().then((mod) => mod.PostContent),
   {
-    ssr: false,
     loading: () => (
       <div className="space-y-4" aria-busy>
         <Skeleton className="h-4 w-full" />
@@ -46,7 +52,7 @@ const PostContent = dynamic(
 );
 
 const ICON_BUTTON =
-  "flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+  "flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-colors duration-base hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 /** "status: 404 — post not found" was the v2 terminal voice. */
 function PostNotFound() {
@@ -71,10 +77,27 @@ function PostNotFound() {
   );
 }
 
-export function PostPage() {
+/**
+ * /blog/view/?slug= — posts published since the last build (see postHref).
+ * Reading the query string opts this route out of prerendering, which is why
+ * built posts get their own /blog/<slug>/ page instead.
+ */
+export function PostPageFromQuery() {
   const searchParams = useSearchParams();
-  const slug = searchParams?.get("slug") ?? "";
+  return <PostPage slug={searchParams?.get("slug") ?? ""} />;
+}
 
+/**
+ * The body as rendered at build time, and a fingerprint of the markdown it
+ * was rendered from (V2-043). While the fetched post's body matches, the page
+ * shows that HTML and never downloads the markdown pipeline.
+ */
+export interface PrerenderedBody {
+  contentHash: string;
+  body: ReactNode;
+}
+
+export function PostPage({ slug, prerendered }: { slug: string; prerendered?: PrerenderedBody }) {
   const {
     data: post,
     isLoading,
@@ -83,15 +106,21 @@ export function PostPage() {
   const { data: identity } = useGetSiteIdentityQuery();
   const [incrementView] = useIncrementPostViewMutation();
   const [copied, setCopied] = useState(false);
+  // Prerendered: UTC until hydrated, so the build and the browser agree.
+  const timeZone = useDisplayTimeZone();
 
   // Owned by the page, not the rail: the layout has to know whether a table of
   // contents will render before it decides how wide the article is.
   const { headings, activeId } = useHeadings(ARTICLE_ID);
 
-  // Warm the markdown chunk alongside the post query rather than after it.
+  // Warm the markdown chunk alongside the post query, when it will be needed:
+  // no build-time body (/blog/view), or the post has changed since the build.
+  const builtIsCurrent =
+    !!prerendered && !!post && contentHash(post.content ?? "") === prerendered.contentHash;
+  const needsPipeline = !prerendered || (!!post && !builtIsCurrent);
   useEffect(() => {
-    void loadPostContent();
-  }, []);
+    if (needsPipeline) void loadPostContent();
+  }, [needsPipeline]);
 
   // Static-export limitation: the document title is set client-side.
   useEffect(() => {
@@ -101,6 +130,8 @@ export function PostPage() {
   useEffect(() => {
     if (!post || process.env.NODE_ENV !== "production" || !isSupabaseConfigured)
       return;
+    // Not a reader: an automated browser (the build's own checks).
+    if (navigator.webdriver) return;
     const timer = setTimeout(() => incrementView(post.id), VIEW_COUNT_DELAY_MS);
     return () => clearTimeout(timer);
   }, [post, incrementView]);
@@ -134,6 +165,7 @@ export function PostPage() {
         month: "long",
         day: "numeric",
         year: "numeric",
+        timeZone,
       })
     : "";
   const hasToc = post.show_toc !== false && headings.length > 0;
@@ -184,7 +216,7 @@ export function PostPage() {
                   className="group inline-flex items-center gap-1.5 rounded-full text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <ArrowLeft
-                    className="size-4 transition-transform duration-200 ease-enter group-hover:-translate-x-0.5 motion-reduce:transition-none"
+                    className="size-4 transition-transform duration-base ease-enter group-hover:-translate-x-0.5 motion-reduce:transition-none"
                     aria-hidden
                   />
                   All posts
@@ -211,8 +243,11 @@ export function PostPage() {
                   {avatar && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={avatar}
+                      src={sizedImageUrl(avatar, 40)}
                       alt=""
+                      width={40}
+                      height={40}
+                      decoding="async"
                       className="size-10 rounded-full object-cover shadow-e1"
                     />
                   )}
@@ -239,6 +274,8 @@ export function PostPage() {
                   <img
                     src={cover}
                     alt=""
+                    // Usually the largest thing above the fold (the LCP).
+                    fetchPriority="high"
                     className="mt-10 w-full rounded-surface object-cover shadow-e2"
                   />
                 </Reveal>
@@ -246,7 +283,11 @@ export function PostPage() {
             </header>
 
             <div className="mt-12">
-              <PostContent content={post.content ?? ""} />
+              {builtIsCurrent ? (
+                prerendered?.body
+              ) : (
+                <PostContent content={post.content ?? ""} />
+              )}
             </div>
 
             <footer className="mt-16">
@@ -257,7 +298,7 @@ export function PostPage() {
                       <li key={tag}>
                         <Link
                           href={`/blog?tag=${encodeURIComponent(tag)}`}
-                          className="inline-flex rounded-full bg-secondary px-3.5 py-1.5 text-sm font-medium text-secondary-foreground transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="inline-flex rounded-full bg-secondary px-3.5 py-1.5 text-sm font-medium text-secondary-foreground transition-colors duration-base hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           {tag}
                         </Link>
@@ -268,7 +309,9 @@ export function PostPage() {
                   <span />
                 )}
                 <div className="flex items-center gap-2">
-                  <span className="mr-1 text-sm text-muted-foreground">Share</span>
+                  <span className="mr-1 text-sm text-muted-foreground">
+                    Share
+                  </span>
                   <button
                     type="button"
                     onClick={() => share("x")}
@@ -302,7 +345,6 @@ export function PostPage() {
                   </button>
                 </div>
               </div>
-
             </footer>
           </article>
 

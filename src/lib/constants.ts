@@ -58,7 +58,6 @@ export const BREAKPOINTS = {
   xl: 1280,
 } as const;
 export const HABIT_WINDOW_DAYS = 14;
-export const HABIT_LOGS_LOOKBACK_DAYS = 30;
 export const LEARNING_SESSIONS_LIMIT = 100;
 export const STREAK_ALIVE_THRESHOLD_DAYS = 1;
 export const DAY_OF_WEEK_MIN = 0;
@@ -412,7 +411,8 @@ export const TYPOGRAPHY_PRESETS = [
     weight: 500,
     serif: true,
     mood: "Editorial",
-    description: "A screen-drawn optical-size serif over a clear geometric sans",
+    description:
+      "A screen-drawn optical-size serif over a clear geometric sans",
     pairing:
       "Newsreader sharpens its detail as it grows, so headlines feel set rather than scaled; Figtree keeps body text friendly and legible.",
     families: ["Newsreader", "Figtree", "JetBrains Mono"],
@@ -577,6 +577,7 @@ export const RESERVED_SEGMENTS = [
   "about",
   "contact",
   "showcase",
+  "work",
   "experience",
   "updates",
   "kit",
@@ -600,6 +601,7 @@ export const BUILTIN_ROUTES = [
   "/contact",
   "/projects",
   "/showcase",
+  "/work",
   "/updates",
   "/kit",
 ] as const;

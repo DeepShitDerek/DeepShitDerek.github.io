@@ -213,7 +213,7 @@ export function ClientLogosLayout({ items }: LayoutProps) {
               <ItemImage
                 src={item.image_url}
                 alt={item.title}
-                className="max-h-full max-w-full object-contain opacity-70 grayscale transition duration-300 ease-enter group-hover/logo:opacity-100 group-hover/logo:grayscale-0 motion-reduce:transition-none"
+                className="max-h-full max-w-full object-contain opacity-70 grayscale transition duration-slow ease-enter group-hover/logo:opacity-100 group-hover/logo:grayscale-0 motion-reduce:transition-none"
               />
             ) : (
               <span className="line-clamp-2 text-center font-heading text-base font-semibold text-muted-foreground transition-colors group-hover/logo:text-foreground">
@@ -307,7 +307,7 @@ export function UsesLayout({ items }: LayoutProps) {
                   className={cn(
                     "flex items-start gap-3 rounded-none px-5 py-3.5",
                     isLinkable(item.link_url) &&
-                      "transition-colors duration-200 ease-enter hover:bg-muted/50",
+                      "transition-colors duration-base ease-enter hover:bg-muted/50",
                   )}
                 >
                   <div className="min-w-0 flex-1">

@@ -21,7 +21,7 @@ export const siteContent = {
       description: `Let's build something great together. Get in touch with ${portfolioConfig.name}.`,
       heading: "Get In Touch",
       subheading:
-        "Have a project in mind or just want to say hello? I'd love to hear from you.",
+        "A role, a project, or something else entirely — tell me what you're working on.",
       servicesTitle: "What I Can Do For You",
     },
     projects: {
@@ -37,8 +37,15 @@ export const siteContent = {
       subheading:
         "A deep dive into my professional journey, featured projects, and technical expertise.",
     },
+    work: {
+      title: "Work",
+      description: `Case studies, projects and open source by ${portfolioConfig.name}.`,
+      heading: "Work",
+      subheading:
+        "Systems that shipped, what they changed, and the code behind them.",
+    },
     blog: {
-      title: "The Blog",
+      title: "Writing",
       description:
         "A collection of articles on web development, design, and technology.",
     },
@@ -48,8 +55,8 @@ export const siteContent = {
       latestProject: {
         title: "Latest Project",
         name: "Portfolio Redesign",
-        linkText: "See all projects",
-        href: "/projects",
+        linkText: "See all work",
+        href: "/work",
       },
     },
   },

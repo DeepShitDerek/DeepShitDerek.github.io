@@ -29,7 +29,7 @@ import { isActiveNavHref, NAV_GROUPS, type NavItem } from "./nav-config";
  *
  * **One navigation surface, not two.** The architecture forbids a second
  * navigation overlay, so the search is *inside* this panel rather than being a
- * separate palette to learn. The existing `GlobalCommandPalette` stays as the
+ * separate palette to learn. The existing `CommandPalette` stays as the
  * keyboard route to the same list — same `NAV_GROUPS`, so the two cannot drift
  * — but nothing else opens it, and it is no longer the only way to see what
  * exists.

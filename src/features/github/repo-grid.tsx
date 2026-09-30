@@ -39,7 +39,7 @@ function RepoCard({ repo }: { repo: GitHubRepo }) {
         {href && (
           <ArrowUpRight
             aria-hidden
-            className="mt-2 size-4 shrink-0 text-muted-foreground transition-[transform,color] duration-200 ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none"
+            className="mt-2 size-4 shrink-0 text-muted-foreground transition-[transform,color] duration-base ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none"
           />
         )}
       </div>
@@ -73,7 +73,7 @@ function RepoCard({ repo }: { repo: GitHubRepo }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`${card} transition-[box-shadow,transform] duration-200 ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0`}
+      className={`${card} transition-[box-shadow,transform] duration-base ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0`}
     >
       {body}
     </a>
@@ -170,7 +170,7 @@ export function RepoGrid() {
           View all on GitHub
           <ArrowUpRight
             aria-hidden
-            className="size-4 transition-transform duration-200 ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
+            className="size-4 transition-transform duration-base ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
           />
         </a>
       </div>

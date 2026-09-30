@@ -41,7 +41,7 @@ export function AssetDetailsSheet({
   return (
     <Sheet open={!!asset} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/50 p-4 backdrop-blur">
+        <div className="sticky top-0 z-raised flex items-center justify-between border-b bg-background/50 p-4 backdrop-blur">
           <SheetHeader className="text-left">
             <SheetTitle>Asset Details</SheetTitle>
             <SheetDescription className="hidden sm:block">

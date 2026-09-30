@@ -20,7 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { calendarSchema, CALENDAR_LIMITS } from "@/lib/schemas";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";

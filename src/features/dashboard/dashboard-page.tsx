@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlarmClock,
@@ -12,13 +12,18 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import type { DashboardData } from "@/types";
+import type { DashboardData, Task } from "@/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useSetTaskStatus } from "@/features/tasks/use-task-status";
 import {
   useGetCalendarSettingsQuery,
   useGetDashboardDataQuery,
-  useGetFinSettingsQuery,
 } from "@/store/api/adminApi";
-import { LoadingState } from "@/components/admin/shared";
+import { useGetMoneySettingsQuery } from "@/features/money/data/money-api";
+import {
+  LoadingState,
+  LoadError,
+} from "@/components/admin/shared";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import {
@@ -55,19 +60,26 @@ import { SetupChecklist } from "./setup-checklist-card";
  * have — sits in the header, because it is the thing you came to find out.
  */
 export default function DashboardPage() {
-  const { data, isLoading } = useGetDashboardDataQuery();
-  const { data: financeSettings } = useGetFinSettingsQuery();
+  const { data, isLoading, error: loadError, refetch } = useGetDashboardDataQuery();
+  const { data: moneySettings } = useGetMoneySettingsQuery();
   const { data: calendarSettings } = useGetCalendarSettingsQuery();
 
-  const currency = financeSettings?.base_currency ?? "CAD";
+  const currency = moneySettings?.baseCurrency ?? "CAD";
   // The day's bounds belong to Calendar. Hard-coding 9–5 here would put the
   // spine out of step with the grid the events were scheduled on.
   const startHour = calendarSettings?.day_start_hour ?? 7;
   const endHour = calendarSettings?.day_end_hour ?? 22;
 
+  // The "now" line and "in 10 min" labels move while the page stays open
+  // (ADM-014); they were fixed at whenever the data last arrived.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const view = useMemo(() => {
     if (!data) return null;
-    const now = new Date();
     const hours = spineHours(now, startHour, endHour);
 
     return {
@@ -80,7 +92,9 @@ export default function DashboardPage() {
       money: cashflow(data, 7, now),
       heat: habitHeat(data.habits, 12, now),
     };
-  }, [data, startHour, endHour]);
+  }, [data, startHour, endHour, now]);
+
+  if (loadError && !data) return <LoadError what="your day" error={loadError} onRetry={refetch} />;
 
   if (isLoading && !data) {
     return <LoadingState variant="page" label="Loading your day" />;
@@ -116,7 +130,10 @@ export default function DashboardPage() {
         />
 
         <aside className="space-y-4" aria-label="Today at a glance">
-          <PulseCard pulse={view.pulse} />
+          <PulseCard pulse={view.pulse} focusMinutes={data.focusMinutesToday} />
+          {data.tasksDueToday.length > 0 && (
+            <TodayTasksCard tasks={data.tasksDueToday} />
+          )}
           <MoneyCard money={view.money} currency={currency} />
           <MomentumCard heat={view.heat} />
           <InboxCard count={data.unreadMessages} reviews={data.reviewsDue} />
@@ -148,7 +165,7 @@ function Header({ next }: { next: ReturnType<typeof nextUp> }) {
       {next && (
         <Link
           href="/admin/calendar"
-          className="flex items-center gap-2.5 rounded-control bg-card px-3 py-2 shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2"
+          className="flex items-center gap-2.5 rounded-control bg-card px-3 py-2 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2"
         >
           {next.happening ? (
             // A live indicator only when something is genuinely live; a
@@ -208,7 +225,13 @@ function BehindBand({ tasks }: { tasks: DashboardData["overdueTasks"] }) {
 
 /* ── Rail ────────────────────────────────────────────────────────────────── */
 
-function PulseCard({ pulse }: { pulse: ReturnType<typeof dayPulse> }) {
+function PulseCard({
+  pulse,
+  focusMinutes,
+}: {
+  pulse: ReturnType<typeof dayPulse>;
+  focusMinutes: number;
+}) {
   return (
     <section className="flex items-center gap-4 rounded-surface bg-card p-4 shadow-e1">
       <Ring
@@ -243,7 +266,84 @@ function PulseCard({ pulse }: { pulse: ReturnType<typeof dayPulse> }) {
             ))}
           </ul>
         )}
+        {focusMinutes > 0 && (
+          // Not a segment: focus has no target to be a fraction of.
+          <p className="mt-0.5 flex items-baseline gap-2 text-xs">
+            <span className="text-muted-foreground">Focused</span>
+            <span className="tabular-nums text-foreground">
+              {focusMinutes >= 60
+                ? `${Math.floor(focusMinutes / 60)}h ${focusMinutes % 60}m`
+                : `${focusMinutes}m`}
+            </span>
+          </p>
+        )}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Today's tasks, ticked off in place (ADM-013). The pulse used to count them
+ * without naming them, and could never move past 0.
+ */
+function TodayTasksCard({ tasks }: { tasks: Task[] }) {
+  const setTaskStatus = useSetTaskStatus();
+  const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
+  // Open first, then finished; the query's own order within each.
+  const ordered = [...tasks].sort(
+    (a, b) => Number(a.status === "done") - Number(b.status === "done"),
+  );
+
+  const toggle = async (task: Task) => {
+    setSaving((s) => new Set(s).add(task.id));
+    await setTaskStatus(task, task.status === "done" ? "todo" : "done");
+    setSaving((s) => {
+      const next = new Set(s);
+      next.delete(task.id);
+      return next;
+    });
+  };
+
+  return (
+    <section
+      aria-labelledby="today-tasks"
+      className="rounded-surface bg-card p-4 shadow-e1"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 id="today-tasks" className="text-xs text-muted-foreground">
+          Due today
+        </h2>
+        <Link
+          href="/admin/tasks"
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
+          All tasks
+        </Link>
+      </div>
+      <ul className="mt-2 space-y-1">
+        {ordered.map((task) => {
+          const done = task.status === "done";
+          return (
+            <li key={task.id}>
+              <label className="flex min-h-9 cursor-pointer items-center gap-3 rounded-control px-1 text-sm hover:bg-muted/50">
+                <Checkbox
+                  checked={done}
+                  disabled={saving.has(task.id)}
+                  onCheckedChange={() => void toggle(task)}
+                />
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate break-words",
+                    done ? "text-muted-foreground line-through" : "text-foreground",
+                  )}
+                >
+                  {task.title}
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
@@ -261,7 +361,7 @@ function MoneyCard({
   return (
     <Link
       href="/admin/finance"
-      className="block overflow-hidden rounded-surface bg-card p-4 shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2"
+      className="block overflow-hidden rounded-surface bg-card p-4 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -316,7 +416,7 @@ function MomentumCard({
   return (
     <Link
       href="/admin/habits"
-      className="block rounded-surface bg-card p-4 shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2"
+      className="block rounded-surface bg-card p-4 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2"
     >
       <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Flame className="size-3" aria-hidden />

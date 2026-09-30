@@ -25,8 +25,9 @@ import {
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { getErrorMessage } from "@/lib/utils";
 import { HabitGrid } from "./habit-grid";
 import { HabitForm } from "./habit-form";
@@ -34,7 +35,7 @@ import { HabitToday } from "./habit-today";
 import { HabitHeatmapModal } from "./habit-heatmap-modal";
 import { HabitStanding } from "./habit-standing";
 import { todayIso } from "./habit-schedule";
-import { dueToday } from "./habit-progress";
+import { dueToday, indexLogs, toggledValue } from "./habit-progress";
 
 type HabitView = "today" | "week" | "archived";
 
@@ -47,7 +48,7 @@ export default function HabitsPage() {
 
   const today = todayIso();
 
-  const { data: habits = [], isLoading } = useGetHabitsQuery(
+  const { data: habits = [], isLoading, error: loadError, refetch } = useGetHabitsQuery(
     view === "archived" ? { includeArchived: true } : undefined,
   );
   const [setHabitLog] = useSetHabitLogMutation();
@@ -99,12 +100,11 @@ export default function HabitsPage() {
   const handleToggleDate = async (habitId: string, date: string) => {
     const habit = habits.find((h) => h.id === habitId);
     if (!habit) return;
-    const existing = habit.habit_logs?.find((l) => l.completed_date === date);
     try {
       await setHabitLog({
         habit_id: habitId,
         date,
-        value: existing ? 0 : (habit.target_value ?? 1),
+        value: toggledValue(habit, indexLogs(habit), date),
       }).unwrap();
     } catch (err) {
       toast.error("Couldn't record that", {
@@ -198,6 +198,8 @@ export default function HabitsPage() {
 
       {isLoading ? (
         <LoadingState variant="section" label="Loading habits" />
+      ) : loadError && habits.length === 0 ? (
+        <LoadError what="your habits" error={loadError} onRetry={refetch} />
       ) : view === "archived" ? (
         archived.length === 0 ? (
           <EmptyState

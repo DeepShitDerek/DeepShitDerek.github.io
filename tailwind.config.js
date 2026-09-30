@@ -79,11 +79,29 @@ module.exports = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        "2xl": "1rem",
-        "3xl": "1.5rem",
-        // v3 two-tier shape system — see docs/redesign/v3-design-vision.md
+        // v3 two-tier shape system: surfaces (cards, panels) and controls
+        // (buttons, inputs). lg/md/sm above follow each preset's --radius and
+        // stay for the shadcn primitives. (The v3 vision doc this came from
+        // was never in the repo; .ai/DESIGN_SYSTEM.md records the system.)
         surface: "var(--r-surface)",
         control: "var(--r-control)",
+      },
+      // Named layers (V2-030), lowest first. Values are the ones the code
+      // already used, so naming them changed nothing on screen.
+      zIndex: {
+        raised: "10", // above its siblings: badges, hover actions
+        sticky: "20", // sticky within a scroll area: table columns, toolbars
+        chrome: "30", // page chrome: top bar, reading progress, floating buttons
+        rail: "40", // fixed rails and full-screen editors
+        overlay: "50", // dialogs, sheets, popovers, menus (Radix portals)
+        skip: "60", // the skip link, above an open overlay
+        top: "100", // maintenance screen: covers everything
+      },
+      // One motion scale (V2-030). Easing is `enter` / `exit` below.
+      transitionDuration: {
+        fast: "150ms",
+        base: "200ms",
+        slow: "300ms",
       },
       boxShadow: {
         // v3 elevation. Derived from the theme's own foreground so depth reads

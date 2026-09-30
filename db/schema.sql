@@ -214,6 +214,28 @@ CREATE INDEX IF NOT EXISTS portfolio_items_merged_into_idx
   ON portfolio_items(merged_into_id)
   WHERE merged_into_id IS NOT NULL;
 
+-- Case studies (V2-042): an item with a slug and a markdown body gets its own
+-- page at /work/<slug>/. `has_case_study` lets list views know without
+-- downloading every body. 'view' is taken by the /work/view/ fallback route.
+ALTER TABLE portfolio_items ADD COLUMN IF NOT EXISTS slug TEXT;
+ALTER TABLE portfolio_items ADD COLUMN IF NOT EXISTS case_study TEXT;
+ALTER TABLE portfolio_items
+  ADD COLUMN IF NOT EXISTS has_case_study BOOLEAN
+    GENERATED ALWAYS AS (
+      slug IS NOT NULL AND case_study IS NOT NULL AND btrim(case_study) <> ''
+    ) STORED;
+ALTER TABLE portfolio_items DROP CONSTRAINT IF EXISTS portfolio_items_slug_check;
+ALTER TABLE portfolio_items ADD CONSTRAINT portfolio_items_slug_check CHECK (
+  slug IS NULL OR (
+    slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND char_length(slug) <= 80 AND slug <> 'view'
+  )
+);
+ALTER TABLE portfolio_items DROP CONSTRAINT IF EXISTS portfolio_items_case_study_check;
+ALTER TABLE portfolio_items ADD CONSTRAINT portfolio_items_case_study_check
+  CHECK (case_study IS NULL OR char_length(case_study) <= 200000);
+CREATE UNIQUE INDEX IF NOT EXISTS portfolio_items_slug_key
+  ON portfolio_items(slug) WHERE slug IS NOT NULL;
+
 -- ----------------------------------------------------------------------------
 -- A merge chain must not loop
 -- ----------------------------------------------------------------------------
@@ -269,8 +291,18 @@ CREATE TRIGGER reject_portfolio_merge_cycle
   BEFORE INSERT OR UPDATE OF merged_into_id ON portfolio_items
   FOR EACH ROW EXECUTE FUNCTION public.reject_merge_cycle();
 
+-- An item is public only while its section is (V2-011). This was USING (true),
+-- so hiding a section hid it from the site but not from anyone querying the
+-- table. The admin policy below is OR'ed with this one, so the owner still
+-- reads every item.
 DROP POLICY IF EXISTS "Public read items" ON portfolio_items;
-CREATE POLICY "Public read items" ON portfolio_items FOR SELECT USING (true);
+CREATE POLICY "Public read items" ON portfolio_items FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM portfolio_sections s
+     WHERE s.id = portfolio_items.section_id
+       AND s.is_visible = true
+  )
+);
 DROP POLICY IF EXISTS "Admin manage items" ON portfolio_items;
 CREATE POLICY "Admin manage items" ON portfolio_items FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 DROP TRIGGER IF EXISTS update_portfolio_items_updated_at ON portfolio_items;
@@ -306,7 +338,37 @@ CREATE POLICY "Public read posts" ON blog_posts FOR SELECT USING (published = tr
 DROP POLICY IF EXISTS "Admin manage posts" ON blog_posts;
 CREATE POLICY "Admin manage posts" ON blog_posts FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
 DROP TRIGGER IF EXISTS update_blog_posts_updated_at ON blog_posts;
-CREATE TRIGGER update_blog_posts_updated_at BEFORE UPDATE ON blog_posts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Only when the post itself changes. A read (increment_blog_post_view bumps
+-- `views`) used to stamp updated_at too, so every view marked the post as
+-- edited: its link preview's modifiedTime moved with each reader, and the
+-- site could not tell a prerendered post from a changed one (V2-043).
+-- Every column but views and the timestamps; a new column belongs here too
+-- (db/test/40-posts.sql fails when one is missing).
+CREATE TRIGGER update_blog_posts_updated_at
+  BEFORE UPDATE OF user_id, title, slug, excerpt, content, cover_image_url,
+    published, published_at, show_toc, tags, internal_notes
+  ON blog_posts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Public columns (V2-010). Row-level security chooses rows, not columns: a
+-- published post's `internal_notes` was readable by anyone holding the anon
+-- key, which ships in the site bundle. A column-level REVOKE does nothing while
+-- the table-level grant exists, so anon's SELECT is replaced by an explicit
+-- list. The owner signs in as `authenticated` and keeps the whole table.
+--
+-- A new column on either table is invisible to visitors until it is added
+-- here AND to src/store/api/public-columns.ts; a test compares the two.
+REVOKE SELECT ON public.blog_posts FROM anon;
+GRANT SELECT (
+  id, user_id, title, slug, excerpt, content, cover_image_url, published,
+  published_at, show_toc, tags, views, word_count, created_at, updated_at
+) ON public.blog_posts TO anon;
+
+REVOKE SELECT ON public.portfolio_items FROM anon;
+GRANT SELECT (
+  id, section_id, user_id, title, subtitle, date_from, date_to, description,
+  image_url, link_url, tags, display_order, merged_into_id, created_at,
+  updated_at, slug, case_study, has_case_study
+) ON public.portfolio_items TO anon;
 
 
 -- =========================================================
@@ -485,7 +547,7 @@ CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events FOR EACH ROW EXE
 CREATE TABLE IF NOT EXISTS learning_subjects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  name TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
   description TEXT,
   color TEXT CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$'),
   -- Weekly, not daily: a daily target turns one bad Tuesday into a failure.
@@ -495,6 +557,11 @@ CREATE TABLE IF NOT EXISTS learning_subjects (
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+-- Subject names are unique per owner, not across the table (DB-004). The old
+-- inline UNIQUE made one user's "Math" block every other user's.
+ALTER TABLE learning_subjects DROP CONSTRAINT IF EXISTS learning_subjects_name_key;
+CREATE UNIQUE INDEX IF NOT EXISTS learning_subjects_user_name_idx
+  ON learning_subjects (user_id, name);
 ALTER TABLE learning_subjects ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admin manage subjects" ON learning_subjects;
 CREATE POLICY "Admin manage subjects" ON learning_subjects FOR ALL USING (auth.uid() = user_id AND public.is_aal2()) WITH CHECK (auth.uid() = user_id AND public.is_aal2());
@@ -715,15 +782,19 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   -- is the one number still worth keeping.
   archived_at TIMESTAMPTZ,
   archived_reason TEXT CHECK (archived_reason IS NULL OR archived_reason IN ('sold', 'gifted', 'lost', 'discarded', 'returned')),
-  -- Repointed at the v2 ledger by migration 032. The FK itself is added
-  -- after `fin_transaction` exists, further down — see the finance v2
-  -- section — because this table is created long before that one.
+  -- The ledger transaction that bought it. The FK is added after
+  -- `money_transaction` exists, further down (V2-080), because this table is
+  -- created long before that one.
   transaction_id UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT inventory_reason_needs_archive CHECK (archived_reason IS NULL OR archived_at IS NOT NULL),
   CONSTRAINT inventory_warranty_after_purchase CHECK (purchase_date IS NULL OR warranty_expiry IS NULL OR warranty_expiry >= purchase_date)
 );
+-- The currency the item was bought and valued in (ADM-024). NULL means the
+-- money base currency, so rows written before this column keep their meaning.
+ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS currency CHAR(3)
+  CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$');
 CREATE INDEX IF NOT EXISTS inventory_items_archived_at_idx ON inventory_items(archived_at);
 CREATE INDEX IF NOT EXISTS inventory_items_warranty_expiry_idx ON inventory_items(warranty_expiry);
 CREATE INDEX IF NOT EXISTS inventory_items_location_idx ON inventory_items(location);
@@ -800,6 +871,21 @@ CREATE TABLE IF NOT EXISTS contact_submissions (
     AND char_length(message) BETWEEN 10 AND 5000
   )
 );
+-- What the message is about (V2-040b): the one "Work with me" path serves
+-- roles, projects and anything else, and the owner triages by it. Nullable:
+-- messages from before the question have no answer to it.
+ALTER TABLE contact_submissions ADD COLUMN IF NOT EXISTS topic TEXT;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'contact_submissions_topic_check'
+  ) THEN
+    ALTER TABLE contact_submissions
+      ADD CONSTRAINT contact_submissions_topic_check
+      CHECK (topic IS NULL OR topic IN ('role', 'project', 'other'));
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS contact_submissions_inbox_idx
   ON contact_submissions (is_archived, created_at DESC);
 ALTER TABLE contact_submissions ENABLE ROW LEVEL SECURITY;
@@ -949,6 +1035,11 @@ BEGIN
         'title', 'New contact form submission',
         'color', 5814783,
         'fields', jsonb_build_array(
+          jsonb_build_object('name', 'About',   'value', CASE NEW.topic
+                                                        WHEN 'role'    THEN 'A role'
+                                                        WHEN 'project' THEN 'A project'
+                                                        WHEN 'other'   THEN 'Something else'
+                                                        ELSE 'Not given' END, 'inline', true),
           jsonb_build_object('name', 'Name',    'value', left(NEW.name, 256),  'inline', true),
           jsonb_build_object('name', 'Email',   'value', left(NEW.email, 256), 'inline', true),
           jsonb_build_object('name', 'Subject', 'value', left(NEW.subject, 256)),
@@ -1057,6 +1148,9 @@ CREATE INDEX IF NOT EXISTS site_visits_recent_idx
   ON site_visits (created_at DESC) WHERE is_bot = false;
 CREATE INDEX IF NOT EXISTS site_visits_visitor_idx
   ON site_visits (visitor_hash, created_at DESC);
+-- All rows, bots included: the rate limiter's per-minute and daily counts.
+CREATE INDEX IF NOT EXISTS site_visits_created_idx
+  ON site_visits (created_at DESC);
 
 ALTER TABLE site_visits ENABLE ROW LEVEL SECURITY;
 
@@ -1168,6 +1262,19 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- Daily ceiling (V2-012). The per-minute cap alone still admits ~864k rows a
+  -- day, and the per-visitor cap keys on a hash of a forgeable header — enough
+  -- to fill the free tier's 500 MB in about three days of sustained abuse. A
+  -- personal site does not see 20k views a day; if it ever does, raise this.
+  -- Bots count too: the caller writes the User-Agent that decides is_bot, so
+  -- excluding them would let a flood opt out of the ceiling. Uses
+  -- site_visits_created_idx, so the count stays an index scan.
+  SELECT count(*) INTO recent FROM site_visits
+   WHERE created_at > now() - interval '24 hours';
+  IF recent >= 20000 THEN
+    RETURN NULL;
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -1202,6 +1309,13 @@ DECLARE
 BEGIN
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Not authorised';
+  END IF;
+
+  -- Lockdown (V2-016): definer rights bypass the restrictive policies, so
+  -- write functions check the level themselves.
+  IF public.writes_locked() THEN
+    RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
+      USING ERRCODE = 'insufficient_privilege';
   END IF;
 
   DELETE FROM site_visits WHERE created_at < now() - (keep_days || ' days')::interval;
@@ -1350,7 +1464,9 @@ BEGIN
 
   -- First visit of the day for this visitor, or nothing.
   SELECT count(*) INTO seen FROM site_visits
-   WHERE visitor_hash = NEW.visitor_hash
+   -- IS NOT DISTINCT FROM, not =: a visit with no hash (no forwarded IP)
+   -- compared NULL = NULL, matched nothing, and pinged on every page view.
+   WHERE visitor_hash IS NOT DISTINCT FROM NEW.visitor_hash
      AND id <> NEW.id
      AND created_at >= current_date;
   IF seen > 0 THEN RETURN NEW; END IF;
@@ -1657,13 +1773,10 @@ BEGIN
 
   UNION ALL
 
-  -- Money, from the v2 ledger. `fin_day_money` is defined further down, with
-  -- the finance v2 tables it reads; a plpgsql body is not resolved until it
-  -- runs, so the forward reference is fine here.
-  --
-  -- The transfer rule that used to live here as `transfer_group IS NULL` now
-  -- lives in that function, where the dashboard gets it too — the two used to
-  -- disagree about the same day.
+  -- Money, from the ledger (V2-080). `money_day_flows` is defined further
+  -- down, with the tables it reads; a plpgsql body is not resolved until it
+  -- runs, so the forward reference is fine here. The dashboard reads the same
+  -- function, so the two cannot disagree about a day.
   SELECT
     'finance-' || m.day::text,
     'Money',
@@ -1676,7 +1789,7 @@ BEGIN
       'earned', m.earned,
       'spent', m.spent
     )
-  FROM public.fin_day_money(start_date_param, end_date_param) m;
+  FROM public.money_day_flows(start_date_param, end_date_param) m;
 END;
 $$;
 
@@ -1697,6 +1810,13 @@ DECLARE
 BEGIN
   IF uid IS NULL OR NOT public.is_aal2() THEN
     RAISE EXCEPTION 'Not authorised';
+  END IF;
+
+  -- Lockdown (V2-016): definer rights bypass the restrictive policies, so
+  -- write functions check the level themselves.
+  IF public.writes_locked() THEN
+    RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
+      USING ERRCODE = 'insufficient_privilege';
   END IF;
 
   INSERT INTO calendar_settings (user_id, home_timezone)
@@ -2074,7 +2194,7 @@ VALUES (1,
       "title": "status.panel",
       "availability": "Open for new opportunities",
       "currently_exploring": { "title": "Exploring", "items": ["New Tech 1", "New Tech 2"] },
-      "latestProject": { "name": "My Latest Project", "linkText": "View all projects", "href": "/projects" }
+      "latestProject": { "name": "My Latest Project", "linkText": "View all work", "href": "/work" }
     },
     "bio": [
       "This is the first paragraph of your bio on the About page. Share your story, your passion for your work, and what drives you.",
@@ -2109,16 +2229,22 @@ VALUES (1,
 INSERT INTO security_settings (id, lockdown_level) VALUES (1, 0) ON CONFLICT DO NOTHING;
 INSERT INTO integration_settings (id) VALUES (1) ON CONFLICT DO NOTHING;
 
--- Default Navigation Links
-INSERT INTO navigation_links (label, href, display_order, is_visible) VALUES
-  ('Home',     '/',         0, true),
-  ('Showcase', '/showcase', 1, true),
-  ('About',    '/about',    2, true),
-  ('Projects', '/projects', 3, true),
-  ('Blog',     '/blog',     4, true),
-  ('Updates',     '/updates',     5, true),
-  ('Contact',  '/contact',  6, true)
-ON CONFLICT DO NOTHING;
+-- Default Navigation Links (work-led IA, V2-040a). The /contact link renders
+-- as the header's call to action; Updates lives in the footer.
+--
+-- Seeded only into an empty table. navigation_links has no natural key, so
+-- the old ON CONFLICT DO NOTHING never fired: every re-run of this file added
+-- the whole default nav again, and re-running is how an existing project
+-- applies schema changes.
+INSERT INTO navigation_links (label, href, display_order, is_visible)
+SELECT v.label, v.href, v.display_order, true
+  FROM (VALUES
+    ('Work',         '/work',    0),
+    ('About',        '/about',   1),
+    ('Writing',      '/blog',    2),
+    ('Work with me', '/contact', 3)
+  ) AS v(label, href, display_order)
+ WHERE NOT EXISTS (SELECT 1 FROM navigation_links);
 
 
 -- =========================================================
@@ -2326,959 +2452,820 @@ REVOKE ALL ON FUNCTION public.get_random_public_highlight() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_random_public_highlight() TO anon, authenticated;
 
 -- ============================================================================
--- FINANCE v2 — LEDGER, COMMITMENTS, PLANNING (migrations 025, 026, 027, 030)
+-- MONEY — finance v3 (V2-080)
 -- ============================================================================
 --
--- The finance rewrite. Money is BIGINT minor units everywhere (1234 = $12.34),
--- a transfer is one transaction with two postings rather than two rows sharing
--- a group id, and one table holds everything that repeats — so a mortgage
--- cannot exist as both a loan and a recurring rule and be counted twice.
+-- A personal ledger for someone whose money lives in two countries. The design
+-- rules, each enforced here rather than hoped for in the app:
 --
--- These tables live ALONGSIDE the v1 finance tables above. v1 is dropped by
--- `db/migrations/029-finance-v1-retire.sql`, which is a separate decision the
--- owner makes after the backfill has been verified and the app used against v2;
--- until then both schemas exist and this file describes both.
+-- * Money is BIGINT minor units (1234 = $12.34, ₹12.34). A rate is NUMERIC;
+--   only amounts are integers. `money_currency.exponent` says what an integer
+--   means — the yen has no minor unit and the Kuwaiti dinar has three.
+-- * Double entry. A transaction is a header; postings say what moved where.
+--   An expense is one or more postings on one account (several = a split). A
+--   transfer is two or more legs across accounts that balance when they share
+--   a currency; a cross-currency transfer carries both real amounts, and the
+--   gap between them and the mid-market rate is what the transfer cost.
+-- * Sign is direction. A posting's amount is what happened to the account:
+--   negative leaves, positive arrives. Liabilities (cards, loans) therefore
+--   hold negative balances — "you own −$420" is "you owe $420".
+-- * Balances are derived, never stored: opening anchor + postings.
+-- * An exchange rate is frozen onto each posting when it is written, so last
+--   February's report says what last February cost.
 --
--- Provenance: 025 (ledger), 026 (commitments), 027 (budgets/goals/scenarios/
--- imports), 030 (atomic write RPCs). 028 is the backfill and carries no DDL.
+-- Replaces finance v2 (`fin_*`, migrations 025–032), retired below. The owner
+-- confirmed on 2026-09-24 that v2 held no data.
 
 
--- ── Currencies, and how many minor units each has ───────────────────────────
+-- ── Retire finance v2 ───────────────────────────────────────────────────────
 --
--- A reference table rather than a client-side constant, because the database
--- has to be able to check what a stored integer means: 1234 is ¥1,234 or
--- 1.234 KWD or $12.34 depending only on this row.
--- `src/features/finance/money/minor-units.ts` mirrors it.
+-- One-way and idempotent: nothing in this file recreates a `fin_*` name, so a
+-- re-run finds nothing to drop. Functions first (their triggers go with
+-- them), then tables, then types.
 
-CREATE TABLE IF NOT EXISTS fin_currency (
+ALTER TABLE IF EXISTS inventory_items
+  DROP CONSTRAINT IF EXISTS inventory_items_transaction_fkey;
+
+DO $$
+DECLARE
+  f RECORD;
+BEGIN
+  FOR f IN
+    SELECT p.oid::regprocedure AS signature
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public' AND p.proname LIKE 'fin\_%'
+  LOOP
+    EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', f.signature);
+  END LOOP;
+END $$;
+
+DROP TABLE IF EXISTS
+  fin_category_rule, fin_import_batch, fin_scenario, fin_goal_contribution,
+  fin_goal, fin_budget, fin_commitment_skip, fin_commitment_event,
+  fin_posting, fin_transaction, fin_commitment, fin_category, fin_account,
+  fin_rate, fin_settings, fin_currency
+  CASCADE;
+
+DROP TYPE IF EXISTS
+  fin_account_kind, fin_bucket, fin_transaction_kind, fin_frequency,
+  fin_commitment_kind, fin_rate_effect, fin_commitment_event_kind
+  CASCADE;
+
+
+-- ── Currencies ──────────────────────────────────────────────────────────────
+-- `src/features/money/domain/money.ts` mirrors the exponents.
+
+CREATE TABLE IF NOT EXISTS money_currency (
   code     CHAR(3) PRIMARY KEY CHECK (code ~ '^[A-Z]{3}$'),
   exponent SMALLINT NOT NULL CHECK (exponent BETWEEN 0 AND 4),
-  name     TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 60)
+  name     TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 60),
+  symbol   TEXT CHECK (symbol IS NULL OR char_length(symbol) <= 8)
 );
-
-ALTER TABLE fin_currency ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Read currencies" ON fin_currency;
-CREATE POLICY "Read currencies" ON fin_currency FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin write currencies" ON fin_currency;
-CREATE POLICY "Admin write currencies" ON fin_currency FOR ALL
+ALTER TABLE money_currency ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner reads currencies" ON money_currency;
+CREATE POLICY "Owner reads currencies" ON money_currency FOR SELECT
+  USING (public.is_aal2());
+DROP POLICY IF EXISTS "Owner writes currencies" ON money_currency;
+CREATE POLICY "Owner writes currencies" ON money_currency FOR ALL
   USING (public.is_aal2()) WITH CHECK (public.is_aal2());
 
-INSERT INTO fin_currency (code, exponent, name) VALUES
-  ('CAD', 2, 'Canadian Dollar'),      ('USD', 2, 'US Dollar'),
-  ('INR', 2, 'Indian Rupee'),         ('EUR', 2, 'Euro'),
-  ('GBP', 2, 'Pound Sterling'),       ('AUD', 2, 'Australian Dollar'),
-  ('NZD', 2, 'New Zealand Dollar'),   ('AED', 2, 'UAE Dirham'),
-  ('SAR', 2, 'Saudi Riyal'),          ('QAR', 2, 'Qatari Riyal'),
-  ('KWD', 3, 'Kuwaiti Dinar'),        ('SGD', 2, 'Singapore Dollar'),
-  ('HKD', 2, 'Hong Kong Dollar'),     ('JPY', 0, 'Japanese Yen'),
-  ('CNY', 2, 'Chinese Yuan'),         ('CHF', 2, 'Swiss Franc'),
-  ('SEK', 2, 'Swedish Krona'),        ('NOK', 2, 'Norwegian Krone'),
-  ('DKK', 2, 'Danish Krone'),         ('PLN', 2, 'Polish Zloty'),
-  ('TRY', 2, 'Turkish Lira'),         ('PKR', 2, 'Pakistani Rupee'),
-  ('BDT', 2, 'Bangladeshi Taka'),     ('LKR', 2, 'Sri Lankan Rupee'),
-  ('NPR', 2, 'Nepalese Rupee'),       ('PHP', 2, 'Philippine Peso'),
-  ('MYR', 2, 'Malaysian Ringgit'),    ('THB', 2, 'Thai Baht'),
-  ('IDR', 2, 'Indonesian Rupiah'),    ('VND', 0, 'Vietnamese Dong'),
-  ('MXN', 2, 'Mexican Peso'),         ('BRL', 2, 'Brazilian Real'),
-  ('ZAR', 2, 'South African Rand'),   ('NGN', 2, 'Nigerian Naira'),
-  ('KES', 2, 'Kenyan Shilling'),      ('EGP', 2, 'Egyptian Pound')
+INSERT INTO money_currency (code, exponent, name, symbol) VALUES
+  ('CAD', 2, 'Canadian Dollar', '$'),     ('INR', 2, 'Indian Rupee', '₹'),
+  ('USD', 2, 'US Dollar', 'US$'),         ('EUR', 2, 'Euro', '€'),
+  ('GBP', 2, 'Pound Sterling', '£'),      ('AUD', 2, 'Australian Dollar', 'A$'),
+  ('NZD', 2, 'New Zealand Dollar', 'NZ$'), ('AED', 2, 'UAE Dirham', 'AED'),
+  ('SAR', 2, 'Saudi Riyal', 'SAR'),       ('QAR', 2, 'Qatari Riyal', 'QAR'),
+  ('KWD', 3, 'Kuwaiti Dinar', 'KWD'),     ('BHD', 3, 'Bahraini Dinar', 'BHD'),
+  ('OMR', 3, 'Omani Rial', 'OMR'),        ('SGD', 2, 'Singapore Dollar', 'S$'),
+  ('HKD', 2, 'Hong Kong Dollar', 'HK$'),  ('JPY', 0, 'Japanese Yen', '¥'),
+  ('KRW', 0, 'South Korean Won', '₩'),    ('CNY', 2, 'Chinese Yuan', 'CN¥'),
+  ('CHF', 2, 'Swiss Franc', 'CHF'),       ('SEK', 2, 'Swedish Krona', 'kr'),
+  ('NOK', 2, 'Norwegian Krone', 'kr'),    ('DKK', 2, 'Danish Krone', 'kr'),
+  ('PLN', 2, 'Polish Zloty', 'zł'),       ('TRY', 2, 'Turkish Lira', '₺'),
+  ('PKR', 2, 'Pakistani Rupee', 'Rs'),    ('BDT', 2, 'Bangladeshi Taka', '৳'),
+  ('LKR', 2, 'Sri Lankan Rupee', 'Rs'),   ('NPR', 2, 'Nepalese Rupee', 'Rs'),
+  ('PHP', 2, 'Philippine Peso', '₱'),     ('MYR', 2, 'Malaysian Ringgit', 'RM'),
+  ('THB', 2, 'Thai Baht', '฿'),           ('IDR', 2, 'Indonesian Rupiah', 'Rp'),
+  ('VND', 0, 'Vietnamese Dong', '₫'),     ('MXN', 2, 'Mexican Peso', 'MX$'),
+  ('BRL', 2, 'Brazilian Real', 'R$'),     ('ZAR', 2, 'South African Rand', 'R'),
+  ('NGN', 2, 'Nigerian Naira', '₦'),      ('KES', 2, 'Kenyan Shilling', 'KSh'),
+  ('EGP', 2, 'Egyptian Pound', 'E£')
 ON CONFLICT (code) DO UPDATE
-  SET exponent = EXCLUDED.exponent, name = EXCLUDED.name;
+  SET exponent = EXCLUDED.exponent, name = EXCLUDED.name, symbol = EXCLUDED.symbol;
+
+
+-- ── Exchange rates ──────────────────────────────────────────────────────────
+-- Units of `quote` per one `base`, on a day. Fetched by the app from a free
+-- source, or typed in; the ledger freezes whichever applied onto a posting.
+
+CREATE TABLE IF NOT EXISTS money_rate (
+  base   CHAR(3) NOT NULL REFERENCES money_currency(code),
+  quote  CHAR(3) NOT NULL REFERENCES money_currency(code),
+  as_of  DATE    NOT NULL,
+  rate   NUMERIC(24,12) NOT NULL CHECK (rate > 0),
+  source TEXT CHECK (source IS NULL OR char_length(source) <= 60),
+  PRIMARY KEY (base, quote, as_of),
+  CONSTRAINT money_rate_distinct_pair CHECK (base <> quote)
+);
+CREATE INDEX IF NOT EXISTS money_rate_recent_idx ON money_rate (base, quote, as_of DESC);
+ALTER TABLE money_rate ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages rates" ON money_rate;
+CREATE POLICY "Owner manages rates" ON money_rate FOR ALL
+  USING (public.is_aal2()) WITH CHECK (public.is_aal2());
 
 
 -- ── Settings ────────────────────────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS fin_settings (
-  user_id              UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  base_currency        CHAR(3) NOT NULL DEFAULT 'CAD' REFERENCES fin_currency(code),
-  -- The corridor money is actually sent along, for the FX view's default.
-  home_currency        CHAR(3) REFERENCES fin_currency(code),
-  needs_target_pct     NUMERIC(5,2) NOT NULL DEFAULT 50 CHECK (needs_target_pct BETWEEN 0 AND 100),
-  wants_target_pct     NUMERIC(5,2) NOT NULL DEFAULT 30 CHECK (wants_target_pct BETWEEN 0 AND 100),
-  save_target_pct      NUMERIC(5,2) NOT NULL DEFAULT 20 CHECK (save_target_pct BETWEEN 0 AND 100),
-  runway_target_months NUMERIC(4,1) NOT NULL DEFAULT 6 CHECK (runway_target_months >= 0),
-  updated_at           TIMESTAMPTZ DEFAULT now()
+CREATE TABLE IF NOT EXISTS money_settings (
+  user_id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  -- What every total is reported in.
+  base_currency    CHAR(3) NOT NULL DEFAULT 'CAD' REFERENCES money_currency(code),
+  -- The other side of the owner's life: remittance and net-worth views.
+  home_currency    CHAR(3) NOT NULL DEFAULT 'INR' REFERENCES money_currency(code),
+  province         CHAR(2) CHECK (province IS NULL OR province IN
+                     ('AB','BC','MB','NB','NL','NS','NT','NU','ON','PE','QC','SK','YT')),
+  -- TFSA room accrues from the later of turning 18 and becoming resident.
+  birth_year       INT CHECK (birth_year IS NULL OR birth_year BETWEEN 1900 AND 2100),
+  resident_since   DATE,
+  needs_pct        NUMERIC(5,2) NOT NULL DEFAULT 50 CHECK (needs_pct BETWEEN 0 AND 100),
+  wants_pct        NUMERIC(5,2) NOT NULL DEFAULT 30 CHECK (wants_pct BETWEEN 0 AND 100),
+  save_pct         NUMERIC(5,2) NOT NULL DEFAULT 20 CHECK (save_pct BETWEEN 0 AND 100),
+  emergency_months NUMERIC(4,1) NOT NULL DEFAULT 6 CHECK (emergency_months BETWEEN 0 AND 36),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_settings_split_is_whole
+    CHECK (needs_pct + wants_pct + save_pct = 100),
+  CONSTRAINT money_settings_two_currencies
+    CHECK (base_currency <> home_currency)
 );
-ALTER TABLE fin_settings ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin settings" ON fin_settings;
-CREATE POLICY "Admin manage fin settings" ON fin_settings FOR ALL
+ALTER TABLE money_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages money settings" ON money_settings;
+CREATE POLICY "Owner manages money settings" ON money_settings FOR ALL
   USING (auth.uid() = user_id AND public.is_aal2())
   WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_settings_updated_at ON fin_settings;
-CREATE TRIGGER update_fin_settings_updated_at BEFORE UPDATE ON fin_settings
+DROP TRIGGER IF EXISTS update_money_settings_updated_at ON money_settings;
+CREATE TRIGGER update_money_settings_updated_at BEFORE UPDATE ON money_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
--- ── Exchange rates ──────────────────────────────────────────────────────────
---
--- A rate stays NUMERIC. Only *amounts* are integers; a rate is a ratio, and
--- storing it as an integer would need a scale factor nobody would remember.
--- NUMERIC(20,10) because IDR/KWD is around 0.0000010.
+-- ── Institutions ────────────────────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS fin_rate (
-  base   CHAR(3) NOT NULL,
-  quote  CHAR(3) NOT NULL,
-  as_of  DATE    NOT NULL,
-  rate   NUMERIC(20,10) NOT NULL CHECK (rate > 0),
-  source TEXT CHECK (source IS NULL OR char_length(source) <= 60),
-  PRIMARY KEY (base, quote, as_of)
+CREATE TABLE IF NOT EXISTS money_institution (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  name       TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
+  country    CHAR(2) NOT NULL DEFAULT 'CA' CHECK (country ~ '^[A-Z]{2}$'),
+  notes      TEXT CHECK (notes IS NULL OR char_length(notes) <= 500),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, name)
 );
-CREATE INDEX IF NOT EXISTS fin_rate_recent_idx ON fin_rate (base, quote, as_of DESC);
-ALTER TABLE fin_rate ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Read fin rates" ON fin_rate;
-CREATE POLICY "Read fin rates" ON fin_rate FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin write fin rates" ON fin_rate;
-CREATE POLICY "Admin write fin rates" ON fin_rate FOR ALL
-  USING (public.is_aal2()) WITH CHECK (public.is_aal2());
+ALTER TABLE money_institution ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages institutions" ON money_institution;
+CREATE POLICY "Owner manages institutions" ON money_institution FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_institution_updated_at ON money_institution;
+CREATE TRIGGER update_money_institution_updated_at BEFORE UPDATE ON money_institution
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
 -- ── Accounts ────────────────────────────────────────────────────────────────
 --
--- The reconciliation anchor: "on opening_date this account really held
--- opening_balance_minor", and everything after is derived from postings. That
--- is what makes the module work for a credit card whose bill is unknown until
--- it lands — correcting a drifted balance is editing two fields.
+-- The opening pair is the reconciliation anchor: "on opening_date this
+-- account really held opening_balance_minor". Everything later is postings.
+--
+-- `registration` is what the tax system thinks the account is. Canadian
+-- shelters (TFSA, RRSP, FHSA, RESP, RRIF, LIRA) only exist in Canada, Indian
+-- non-resident accounts (NRE, NRO, FCNR) and schemes (PPF, EPF) only in India
+-- — the checks say so, because a TFSA at an Indian bank would feed a wrong
+-- number into contribution room and the T1135 check.
 
 DO $$ BEGIN
-  CREATE TYPE fin_account_kind AS ENUM
-    ('chequing','savings','credit','cash','investment','loan');
+  CREATE TYPE money_account_kind AS ENUM (
+    'chequing','savings','credit_card','line_of_credit','cash',
+    'investment','loan','mortgage','asset','wallet');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TABLE IF NOT EXISTS fin_account (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  name         TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
-  kind         fin_account_kind NOT NULL DEFAULT 'chequing',
-  currency     CHAR(3) NOT NULL REFERENCES fin_currency(code),
-  institution  TEXT CHECK (char_length(coalesce(institution,'')) <= 120),
+DO $$ BEGIN
+  CREATE TYPE money_registration AS ENUM (
+    'none','tfsa','rrsp','fhsa','resp','rrif','lira','nre','nro','fcnr','ppf','epf');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-  -- Minor units, and signed: a card or a loan is stored as what is owed.
+CREATE TABLE IF NOT EXISTS money_account (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  institution_id UUID REFERENCES money_institution(id) ON DELETE SET NULL,
+  name           TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
+  kind           money_account_kind NOT NULL DEFAULT 'chequing',
+  registration   money_registration NOT NULL DEFAULT 'none',
+  country        CHAR(2) NOT NULL DEFAULT 'CA' CHECK (country ~ '^[A-Z]{2}$'),
+  currency       CHAR(3) NOT NULL REFERENCES money_currency(code),
+
   opening_balance_minor BIGINT NOT NULL DEFAULT 0,
   opening_date          DATE NOT NULL DEFAULT CURRENT_DATE,
 
+  -- Cards and lines of credit.
   credit_limit_minor BIGINT CHECK (credit_limit_minor IS NULL OR credit_limit_minor > 0),
-  statement_day      INT CHECK (statement_day IS NULL OR statement_day BETWEEN 1 AND 31),
-  payment_due_day    INT CHECK (payment_due_day IS NULL OR payment_due_day BETWEEN 1 AND 31),
+  statement_day      SMALLINT CHECK (statement_day IS NULL OR statement_day BETWEEN 1 AND 31),
+  payment_due_day    SMALLINT CHECK (payment_due_day IS NULL OR payment_due_day BETWEEN 1 AND 31),
+  -- Annual %: a card's purchase APR, a LOC's rate, a savings account's yield.
+  interest_rate      NUMERIC(6,3) CHECK (interest_rate IS NULL OR interest_rate BETWEEN 0 AND 100),
 
-  -- Counted in "safe to spend"; a locked retirement account is not.
+  -- Spendable within days: counted in cash-on-hand and the forecast.
   is_liquid    BOOLEAN NOT NULL DEFAULT true,
-  -- Last digits of the account number, to route rows in a bank export.
-  import_ref   TEXT CHECK (import_ref IS NULL OR import_ref ~ '^[0-9]{2,6}$'),
+  in_net_worth BOOLEAN NOT NULL DEFAULT true,
+  -- Last characters of the account number, to route rows in a bank export.
+  import_ref   TEXT CHECK (import_ref IS NULL OR import_ref ~ '^[0-9A-Za-z]{2,8}$'),
   color        TEXT CHECK (color IS NULL OR color ~* '^#[0-9a-f]{6}$'),
+  notes        TEXT CHECK (notes IS NULL OR char_length(notes) <= 1000),
   sort_order   INT NOT NULL DEFAULT 0,
   archived_at  TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ DEFAULT now(),
-  updated_at   TIMESTAMPTZ DEFAULT now()
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CONSTRAINT money_account_credit_fields CHECK (
+    kind IN ('credit_card','line_of_credit')
+    OR (credit_limit_minor IS NULL AND statement_day IS NULL AND payment_due_day IS NULL)
+  ),
+  CONSTRAINT money_account_registration_country CHECK (
+    registration = 'none'
+    OR (registration IN ('tfsa','rrsp','fhsa','resp','rrif','lira') AND country = 'CA')
+    OR (registration IN ('nre','nro','fcnr','ppf','epf') AND country = 'IN')
+  ),
+  CONSTRAINT money_account_registration_kind CHECK (
+    registration = 'none' OR kind IN ('chequing','savings','investment','cash')
+  )
 );
-CREATE INDEX IF NOT EXISTS fin_account_user_idx
-  ON fin_account (user_id, sort_order) WHERE archived_at IS NULL;
-ALTER TABLE fin_account ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin accounts" ON fin_account;
-CREATE POLICY "Admin manage fin accounts" ON fin_account FOR ALL
+CREATE INDEX IF NOT EXISTS money_account_user_idx
+  ON money_account (user_id, sort_order) WHERE archived_at IS NULL;
+ALTER TABLE money_account ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages accounts" ON money_account;
+CREATE POLICY "Owner manages accounts" ON money_account FOR ALL
   USING (auth.uid() = user_id AND public.is_aal2())
   WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_account_updated_at ON fin_account;
-CREATE TRIGGER update_fin_account_updated_at BEFORE UPDATE ON fin_account
+DROP TRIGGER IF EXISTS update_money_account_updated_at ON money_account;
+CREATE TRIGGER update_money_account_updated_at BEFORE UPDATE ON money_account
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
 -- ── Categories ──────────────────────────────────────────────────────────────
 --
--- Two vocabularies kept genuinely apart. `bucket` classifies a *category* for
--- 50/30/20. Direction is a property of a *posting's sign*, so there is no
--- longer an 'earning'/'expense' type to confuse with 'income'.
+-- Two levels at most (Food › Groceries). `bucket` is the 50/30/20 shape of a
+-- category; `is_essential` is the runway sense — still payable if income
+-- stopped tomorrow — which is a different question.
 
 DO $$ BEGIN
-  CREATE TYPE fin_bucket AS ENUM ('income','need','want','save','transfer');
+  CREATE TYPE money_bucket AS ENUM ('income','need','want','save');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TABLE IF NOT EXISTS fin_category (
+CREATE TABLE IF NOT EXISTS money_category (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  parent_id    UUID REFERENCES money_category(id) ON DELETE CASCADE,
   name         TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 80),
-  bucket       fin_bucket NOT NULL DEFAULT 'want',
-  icon         TEXT CHECK (char_length(coalesce(icon,'')) <= 40),
-  color        TEXT CHECK (color IS NULL OR color ~* '^#[0-9a-f]{6}$'),
-  -- Essential in the runway sense: still payable if income stopped tomorrow.
-  -- Deliberately distinct from `need`, which is about budgeting shape.
+  bucket       money_bucket NOT NULL DEFAULT 'want',
   is_essential BOOLEAN NOT NULL DEFAULT false,
+  icon         TEXT CHECK (icon IS NULL OR char_length(icon) <= 40),
+  color        TEXT CHECK (color IS NULL OR color ~* '^#[0-9a-f]{6}$'),
   sort_order   INT NOT NULL DEFAULT 0,
   archived_at  TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ DEFAULT now(),
-  updated_at   TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (user_id, name)
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_category_not_own_parent CHECK (parent_id IS DISTINCT FROM id)
 );
-ALTER TABLE fin_category ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin categories" ON fin_category;
-CREATE POLICY "Admin manage fin categories" ON fin_category FOR ALL
+CREATE UNIQUE INDEX IF NOT EXISTS money_category_name_key
+  ON money_category (user_id, coalesce(parent_id, '00000000-0000-0000-0000-000000000000'::uuid), lower(name));
+ALTER TABLE money_category ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages categories" ON money_category;
+CREATE POLICY "Owner manages categories" ON money_category FOR ALL
   USING (auth.uid() = user_id AND public.is_aal2())
   WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_category_updated_at ON fin_category;
-CREATE TRIGGER update_fin_category_updated_at BEFORE UPDATE ON fin_category
+DROP TRIGGER IF EXISTS update_money_category_updated_at ON money_category;
+CREATE TRIGGER update_money_category_updated_at BEFORE UPDATE ON money_category
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-
--- ── Transactions and postings ───────────────────────────────────────────────
---
--- The header says what happened once; the postings say what moved, and where.
---
--- A SPEND is one posting: −4500 on Chequing. Its counterparty is the outside
--- world, so it does not balance and is not expected to.
---
--- A TRANSFER is one transaction with two postings — −50000 on TFSA, +50000 on
--- RRSP — atomic by construction. There is no way to write half of one.
---
--- A CROSS-CURRENCY TRANSFER carries both real amounts (−1000 CAD, +60240 INR).
--- They cannot net to zero and must not be forced to: the gap *is* the
--- provider's margin.
-
-DO $$ BEGIN
-  CREATE TYPE fin_transaction_kind AS ENUM
-    ('spend','earn','transfer','adjustment');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-CREATE TABLE IF NOT EXISTS fin_transaction (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  -- When it hit the account, which is not necessarily when it was due.
-  date            DATE NOT NULL,
-  description     TEXT NOT NULL CHECK (char_length(description) BETWEEN 1 AND 200),
-  -- The bank's own wording, verbatim; `description` is the cleaned form.
-  raw_description TEXT CHECK (raw_description IS NULL OR char_length(raw_description) <= 500),
-  merchant        TEXT CHECK (merchant IS NULL OR char_length(merchant) <= 200),
-  notes           TEXT CHECK (notes IS NULL OR char_length(notes) <= 2000),
-  -- Intent, for display and for the calendar. The arithmetic never reads it:
-  -- direction comes from the sign of each posting.
-  kind            fin_transaction_kind NOT NULL DEFAULT 'spend',
-  -- Not yet cleared the bank; excluded from "what do I actually have".
-  is_pending      BOOLEAN NOT NULL DEFAULT false,
-  -- The occurrence this satisfied, which is the *due* date and not `date`: a
-  -- salary due Friday and entered Monday is still Friday's occurrence.
-  commitment_id   UUID,
-  occurrence_date DATE,
-  -- Deterministic per (account, date, amount, description, nth identical row).
-  import_hash     TEXT CHECK (import_hash IS NULL OR char_length(import_hash) <= 64),
-  import_batch_id UUID,
-  created_at      TIMESTAMPTZ DEFAULT now(),
-  updated_at      TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS fin_transaction_user_date_idx
-  ON fin_transaction (user_id, date DESC);
-CREATE INDEX IF NOT EXISTS fin_transaction_occurrence_idx
-  ON fin_transaction (commitment_id, occurrence_date)
-  WHERE commitment_id IS NOT NULL;
-
-ALTER TABLE fin_transaction ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin transactions" ON fin_transaction;
-CREATE POLICY "Admin manage fin transactions" ON fin_transaction FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_transaction_updated_at ON fin_transaction;
-CREATE TRIGGER update_fin_transaction_updated_at BEFORE UPDATE ON fin_transaction
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TABLE IF NOT EXISTS fin_posting (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id        UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  transaction_id UUID NOT NULL REFERENCES fin_transaction(id) ON DELETE CASCADE,
-  -- Nullable so closing an account does not delete history; an unassigned
-  -- posting is simply not counted in any account's balance.
-  account_id     UUID REFERENCES fin_account(id) ON DELETE SET NULL,
-  category_id    UUID REFERENCES fin_category(id) ON DELETE SET NULL,
-
-  -- Signed minor units. Negative leaves the account, positive arrives.
-  -- Zero is rejected: a posting that moves nothing describes nothing.
-  amount_minor   BIGINT NOT NULL CHECK (amount_minor <> 0),
-  currency       CHAR(3) NOT NULL REFERENCES fin_currency(code),
-
-  -- What the transfer itself cost — wire fee, FX margin — in this posting's
-  -- currency. Kept apart from the amount so "which service should I send
-  -- through" stays answerable.
-  fee_minor      BIGINT CHECK (fee_minor IS NULL OR fee_minor >= 0),
-
-  -- Frozen at the transaction, which is what stops a historical report
-  -- re-pricing itself every time the market moves. Null when no rate was
-  -- available: reported as unconverted, never guessed at parity, and never
-  -- silently read as zero.
-  fx_rate           NUMERIC(20,10) CHECK (fx_rate IS NULL OR fx_rate > 0),
-  base_amount_minor BIGINT,
-
-  created_at     TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS fin_posting_account_idx ON fin_posting (account_id);
-CREATE INDEX IF NOT EXISTS fin_posting_transaction_idx ON fin_posting (transaction_id);
-CREATE INDEX IF NOT EXISTS fin_posting_category_idx ON fin_posting (category_id);
-
-ALTER TABLE fin_posting ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin postings" ON fin_posting;
-CREATE POLICY "Admin manage fin postings" ON fin_posting FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-
-
--- ── What makes a transfer a transfer ────────────────────────────────────────
---
--- Checked at COMMIT, not per row: the two legs are inserted one after the
--- other, so a per-statement check would reject the first one every time.
-
-CREATE OR REPLACE FUNCTION public.fin_check_transfer_balance()
+-- A child's parent is a top-level category of the same owner, and a child
+-- shares its parent's bucket (Food › Restaurants cannot be a need while Food
+-- is a want: the 50/30/20 split would count it twice).
+CREATE OR REPLACE FUNCTION public.money_check_category()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  -- On DELETE there is no NEW, and reading it raises from inside the trigger
-  -- rather than validating anything. Removing one leg of a transfer is exactly
-  -- when this check matters most, so it has to survive the operation.
-  v_txn         UUID := CASE WHEN TG_OP = 'DELETE'
-                             THEN OLD.transaction_id
-                             ELSE NEW.transaction_id END;
-  v_kind        fin_transaction_kind;
-  v_legs        INT;
-  v_accounts    INT;
-  v_unassigned  INT;
-  v_currencies  INT;
-  v_net         BIGINT;
-  v_positive    INT;
-  v_negative    INT;
+  v_parent money_category%ROWTYPE;
 BEGIN
-  SELECT kind INTO v_kind FROM fin_transaction WHERE id = v_txn;
-  -- The header is already gone when this fires from a cascade delete, and
-  -- deleting a whole transfer is legitimate.
-  IF v_kind IS NULL OR v_kind <> 'transfer' THEN
-    RETURN NULL;
+  IF NEW.parent_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+  SELECT * INTO v_parent FROM money_category WHERE id = NEW.parent_id;
+  IF v_parent.id IS NULL OR v_parent.user_id <> NEW.user_id THEN
+    RAISE EXCEPTION 'Parent category not found';
+  END IF;
+  IF v_parent.parent_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Categories go two levels deep at most';
+  END IF;
+  IF EXISTS (SELECT 1 FROM money_category WHERE parent_id = NEW.id) THEN
+    RAISE EXCEPTION 'A category with subcategories cannot itself be a subcategory';
+  END IF;
+  NEW.bucket := v_parent.bucket;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_category_shape ON money_category;
+CREATE TRIGGER money_category_shape BEFORE INSERT OR UPDATE ON money_category
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_category();
+
+-- Re-bucketing a parent carries its children with it. AFTER, not in the
+-- trigger above: the children's own trigger copies the parent's bucket, and
+-- before the parent row is written that would still be the old one.
+CREATE OR REPLACE FUNCTION public.money_rebucket_children()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  UPDATE money_category SET bucket = NEW.bucket
+   WHERE parent_id = NEW.id AND bucket IS DISTINCT FROM NEW.bucket;
+  RETURN NULL;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_category_rebucket ON money_category;
+CREATE TRIGGER money_category_rebucket AFTER UPDATE OF bucket ON money_category
+  FOR EACH ROW WHEN (NEW.parent_id IS NULL AND NEW.bucket IS DISTINCT FROM OLD.bucket)
+  EXECUTE FUNCTION public.money_rebucket_children();
+
+
+-- ── Import batches ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS money_import_batch (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  account_id      UUID NOT NULL REFERENCES money_account(id) ON DELETE CASCADE,
+  file_name       TEXT CHECK (file_name IS NULL OR char_length(file_name) <= 200),
+  preset          TEXT CHECK (preset IS NULL OR char_length(preset) <= 40),
+  row_count       INT NOT NULL DEFAULT 0 CHECK (row_count >= 0),
+  imported_count  INT NOT NULL DEFAULT 0 CHECK (imported_count >= 0),
+  duplicate_count INT NOT NULL DEFAULT 0 CHECK (duplicate_count >= 0),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE money_import_batch ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages import batches" ON money_import_batch;
+CREATE POLICY "Owner manages import batches" ON money_import_batch FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+
+-- ── Transactions and postings ───────────────────────────────────────────────
+
+DO $$ BEGIN
+  CREATE TYPE money_transaction_kind AS ENUM
+    ('expense','income','refund','transfer','adjustment');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE money_transaction_status AS ENUM ('pending','cleared','reconciled');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_transaction (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  -- When it hit the account.
+  date            DATE NOT NULL,
+  kind            money_transaction_kind NOT NULL,
+  status          money_transaction_status NOT NULL DEFAULT 'cleared',
+  description     TEXT NOT NULL CHECK (char_length(description) BETWEEN 1 AND 200),
+  payee           TEXT CHECK (payee IS NULL OR char_length(payee) <= 200),
+  notes           TEXT CHECK (notes IS NULL OR char_length(notes) <= 2000),
+  -- The bank's own wording, kept verbatim for rules and dedupe.
+  raw_description TEXT CHECK (raw_description IS NULL OR char_length(raw_description) <= 500),
+
+  -- The recurring schedule this satisfied, and which due date. The FK is
+  -- added with `money_schedule`.
+  schedule_id     UUID,
+  occurrence_date DATE,
+
+  import_hash     TEXT CHECK (import_hash IS NULL OR char_length(import_hash) <= 64),
+  import_batch_id UUID REFERENCES money_import_batch(id) ON DELETE SET NULL,
+
+  -- Cross-currency transfers: who moved it, and the mid-market rate (units of
+  -- the arriving currency per one leaving) at the time. With both legs'
+  -- real amounts, that is enough to say what the transfer cost.
+  provider        TEXT CHECK (provider IS NULL OR char_length(provider) <= 80),
+  market_rate     NUMERIC(24,12) CHECK (market_rate IS NULL OR market_rate > 0),
+
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CONSTRAINT money_transaction_occurrence_pair
+    CHECK ((schedule_id IS NULL) = (occurrence_date IS NULL)),
+  CONSTRAINT money_transaction_market_rate_on_transfer
+    CHECK (market_rate IS NULL OR kind = 'transfer')
+);
+CREATE INDEX IF NOT EXISTS money_transaction_user_date_idx
+  ON money_transaction (user_id, date DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS money_transaction_import_hash_key
+  ON money_transaction (user_id, import_hash) WHERE import_hash IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS money_transaction_occurrence_key
+  ON money_transaction (schedule_id, occurrence_date) WHERE schedule_id IS NOT NULL;
+ALTER TABLE money_transaction ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages transactions" ON money_transaction;
+CREATE POLICY "Owner manages transactions" ON money_transaction FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_transaction_updated_at ON money_transaction;
+CREATE TRIGGER update_money_transaction_updated_at BEFORE UPDATE ON money_transaction
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DO $$ BEGIN
+  ALTER TABLE inventory_items
+    ADD CONSTRAINT inventory_items_transaction_fkey
+    FOREIGN KEY (transaction_id) REFERENCES money_transaction(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_posting (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  transaction_id    UUID NOT NULL REFERENCES money_transaction(id) ON DELETE CASCADE,
+  -- RESTRICT: an account with history is archived, not deleted. Deleting it
+  -- would orphan one leg of every transfer it took part in.
+  account_id        UUID NOT NULL REFERENCES money_account(id) ON DELETE RESTRICT,
+  category_id       UUID REFERENCES money_category(id) ON DELETE SET NULL,
+  -- Signed minor units of the account's currency. Zero moves nothing.
+  amount_minor      BIGINT NOT NULL CHECK (amount_minor <> 0),
+  currency          CHAR(3) NOT NULL REFERENCES money_currency(code),
+  memo              TEXT CHECK (memo IS NULL OR char_length(memo) <= 200),
+  -- Frozen when written. Both null means no rate was known: the posting is
+  -- reported as unpriced, never guessed at parity.
+  fx_rate           NUMERIC(24,12) CHECK (fx_rate IS NULL OR fx_rate > 0),
+  base_amount_minor BIGINT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_posting_priced_together
+    CHECK ((fx_rate IS NULL) = (base_amount_minor IS NULL))
+);
+CREATE INDEX IF NOT EXISTS money_posting_transaction_idx ON money_posting (transaction_id);
+CREATE INDEX IF NOT EXISTS money_posting_account_idx ON money_posting (account_id);
+CREATE INDEX IF NOT EXISTS money_posting_category_idx ON money_posting (category_id);
+ALTER TABLE money_posting ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages postings" ON money_posting;
+CREATE POLICY "Owner manages postings" ON money_posting FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+-- Per row, before write: the posting is in its account's currency, belongs to
+-- the account's owner, and a base-currency posting is priced at 1 without
+-- the app having to say so.
+CREATE OR REPLACE FUNCTION public.money_prepare_posting()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_account money_account%ROWTYPE;
+  v_base    CHAR(3);
+BEGIN
+  SELECT * INTO v_account FROM money_account WHERE id = NEW.account_id;
+  IF v_account.id IS NULL OR v_account.user_id <> NEW.user_id THEN
+    RAISE EXCEPTION 'Account not found';
+  END IF;
+  IF NEW.currency IS NULL THEN
+    NEW.currency := v_account.currency;
+  ELSIF NEW.currency <> v_account.currency THEN
+    RAISE EXCEPTION 'A % posting cannot go on a % account', NEW.currency, v_account.currency;
+  END IF;
+  IF NEW.category_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM money_category WHERE id = NEW.category_id AND user_id = NEW.user_id
+  ) THEN
+    RAISE EXCEPTION 'Category not found';
+  END IF;
+
+  SELECT base_currency INTO v_base FROM money_settings WHERE user_id = NEW.user_id;
+  IF NEW.currency = coalesce(v_base, 'CAD') THEN
+    NEW.fx_rate := 1;
+    NEW.base_amount_minor := NEW.amount_minor;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_posting_prepare ON money_posting;
+CREATE TRIGGER money_posting_prepare BEFORE INSERT OR UPDATE ON money_posting
+  FOR EACH ROW EXECUTE FUNCTION public.money_prepare_posting();
+
+-- At COMMIT: the postings of a transaction make sense for its kind. Deferred
+-- because a transaction's postings are written one row at a time.
+--
+--   expense      one account, net out   (several postings = a split)
+--   income       one account, net in
+--   refund       one account, net in    (a purchase coming back; its category
+--                                         reduces that category's spend)
+--   adjustment   exactly one uncategorised posting (a balance correction)
+--   transfer     uncategorised legs across ≥2 accounts, money leaving and
+--                arriving; legs in one currency sum to zero. Categorised
+--                postings on a transfer are its fees, and fees only leave.
+--
+-- And for every kind: no posting before its account's opening date, which
+-- is the anchor its balance is measured from.
+CREATE OR REPLACE FUNCTION public.money_check_transaction(p_transaction UUID)
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_kind        money_transaction_kind;
+  v_date        DATE;
+  v_count       INT;
+  v_accounts    INT;
+  v_net         BIGINT;
+  v_legs        INT;
+  v_leg_accounts INT;
+  v_leg_currencies INT;
+  v_leg_net     BIGINT;
+  v_leg_in      INT;
+  v_leg_out     INT;
+  v_fee_in      INT;
+  v_uncategorised INT;
+BEGIN
+  SELECT kind, date INTO v_kind, v_date FROM money_transaction WHERE id = p_transaction;
+  IF v_kind IS NULL THEN
+    RETURN; -- the transaction itself was deleted
   END IF;
 
   SELECT count(*),
          count(DISTINCT account_id),
-         count(*) FILTER (WHERE account_id IS NULL),
-         count(DISTINCT currency),
-         -- The legs alone. A provider fee is money leaving for the *outside
-         -- world*, not money arriving in the other account, so it must not be
-         -- part of this sum — including it rejected every transfer that cost
-         -- anything to make. `fin_account_balance` charges it to the sending
-         -- account separately, as `amount_minor - fee_minor`.
          coalesce(sum(amount_minor), 0),
-         count(*) FILTER (WHERE amount_minor > 0),
-         count(*) FILTER (WHERE amount_minor < 0)
-    INTO v_legs, v_accounts, v_unassigned, v_currencies, v_net, v_positive, v_negative
-    FROM fin_posting WHERE transaction_id = v_txn;
+         count(*) FILTER (WHERE category_id IS NULL),
+         count(DISTINCT account_id) FILTER (WHERE category_id IS NULL),
+         count(DISTINCT currency) FILTER (WHERE category_id IS NULL),
+         coalesce(sum(amount_minor) FILTER (WHERE category_id IS NULL), 0),
+         count(*) FILTER (WHERE category_id IS NULL AND amount_minor > 0),
+         count(*) FILTER (WHERE category_id IS NULL AND amount_minor < 0),
+         count(*) FILTER (WHERE category_id IS NOT NULL AND amount_minor > 0)
+    INTO v_count, v_accounts, v_net, v_legs, v_leg_accounts, v_leg_currencies,
+         v_leg_net, v_leg_in, v_leg_out, v_fee_in
+    FROM money_posting WHERE transaction_id = p_transaction;
+  v_uncategorised := v_legs;
 
-  IF v_legs < 2 THEN
-    RAISE EXCEPTION 'A transfer needs both legs; transaction % has %', v_txn, v_legs;
-  END IF;
-  -- Two named accounts — unless a leg has been orphaned.
-  --
-  -- `fin_posting.account_id` is ON DELETE SET NULL, and a referential action
-  -- fires row triggers, so closing an account nulls one leg of every transfer
-  -- it was ever part of. Demanding two distinct accounts here would then make
-  -- the account undeletable for anyone who had ever moved money — the *past*
-  -- refusing to let the present change. The invariant is about what was
-  -- written; afterwards, an orphaned leg is history, not an error.
-  IF v_accounts < 2 AND v_unassigned = 0 THEN
-    RAISE EXCEPTION 'A transfer must move between two different accounts';
-  END IF;
-  IF v_positive = 0 OR v_negative = 0 THEN
-    RAISE EXCEPTION 'A transfer needs money leaving one account and arriving in another';
-  END IF;
-  IF v_currencies = 1 AND v_net <> 0 THEN
-    RAISE EXCEPTION
-      'A single-currency transfer must balance; transaction % is off by % minor units',
-      v_txn, v_net;
+  IF v_count = 0 THEN
+    RAISE EXCEPTION 'A transaction needs at least one posting';
   END IF;
 
-  RETURN NULL;
+  IF EXISTS (
+    SELECT 1 FROM money_posting p JOIN money_account a ON a.id = p.account_id
+     WHERE p.transaction_id = p_transaction AND v_date < a.opening_date
+  ) THEN
+    RAISE EXCEPTION 'A transaction cannot be dated before its account was opened';
+  END IF;
+
+  CASE v_kind
+    WHEN 'expense' THEN
+      IF v_accounts <> 1 THEN RAISE EXCEPTION 'An expense comes out of one account'; END IF;
+      IF v_net >= 0 THEN RAISE EXCEPTION 'An expense has to take money out'; END IF;
+    WHEN 'income' THEN
+      IF v_accounts <> 1 THEN RAISE EXCEPTION 'Income arrives in one account'; END IF;
+      IF v_net <= 0 THEN RAISE EXCEPTION 'Income has to bring money in'; END IF;
+    WHEN 'refund' THEN
+      IF v_accounts <> 1 THEN RAISE EXCEPTION 'A refund arrives in one account'; END IF;
+      IF v_net <= 0 THEN RAISE EXCEPTION 'A refund has to bring money in'; END IF;
+    WHEN 'adjustment' THEN
+      IF v_count <> 1 OR v_uncategorised <> 1 THEN
+        RAISE EXCEPTION 'An adjustment is one uncategorised posting';
+      END IF;
+    WHEN 'transfer' THEN
+      IF v_legs < 2 OR v_leg_accounts < 2 THEN
+        RAISE EXCEPTION 'A transfer moves money between two different accounts';
+      END IF;
+      IF v_leg_in = 0 OR v_leg_out = 0 THEN
+        RAISE EXCEPTION 'A transfer needs money leaving one account and arriving in another';
+      END IF;
+      IF v_leg_currencies = 1 AND v_leg_net <> 0 THEN
+        RAISE EXCEPTION 'A transfer in one currency must balance; it is off by % minor units', v_leg_net;
+      END IF;
+      IF v_fee_in > 0 THEN
+        RAISE EXCEPTION 'A transfer fee takes money out';
+      END IF;
+  END CASE;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS fin_posting_transfer_balance ON fin_posting;
-CREATE CONSTRAINT TRIGGER fin_posting_transfer_balance
-  AFTER INSERT OR UPDATE OR DELETE ON fin_posting
-  DEFERRABLE INITIALLY DEFERRED
-  FOR EACH ROW EXECUTE FUNCTION public.fin_check_transfer_balance();
-
-
--- ── The balance of an account ───────────────────────────────────────────────
---
--- Derived, never stored — a stored balance is a copy of a derivable fact and
--- drifts the first time a write path forgets to update it.
---
--- A plain SQL function has no place for an IF, so the AAL2 check is a
--- predicate: an unverified session matches no row and gets NULL. Fails closed.
-
-CREATE OR REPLACE FUNCTION public.fin_account_balance(
-  p_account UUID,
-  p_as_of DATE DEFAULT CURRENT_DATE,
-  p_include_pending BOOLEAN DEFAULT false
-)
-RETURNS BIGINT
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-  SELECT a.opening_balance_minor
-       + coalesce((
-           SELECT sum(p.amount_minor - coalesce(p.fee_minor, 0))
-             FROM fin_posting p
-             JOIN fin_transaction t ON t.id = p.transaction_id
-            WHERE p.account_id = a.id
-              AND t.date >= a.opening_date
-              AND t.date <= p_as_of
-              AND (p_include_pending OR NOT t.is_pending)
-         ), 0)
-    FROM fin_account a
-   WHERE a.id = p_account
-     AND a.user_id = auth.uid()
-     AND public.is_aal2();
-$$;
-
-REVOKE ALL ON FUNCTION public.fin_account_balance(UUID, DATE, BOOLEAN) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.fin_account_balance(UUID, DATE, BOOLEAN) TO authenticated;
-
--- Every account at once. v1 called the per-account function in a loop from the
--- client — one request per account, all waiting on each other.
-CREATE OR REPLACE FUNCTION public.fin_account_balances(
-  p_as_of DATE DEFAULT CURRENT_DATE,
-  p_include_pending BOOLEAN DEFAULT false
-)
-RETURNS TABLE (account_id UUID, balance_minor BIGINT, currency CHAR(3))
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-  SELECT a.id,
-         a.opening_balance_minor
-         + coalesce((
-             SELECT sum(p.amount_minor - coalesce(p.fee_minor, 0))
-               FROM fin_posting p
-               JOIN fin_transaction t ON t.id = p.transaction_id
-              WHERE p.account_id = a.id
-                AND t.date >= a.opening_date
-                AND t.date <= p_as_of
-                AND (p_include_pending OR NOT t.is_pending)
-           ), 0),
-         a.currency
-    FROM fin_account a
-   WHERE a.user_id = auth.uid()
-     AND public.is_aal2()
-     AND a.archived_at IS NULL
-   ORDER BY a.sort_order, a.name;
-$$;
-
-REVOKE ALL ON FUNCTION public.fin_account_balances(DATE, BOOLEAN) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.fin_account_balances(DATE, BOOLEAN) TO authenticated;
-
-
--- ── Commitments: what repeats, and what you owe ─────────────────────────────
---
--- ONE table for what v1 split across `recurring_transactions` and
--- `finance_loans`. A mortgage could exist as both and the forecast added them
--- together, with the Loans screen asking the owner to *remember* to archive the
--- duplicate. Remembering is not a mechanism.
---
--- A commitment also names `from_account_id` and/or `to_account_id`, exactly as
--- a posting pair does — so a repeating transfer is expressible. A v1 rule had
--- one account and a direction, so "move 500 to savings every fortnight" was
--- money leaving that never arrived, and the forecast fell by that amount every
--- fortnight forever.
---
--- `supersedes_id` records "the mortgage replaced the tenancy". No matcher can
--- know that Home Loan supersedes Rent — the two share no words.
-
-DO $$ BEGIN
-  CREATE TYPE fin_frequency AS ENUM ('daily','weekly','bi-weekly','monthly','yearly');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  -- 'fixed': the amount is known (rent, salary, a subscription).
-  -- 'amortising': the amount is derived from the terms (a loan instalment).
-  CREATE TYPE fin_commitment_kind AS ENUM ('fixed','amortising');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  -- What a rate change does. Indian lenders usually hold the EMI and move the
-  -- tenure; some move the EMI. Each event may override the default.
-  CREATE TYPE fin_rate_effect AS ENUM ('tenure','emi');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-CREATE TABLE IF NOT EXISTS fin_commitment (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  name          TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 200),
-  kind          fin_commitment_kind NOT NULL DEFAULT 'fixed',
-
-  -- Direction is read from these, not from a type column, exactly as it is
-  -- read from a posting's sign. Both set is a transfer between your own
-  -- accounts — the case v1 could not represent at all.
-  from_account_id UUID REFERENCES fin_account(id) ON DELETE SET NULL,
-  to_account_id   UUID REFERENCES fin_account(id) ON DELETE SET NULL,
-  category_id     UUID REFERENCES fin_category(id) ON DELETE SET NULL,
-  currency        CHAR(3) NOT NULL REFERENCES fin_currency(code),
-
-  -- Fixed commitments.
-  amount_minor  BIGINT CHECK (amount_minor IS NULL OR amount_minor > 0),
-
-  -- Amortising commitments.
-  principal_minor BIGINT CHECK (principal_minor IS NULL OR principal_minor > 0),
-  annual_rate     NUMERIC(6,3) CHECK (annual_rate IS NULL OR (annual_rate >= 0 AND annual_rate <= 100)),
-  tenure_months   INT CHECK (tenure_months IS NULL OR tenure_months BETWEEN 1 AND 600),
-  rate_type       TEXT CHECK (rate_type IS NULL OR rate_type IN ('fixed','floating')),
-  on_rate_change  fin_rate_effect,
-  lender          TEXT CHECK (lender IS NULL OR char_length(lender) <= 120),
-
-  -- Schedule.
-  frequency      fin_frequency NOT NULL DEFAULT 'monthly',
-  start_date     DATE NOT NULL,
-  end_date       DATE,
-  -- Overloaded by frequency: day-of-week (0–6, Sunday first) for weekly and
-  -- bi-weekly, day-of-month (1–31) for monthly, unused otherwise. In v1 this
-  -- was a bare INT with no CHECK and Zod was the only thing enforcing it, so a
-  -- rule written from the SQL editor could hold a day its frequency could
-  -- never produce.
-  occurrence_day INT,
-  -- The last occurrence actually posted, for resuming the queue.
-  last_posted_date DATE,
-
-  -- Off by default, and that default is the point: a biweekly salary is 1,000
-  -- until two days of unpaid leave make it 800. An occurrence is a proposal
-  -- with the expected amount pre-filled until a rule opts into posting itself.
-  auto_post   BOOLEAN NOT NULL DEFAULT false,
-  is_estimate BOOLEAN NOT NULL DEFAULT false,
-
-  supersedes_id UUID REFERENCES fin_commitment(id) ON DELETE SET NULL,
-
-  notes       TEXT CHECK (notes IS NULL OR char_length(notes) <= 2000),
-  archived_at TIMESTAMPTZ,
-  created_at  TIMESTAMPTZ DEFAULT now(),
-  updated_at  TIMESTAMPTZ DEFAULT now(),
-
-  -- A commitment that moves money nowhere describes nothing.
-  CONSTRAINT fin_commitment_has_an_account
-    CHECK (from_account_id IS NOT NULL OR to_account_id IS NOT NULL),
-  -- Money cannot move from an account to itself.
-  CONSTRAINT fin_commitment_distinct_accounts
-    CHECK (from_account_id IS NULL OR to_account_id IS NULL
-           OR from_account_id <> to_account_id),
-  -- Each shape carries its own fields and not the other's.
-  CONSTRAINT fin_commitment_shape CHECK (
-    (kind = 'fixed'
-       AND amount_minor IS NOT NULL
-       AND principal_minor IS NULL AND annual_rate IS NULL AND tenure_months IS NULL)
-    OR
-    (kind = 'amortising'
-       AND amount_minor IS NULL
-       AND principal_minor IS NOT NULL AND annual_rate IS NOT NULL
-       AND tenure_months IS NOT NULL)
-  ),
-  -- A rule that ends before it starts projects nothing and silently does
-  -- nothing, which is worse than being rejected.
-  CONSTRAINT fin_commitment_ends_after_it_starts
-    CHECK (end_date IS NULL OR end_date >= start_date),
-  -- The occurrence day has to be one its own frequency can produce.
-  CONSTRAINT fin_commitment_occurrence_day_fits_frequency CHECK (
-    CASE frequency
-      WHEN 'daily'     THEN occurrence_day IS NULL
-      WHEN 'yearly'    THEN occurrence_day IS NULL
-      WHEN 'weekly'    THEN occurrence_day IS NULL OR occurrence_day BETWEEN 0 AND 6
-      WHEN 'bi-weekly' THEN occurrence_day IS NULL OR occurrence_day BETWEEN 0 AND 6
-      WHEN 'monthly'   THEN occurrence_day IS NULL OR occurrence_day BETWEEN 1 AND 31
-    END
-  ),
-  CONSTRAINT fin_commitment_supersedes_another CHECK (supersedes_id IS DISTINCT FROM id)
-);
-
-CREATE INDEX IF NOT EXISTS fin_commitment_user_idx
-  ON fin_commitment (user_id, start_date) WHERE archived_at IS NULL;
-CREATE INDEX IF NOT EXISTS fin_commitment_supersedes_idx
-  ON fin_commitment (supersedes_id) WHERE supersedes_id IS NOT NULL;
-
-ALTER TABLE fin_commitment ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin commitments" ON fin_commitment;
-CREATE POLICY "Admin manage fin commitments" ON fin_commitment FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_commitment_updated_at ON fin_commitment;
-CREATE TRIGGER update_fin_commitment_updated_at BEFORE UPDATE ON fin_commitment
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-
--- ── What happened to a commitment ───────────────────────────────────────────
---
--- The schedule is *derived* from the terms plus these events, never stored: a
--- stored schedule goes stale the moment an event is added, and then two sources
--- disagree about what you owe.
-
-DO $$ BEGIN
-  CREATE TYPE fin_commitment_event_kind AS ENUM
-    ('rate_change','prepayment','amount_change','ended');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-CREATE TABLE IF NOT EXISTS fin_commitment_event (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id        UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  commitment_id  UUID NOT NULL REFERENCES fin_commitment(id) ON DELETE CASCADE,
-  kind           fin_commitment_event_kind NOT NULL,
-  effective_date DATE NOT NULL,
-  rate           NUMERIC(6,3) CHECK (rate IS NULL OR (rate >= 0 AND rate <= 100)),
-  amount_minor   BIGINT CHECK (amount_minor IS NULL OR amount_minor > 0),
-  effect         fin_rate_effect,
-  note           TEXT CHECK (note IS NULL OR char_length(note) <= 300),
-  created_at     TIMESTAMPTZ DEFAULT now(),
-
-  -- An event without the value it exists to carry is a row that does nothing.
-  CONSTRAINT fin_commitment_event_complete CHECK (
-    (kind = 'rate_change'   AND rate IS NOT NULL)
-    OR (kind = 'prepayment'    AND amount_minor IS NOT NULL)
-    OR (kind = 'amount_change' AND amount_minor IS NOT NULL)
-    OR (kind = 'ended')
-  )
-);
-
-CREATE INDEX IF NOT EXISTS fin_commitment_event_idx
-  ON fin_commitment_event (commitment_id, effective_date);
-
-ALTER TABLE fin_commitment_event ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin commitment events" ON fin_commitment_event;
-CREATE POLICY "Admin manage fin commitment events" ON fin_commitment_event FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-
-
--- ── Occurrences deliberately passed over ────────────────────────────────────
---
--- The only part of the confirm queue that needs storing. Everything else is
--- derived — commitments, minus what was posted, minus these — so a commitment
--- whose amount or schedule changes cannot leave a stale queue behind.
-
-CREATE TABLE IF NOT EXISTS fin_commitment_skip (
-  commitment_id UUID NOT NULL REFERENCES fin_commitment(id) ON DELETE CASCADE,
-  user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  due_date      DATE NOT NULL,
-  reason        TEXT CHECK (reason IS NULL OR char_length(reason) <= 200),
-  created_at    TIMESTAMPTZ DEFAULT now(),
-  PRIMARY KEY (commitment_id, due_date)
-);
-
-ALTER TABLE fin_commitment_skip ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin commitment skips" ON fin_commitment_skip;
-CREATE POLICY "Admin manage fin commitment skips" ON fin_commitment_skip FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-
-
--- ── The link from the ledger to a commitment ────────────────────────────────
---
--- ON DELETE SET NULL: deleting a commitment must not rewrite history.
-
-DO $$ BEGIN
-  ALTER TABLE fin_transaction
-    ADD CONSTRAINT fin_transaction_commitment_fkey
-    FOREIGN KEY (commitment_id) REFERENCES fin_commitment(id) ON DELETE SET NULL;
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
--- An occurrence is identified by its commitment and its *due* date, which is
--- not the date it was paid. This is what stops the queue proposing it twice.
-CREATE UNIQUE INDEX IF NOT EXISTS fin_transaction_occurrence_unique
-  ON fin_transaction (commitment_id, occurrence_date)
-  WHERE commitment_id IS NOT NULL AND occurrence_date IS NOT NULL;
-
-
--- ── Reading a commitment's direction ────────────────────────────────────────
---
--- Derived from the accounts rather than stored, so it cannot disagree with
--- them. 'transfer' is the case v1 had no way to say.
-
-CREATE OR REPLACE FUNCTION public.fin_commitment_direction(
-  p_from UUID,
-  p_to UUID
-)
-RETURNS TEXT
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT CASE
-    WHEN p_from IS NOT NULL AND p_to IS NOT NULL THEN 'transfer'
-    WHEN p_from IS NOT NULL THEN 'out'
-    WHEN p_to IS NOT NULL THEN 'in'
-    ELSE NULL
-  END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.fin_commitment_direction(UUID, UUID) TO authenticated;
-
-
--- ── Budgets ─────────────────────────────────────────────────────────────────
---
--- One row per category per month. `period` is the first of the month, so a
--- budget is addressable without a range query and last month's figure is a
--- fact rather than something recomputed from a "current" budget.
-
-CREATE TABLE IF NOT EXISTS fin_budget (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  category_id  UUID NOT NULL REFERENCES fin_category(id) ON DELETE CASCADE,
-  period       DATE NOT NULL,
-  amount_minor BIGINT NOT NULL CHECK (amount_minor >= 0),
-  -- An amount with no currency is meaningless, and v1's budget table had none
-  -- — it simply assumed base. Stated, so a base-currency change cannot
-  -- silently re-price every budget you ever set.
-  currency     CHAR(3) NOT NULL REFERENCES fin_currency(code),
-  -- Underspend carries into next month rather than evaporating, which is what
-  -- makes a budget survive an irregular expense instead of being abandoned.
-  rollover     BOOLEAN NOT NULL DEFAULT false,
-  created_at   TIMESTAMPTZ DEFAULT now(),
-  updated_at   TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (user_id, category_id, period),
-  CONSTRAINT fin_budget_period_is_a_month CHECK (date_trunc('month', period) = period)
-);
-ALTER TABLE fin_budget ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin budgets" ON fin_budget;
-CREATE POLICY "Admin manage fin budgets" ON fin_budget FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_budget_updated_at ON fin_budget;
-CREATE TRIGGER update_fin_budget_updated_at BEFORE UPDATE ON fin_budget
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-
--- ── Goals ───────────────────────────────────────────────────────────────────
---
--- Three v1 decisions are deliberately not carried over, each a bug:
---
--- 1. A GOAL WROTE LEDGER ROWS. v1's own comment said an earmark is not a
---    transfer — money in a goal is still in the account — and then
---    `record_goal_contribution` wrote a ledger row anyway. Here the comment
---    wins: `fin_goal_contribution` has no `transaction_id` because there is no
---    transaction.
--- 2. A GOAL STORED ITS OWN TOTAL. `current_amount` was updated by
---    read-then-add, losing a contribution whenever two raced. Derived instead.
--- 3. `target_amount` HAD NO CHECK, so a zero target produced "NaN%" and a goal
---    that claimed to be complete on an empty balance.
-
-DO $$ BEGIN
-  CREATE TYPE fin_goal_kind AS ENUM ('save','payoff','buffer');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-CREATE TABLE IF NOT EXISTS fin_goal (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  name         TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 200),
-  description  TEXT CHECK (description IS NULL OR char_length(description) <= 2000),
-  -- Strictly positive: a goal of nothing is not a goal.
-  target_minor BIGINT NOT NULL CHECK (target_minor > 0),
-  currency     CHAR(3) NOT NULL REFERENCES fin_currency(code),
-  target_date  DATE,
-  -- Where the money is kept, so progress is observed rather than remembered.
-  account_id   UUID REFERENCES fin_account(id) ON DELETE SET NULL,
-  kind         fin_goal_kind,
-  archived_at  TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ DEFAULT now(),
-  updated_at   TIMESTAMPTZ DEFAULT now()
-  -- Note the absence of `current_amount`. See the header.
-);
-ALTER TABLE fin_goal ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin goals" ON fin_goal;
-CREATE POLICY "Admin manage fin goals" ON fin_goal FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_goal_updated_at ON fin_goal;
-CREATE TRIGGER update_fin_goal_updated_at BEFORE UPDATE ON fin_goal
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Money set aside, and taken back out. Positive puts aside, negative reclaims.
--- No `transaction_id`: an earmark does not move money.
-CREATE TABLE IF NOT EXISTS fin_goal_contribution (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  goal_id      UUID NOT NULL REFERENCES fin_goal(id) ON DELETE CASCADE,
-  -- Nullable and SET NULL: closing an account must not erase the record of
-  -- what was set aside from it.
-  account_id   UUID REFERENCES fin_account(id) ON DELETE SET NULL,
-  amount_minor BIGINT NOT NULL CHECK (amount_minor <> 0),
-  occurred_on  DATE NOT NULL DEFAULT CURRENT_DATE,
-  note         TEXT CHECK (note IS NULL OR char_length(note) <= 300),
-  created_at   TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS fin_goal_contribution_goal_idx
-  ON fin_goal_contribution (goal_id, occurred_on DESC);
-ALTER TABLE fin_goal_contribution ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin goal contributions" ON fin_goal_contribution;
-CREATE POLICY "Admin manage fin goal contributions" ON fin_goal_contribution FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-
--- What a goal holds: the sum of its contributions, derived.
-CREATE OR REPLACE FUNCTION public.fin_goal_balance(p_goal UUID)
-RETURNS BIGINT
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT coalesce(sum(amount_minor), 0)::BIGINT
-    FROM fin_goal_contribution WHERE goal_id = p_goal;
-$$;
-GRANT EXECUTE ON FUNCTION public.fin_goal_balance(UUID) TO authenticated;
-
--- A goal cannot hold less than nothing. v1 enforced this inside one RPC, so any
--- other write path could drive a goal negative; here it holds however the row
--- arrives. Deferred, and reading OLD on a DELETE — taking money back out is
--- exactly when this matters.
-CREATE OR REPLACE FUNCTION public.fin_check_goal_not_negative()
+CREATE OR REPLACE FUNCTION public.money_check_posting_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
-DECLARE
-  v_goal    UUID := CASE WHEN TG_OP = 'DELETE' THEN OLD.goal_id ELSE NEW.goal_id END;
-  v_balance BIGINT;
 BEGIN
-  -- Gone entirely when the goal itself was deleted; the cascade is fine.
-  IF NOT EXISTS (SELECT 1 FROM fin_goal WHERE id = v_goal) THEN
-    RETURN NULL;
+  IF TG_OP IN ('UPDATE','DELETE') THEN
+    PERFORM public.money_check_transaction(OLD.transaction_id);
   END IF;
-
-  SELECT public.fin_goal_balance(v_goal) INTO v_balance;
-  IF v_balance < 0 THEN
-    RAISE EXCEPTION 'That is more than the goal holds (it would leave % minor units)', v_balance;
+  IF TG_OP IN ('INSERT','UPDATE')
+     AND (TG_OP = 'INSERT' OR NEW.transaction_id <> OLD.transaction_id) THEN
+    PERFORM public.money_check_transaction(NEW.transaction_id);
   END IF;
   RETURN NULL;
 END;
 $$;
-
-DROP TRIGGER IF EXISTS fin_goal_contribution_not_negative ON fin_goal_contribution;
-CREATE CONSTRAINT TRIGGER fin_goal_contribution_not_negative
-  AFTER INSERT OR UPDATE OR DELETE ON fin_goal_contribution
+DROP TRIGGER IF EXISTS money_posting_balanced ON money_posting;
+CREATE CONSTRAINT TRIGGER money_posting_balanced
+  AFTER INSERT OR UPDATE OR DELETE ON money_posting
   DEFERRABLE INITIALLY DEFERRED
-  FOR EACH ROW EXECUTE FUNCTION public.fin_check_goal_not_negative();
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_posting_trigger();
+
+-- A change of kind or date can break a transaction whose postings did not
+-- change, so the header is checked too.
+CREATE OR REPLACE FUNCTION public.money_check_transaction_trigger()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  PERFORM public.money_check_transaction(NEW.id);
+  RETURN NULL;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_transaction_consistent ON money_transaction;
+CREATE CONSTRAINT TRIGGER money_transaction_consistent
+  AFTER INSERT OR UPDATE OF kind, date ON money_transaction
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_transaction_trigger();
+
+-- An account's opening date cannot move past history it already has.
+CREATE OR REPLACE FUNCTION public.money_check_account_opening()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.currency <> OLD.currency AND EXISTS (
+    SELECT 1 FROM money_posting WHERE account_id = NEW.id
+  ) THEN
+    RAISE EXCEPTION 'An account with transactions cannot change currency';
+  END IF;
+  IF NEW.opening_date > OLD.opening_date AND EXISTS (
+    SELECT 1 FROM money_posting p JOIN money_transaction t ON t.id = p.transaction_id
+     WHERE p.account_id = NEW.id AND t.date < NEW.opening_date
+  ) THEN
+    RAISE EXCEPTION 'The account has transactions before %', NEW.opening_date;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_account_history ON money_account;
+CREATE TRIGGER money_account_history BEFORE UPDATE OF currency, opening_date ON money_account
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_account_opening();
 
 
--- ── Scenarios ───────────────────────────────────────────────────────────────
---
--- Adjustments are JSONB because the shape is a union that belongs in one place
--- — the Zod schema — rather than in five columns that are null four times out
--- of five. The column still insists it is a list.
+-- ── Reconciliation checkpoints ──────────────────────────────────────────────
+-- "On this date the statement said this." The app compares it with the
+-- derived balance and shows the gap; nothing is forced to agree.
 
-CREATE TABLE IF NOT EXISTS fin_scenario (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  name        TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
-  description TEXT CHECK (description IS NULL OR char_length(description) <= 2000),
-  adjustments JSONB NOT NULL DEFAULT '[]'::jsonb,
-  is_active   BOOLEAN NOT NULL DEFAULT false,
-  created_at  TIMESTAMPTZ DEFAULT now(),
-  updated_at  TIMESTAMPTZ DEFAULT now(),
-  CONSTRAINT fin_scenario_adjustments_is_a_list
-    CHECK (jsonb_typeof(adjustments) = 'array')
+CREATE TABLE IF NOT EXISTS money_reconciliation (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                 UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  account_id              UUID NOT NULL REFERENCES money_account(id) ON DELETE CASCADE,
+  as_of                   DATE NOT NULL,
+  statement_balance_minor BIGINT NOT NULL,
+  note                    TEXT CHECK (note IS NULL OR char_length(note) <= 300),
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (account_id, as_of)
 );
-ALTER TABLE fin_scenario ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin scenarios" ON fin_scenario;
-CREATE POLICY "Admin manage fin scenarios" ON fin_scenario FOR ALL
+ALTER TABLE money_reconciliation ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages reconciliations" ON money_reconciliation;
+CREATE POLICY "Owner manages reconciliations" ON money_reconciliation FOR ALL
   USING (auth.uid() = user_id AND public.is_aal2())
   WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_scenario_updated_at ON fin_scenario;
-CREATE TRIGGER update_fin_scenario_updated_at BEFORE UPDATE ON fin_scenario
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 
--- ── Imports ─────────────────────────────────────────────────────────────────
+-- ── Categorisation rules ────────────────────────────────────────────────────
+-- Applied by the app on import and entry, highest priority first. Patterns
+-- are matched case-insensitively; 'regex' is validated here so a bad pattern
+-- is refused on save rather than failing every import after it.
 
-CREATE TABLE IF NOT EXISTS fin_import_batch (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  account_id    UUID REFERENCES fin_account(id) ON DELETE SET NULL,
-  file_name     TEXT CHECK (file_name IS NULL OR char_length(file_name) <= 255),
-  format        TEXT NOT NULL CHECK (char_length(format) BETWEEN 1 AND 40),
-  rows_in_file  INT NOT NULL DEFAULT 0 CHECK (rows_in_file >= 0),
-  rows_imported INT NOT NULL DEFAULT 0 CHECK (rows_imported >= 0),
-  rows_skipped  INT NOT NULL DEFAULT 0 CHECK (rows_skipped >= 0),
-  date_from     DATE,
-  date_to       DATE,
-  created_at    TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS fin_import_batch_user_idx
-  ON fin_import_batch (user_id, created_at DESC);
-ALTER TABLE fin_import_batch ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin import batches" ON fin_import_batch;
-CREATE POLICY "Admin manage fin import batches" ON fin_import_batch FOR ALL
-  USING (auth.uid() = user_id AND public.is_aal2())
-  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-
--- ON DELETE SET NULL: forgetting an import must not delete the rows it brought
--- in, which is a different decision from undoing it.
 DO $$ BEGIN
-  ALTER TABLE fin_transaction
-    ADD CONSTRAINT fin_transaction_import_batch_fkey
-    FOREIGN KEY (import_batch_id) REFERENCES fin_import_batch(id) ON DELETE SET NULL;
+  CREATE TYPE money_rule_match AS ENUM ('contains','starts_with','equals','regex');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- An inventory item can name the transaction it was bought with. The column
--- lives on `inventory_items`, which is created long before this table, so the
--- constraint is added here rather than inline.
---
--- It pointed at v1's `transactions` until the cutover. Migration 028 preserved
--- every id, so the values kept pointing at the same purchase once it became a
--- `fin_transaction` row — the link survived the rewrite and only the constraint
--- had to move. Migration 032 does that for existing installs.
-DO $$ BEGIN
-  ALTER TABLE inventory_items
-    ADD CONSTRAINT inventory_items_transaction_fkey
-    FOREIGN KEY (transaction_id) REFERENCES fin_transaction(id) ON DELETE SET NULL;
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
--- The dedupe that makes importing the same statement twice a no-op. In v1 this
--- was `(user_id, account_id, import_hash)`, but the account now lives on the
--- posting rather than the transaction — and the hash is already computed per
--- account, so the account adds nothing to the key.
-CREATE UNIQUE INDEX IF NOT EXISTS fin_transaction_import_hash_unique
-  ON fin_transaction (user_id, import_hash)
-  WHERE import_hash IS NOT NULL;
-
--- A category learned from a correction during an import.
-CREATE TABLE IF NOT EXISTS fin_category_rule (
+CREATE TABLE IF NOT EXISTS money_rule (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
-  -- A normalised merchant key: "LOBLAWS", "ETRANSFER JOHN DOE".
-  pattern     TEXT NOT NULL CHECK (char_length(pattern) BETWEEN 2 AND 120),
-  category_id UUID REFERENCES fin_category(id) ON DELETE CASCADE,
-  -- 'transfer' marks the merchant as money moving between your own accounts.
-  kind        TEXT NOT NULL DEFAULT 'expense'
-    CHECK (kind IN ('expense','income','transfer')),
-  created_at  TIMESTAMPTZ DEFAULT now(),
-  updated_at  TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (user_id, pattern)
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  priority    INT NOT NULL DEFAULT 100,
+  match       money_rule_match NOT NULL DEFAULT 'contains',
+  pattern     TEXT NOT NULL CHECK (char_length(pattern) BETWEEN 1 AND 200),
+  -- Only rows from this account, when set.
+  account_id  UUID REFERENCES money_account(id) ON DELETE CASCADE,
+  category_id UUID REFERENCES money_category(id) ON DELETE CASCADE,
+  payee       TEXT CHECK (payee IS NULL OR char_length(payee) <= 200),
+  is_active   BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_rule_does_something CHECK (category_id IS NOT NULL OR payee IS NOT NULL)
 );
-ALTER TABLE fin_category_rule ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admin manage fin category rules" ON fin_category_rule;
-CREATE POLICY "Admin manage fin category rules" ON fin_category_rule FOR ALL
+ALTER TABLE money_rule ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages rules" ON money_rule;
+CREATE POLICY "Owner manages rules" ON money_rule FOR ALL
   USING (auth.uid() = user_id AND public.is_aal2())
   WITH CHECK (auth.uid() = user_id AND public.is_aal2());
-DROP TRIGGER IF EXISTS update_fin_category_rule_updated_at ON fin_category_rule;
-CREATE TRIGGER update_fin_category_rule_updated_at BEFORE UPDATE ON fin_category_rule
+DROP TRIGGER IF EXISTS update_money_rule_updated_at ON money_rule;
+CREATE TRIGGER update_money_rule_updated_at BEFORE UPDATE ON money_rule
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE OR REPLACE FUNCTION public.money_check_rule()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.match = 'regex' THEN
+    BEGIN
+      PERFORM '' ~* NEW.pattern;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE EXCEPTION 'Not a valid pattern: %', NEW.pattern;
+    END;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_rule_valid ON money_rule;
+CREATE TRIGGER money_rule_valid BEFORE INSERT OR UPDATE ON money_rule
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_rule();
 
--- ── Writing a transaction atomically (migration 030) ────────────────────────
---
--- THE GAP THIS CLOSES. The deferred trigger above makes a half transfer
--- unrepresentable *within a statement*. But a client writing over PostgREST
--- makes two round trips — one for the header, one for the postings — and two
--- round trips are two transactions. If the second fails, the first has already
--- committed, and the ledger holds a transaction with no postings: not corrupt
--- money, but a row that means nothing and that every count will include.
---
--- Nothing fires when a header is inserted alone, so the database cannot prevent
--- that on its own. The write is therefore a function: one call, one
--- transaction, both halves or neither.
---
--- Deletion needs no function: ON DELETE CASCADE removes a transaction's legs
--- with it, and the transfer trigger tolerates the header being gone.
---
--- Ownership is checked for every id the caller supplies. A SECURITY DEFINER
--- function that trusted them would happily attach a posting to somebody else's
--- account.
 
-CREATE OR REPLACE FUNCTION public.fin_record_transaction(
+-- ── Writing a transaction ───────────────────────────────────────────────────
+--
+-- Header and postings in one call, so there is no moment where a transfer
+-- has one leg. Editing replaces the postings wholesale — patching legs one
+-- at a time would pass through states the check above refuses.
+--
+-- p_transaction: { date, kind, status?, description, payee?, notes?,
+--                  raw_description?, schedule_id?, occurrence_date?,
+--                  import_hash?, import_batch_id?, provider?, market_rate? }
+-- p_postings:    [{ account_id, category_id?, amount_minor, memo?,
+--                   fx_rate?, base_amount_minor? }, …]   (1–50)
+
+CREATE OR REPLACE FUNCTION public.money_write_postings(
+  p_uid UUID,
+  p_transaction UUID,
+  p_postings JSONB
+)
+RETURNS void
+LANGUAGE plpgsql
+-- Invoker, not definer: only the write RPCs below call it (EXECUTE is
+-- revoked from everyone else), and inside them it already runs with their
+-- rights.
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_posting JSONB;
+BEGIN
+  IF p_postings IS NULL OR jsonb_typeof(p_postings) <> 'array'
+     OR jsonb_array_length(p_postings) = 0 THEN
+    RAISE EXCEPTION 'A transaction needs at least one posting';
+  END IF;
+  IF jsonb_array_length(p_postings) > 50 THEN
+    RAISE EXCEPTION 'At most 50 postings in one transaction';
+  END IF;
+
+  FOR v_posting IN SELECT value FROM jsonb_array_elements(p_postings) LOOP
+    INSERT INTO money_posting (
+      user_id, transaction_id, account_id, category_id, amount_minor,
+      currency, memo, fx_rate, base_amount_minor
+    ) VALUES (
+      p_uid,
+      p_transaction,
+      NULLIF(v_posting->>'account_id', '')::uuid,
+      NULLIF(v_posting->>'category_id', '')::uuid,
+      (v_posting->>'amount_minor')::bigint,
+      NULL, -- taken from the account
+      left(NULLIF(v_posting->>'memo', ''), 200),
+      NULLIF(v_posting->>'fx_rate', '')::numeric,
+      NULLIF(v_posting->>'base_amount_minor', '')::bigint
+    );
+  END LOOP;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.money_write_postings(UUID, UUID, JSONB) FROM PUBLIC, anon, authenticated;
+
+-- Run the ledger's deferred checks now, then defer them again.
+--
+-- Now: so a bad transaction fails inside the call that wrote it, and the
+-- whole call rolls back, instead of at COMMIT after the caller was told it
+-- worked. Then deferred again: `SET CONSTRAINTS … IMMEDIATE` lasts for the
+-- rest of the database transaction, and a second write in the same one would
+-- otherwise be checked the moment its header is inserted — before it has any
+-- postings — and always fail.
+CREATE OR REPLACE FUNCTION public.money_flush_checks()
+RETURNS void
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  SET CONSTRAINTS money_posting_balanced, money_transaction_consistent IMMEDIATE;
+  SET CONSTRAINTS money_posting_balanced, money_transaction_consistent DEFERRED;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.money_flush_checks() FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.money_record_transaction(
   p_transaction JSONB,
   p_postings JSONB
 )
@@ -3288,96 +3275,56 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_uid     UUID := auth.uid();
-  v_id      UUID;
-  v_posting JSONB;
-  v_account UUID;
-  v_category UUID;
-  v_count   INT := 0;
+  v_uid UUID := auth.uid();
+  v_id  UUID;
 BEGIN
   IF v_uid IS NULL OR NOT public.is_aal2() THEN
     RAISE EXCEPTION 'Not authorised';
   END IF;
-
-  IF p_postings IS NULL OR jsonb_typeof(p_postings) <> 'array'
-     OR jsonb_array_length(p_postings) = 0 THEN
-    RAISE EXCEPTION 'A transaction needs at least one posting';
+  -- Definer rights bypass the lockdown policies (V2-016), so check here.
+  IF public.writes_locked() THEN
+    RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
+      USING ERRCODE = 'insufficient_privilege';
   END IF;
-  IF jsonb_array_length(p_postings) > 20 THEN
-    RAISE EXCEPTION 'At most 20 postings in one transaction';
-  END IF;
-
-  INSERT INTO fin_transaction (
-    user_id, date, description, raw_description, merchant, notes, kind,
-    is_pending, commitment_id, occurrence_date, import_hash, import_batch_id
-  )
-  VALUES (
+  INSERT INTO money_transaction (
+    user_id, date, kind, status, description, payee, notes, raw_description,
+    schedule_id, occurrence_date, import_hash, import_batch_id, provider, market_rate
+  ) VALUES (
     v_uid,
     (p_transaction->>'date')::date,
-    left(coalesce(NULLIF(p_transaction->>'description', ''), 'Untitled'), 200),
-    left(NULLIF(p_transaction->>'raw_description', ''), 500),
-    left(NULLIF(p_transaction->>'merchant', ''), 200),
+    (p_transaction->>'kind')::money_transaction_kind,
+    coalesce(NULLIF(p_transaction->>'status', ''), 'cleared')::money_transaction_status,
+    p_transaction->>'description',
+    NULLIF(p_transaction->>'payee', ''),
     NULLIF(p_transaction->>'notes', ''),
-    coalesce(NULLIF(p_transaction->>'kind', ''), 'spend')::fin_transaction_kind,
-    coalesce((p_transaction->>'is_pending')::boolean, false),
-    -- Only a commitment of the caller's own.
-    (SELECT c.id FROM fin_commitment c
-      WHERE c.id = NULLIF(p_transaction->>'commitment_id', '')::uuid
-        AND c.user_id = v_uid),
-    NULLIF(p_transaction->>'occurrence_date', '')::date,
-    left(NULLIF(p_transaction->>'import_hash', ''), 64),
-    (SELECT b.id FROM fin_import_batch b
+    NULLIF(p_transaction->>'raw_description', ''),
+    -- Only a schedule of the caller's own.
+    (SELECT sc.id FROM money_schedule sc
+      WHERE sc.id = NULLIF(p_transaction->>'schedule_id', '')::uuid
+        AND sc.user_id = v_uid),
+    CASE WHEN EXISTS (SELECT 1 FROM money_schedule sc
+                       WHERE sc.id = NULLIF(p_transaction->>'schedule_id', '')::uuid
+                         AND sc.user_id = v_uid)
+         THEN NULLIF(p_transaction->>'occurrence_date', '')::date END,
+    NULLIF(p_transaction->>'import_hash', ''),
+    (SELECT b.id FROM money_import_batch b
       WHERE b.id = NULLIF(p_transaction->>'import_batch_id', '')::uuid
-        AND b.user_id = v_uid)
+        AND b.user_id = v_uid),
+    NULLIF(p_transaction->>'provider', ''),
+    NULLIF(p_transaction->>'market_rate', '')::numeric
   )
   RETURNING id INTO v_id;
 
-  FOR v_posting IN SELECT value FROM jsonb_array_elements(p_postings) LOOP
-    v_account := NULLIF(v_posting->>'account_id', '')::uuid;
-    v_category := NULLIF(v_posting->>'category_id', '')::uuid;
+  PERFORM public.money_write_postings(v_uid, v_id, p_postings);
 
-    IF v_account IS NOT NULL AND NOT EXISTS (
-      SELECT 1 FROM fin_account WHERE id = v_account AND user_id = v_uid
-    ) THEN
-      RAISE EXCEPTION 'Account not found';
-    END IF;
-    IF v_category IS NOT NULL AND NOT EXISTS (
-      SELECT 1 FROM fin_category WHERE id = v_category AND user_id = v_uid
-    ) THEN
-      RAISE EXCEPTION 'Category not found';
-    END IF;
-
-    INSERT INTO fin_posting (
-      user_id, transaction_id, account_id, category_id,
-      amount_minor, currency, fee_minor, fx_rate, base_amount_minor
-    )
-    VALUES (
-      v_uid, v_id, v_account, v_category,
-      (v_posting->>'amount_minor')::bigint,
-      upper(v_posting->>'currency'),
-      NULLIF(v_posting->>'fee_minor', '')::bigint,
-      NULLIF(v_posting->>'fx_rate', '')::numeric,
-      NULLIF(v_posting->>'base_amount_minor', '')::bigint
-    );
-    v_count := v_count + 1;
-  END LOOP;
-
-  -- Force the deferred transfer check *inside* this function, so a bad pair
-  -- raises here and the whole call rolls back — rather than at the end of the
-  -- surrounding statement, where the caller has already been told it worked.
-  SET CONSTRAINTS ALL IMMEDIATE;
-
+  PERFORM public.money_flush_checks();
   RETURN v_id;
 END;
 $$;
+REVOKE ALL ON FUNCTION public.money_record_transaction(JSONB, JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_record_transaction(JSONB, JSONB) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.fin_record_transaction(JSONB, JSONB) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.fin_record_transaction(JSONB, JSONB) TO authenticated;
-
--- Postings are replaced wholesale rather than patched. Editing a transfer means
--- changing two rows at once — amount on one side, account on the other — and a
--- partial update is exactly how the two legs stop agreeing.
-CREATE OR REPLACE FUNCTION public.fin_update_transaction(
+CREATE OR REPLACE FUNCTION public.money_update_transaction(
   p_id UUID,
   p_transaction JSONB,
   p_postings JSONB
@@ -3388,151 +3335,1265 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_uid     UUID := auth.uid();
-  v_posting JSONB;
-  v_account UUID;
-  v_category UUID;
+  v_uid UUID := auth.uid();
 BEGIN
   IF v_uid IS NULL OR NOT public.is_aal2() THEN
     RAISE EXCEPTION 'Not authorised';
   END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM fin_transaction WHERE id = p_id AND user_id = v_uid) THEN
+  -- Definer rights bypass the lockdown policies (V2-016), so check here.
+  IF public.writes_locked() THEN
+    RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  UPDATE money_transaction SET
+    date            = (p_transaction->>'date')::date,
+    kind            = (p_transaction->>'kind')::money_transaction_kind,
+    status          = coalesce(NULLIF(p_transaction->>'status', ''), 'cleared')::money_transaction_status,
+    description     = p_transaction->>'description',
+    payee           = NULLIF(p_transaction->>'payee', ''),
+    notes           = NULLIF(p_transaction->>'notes', ''),
+    provider        = NULLIF(p_transaction->>'provider', ''),
+    market_rate     = NULLIF(p_transaction->>'market_rate', '')::numeric
+  WHERE id = p_id AND user_id = v_uid;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'Transaction not found';
   END IF;
 
-  IF p_postings IS NULL OR jsonb_typeof(p_postings) <> 'array'
-     OR jsonb_array_length(p_postings) = 0 THEN
-    RAISE EXCEPTION 'A transaction needs at least one posting';
-  END IF;
+  DELETE FROM money_posting WHERE transaction_id = p_id;
+  PERFORM public.money_write_postings(v_uid, p_id, p_postings);
 
-  UPDATE fin_transaction
-     SET date = coalesce(NULLIF(p_transaction->>'date', '')::date, date),
-         description = coalesce(left(NULLIF(p_transaction->>'description', ''), 200), description),
-         raw_description = CASE WHEN p_transaction ? 'raw_description'
-                                THEN left(NULLIF(p_transaction->>'raw_description', ''), 500)
-                                ELSE raw_description END,
-         merchant = CASE WHEN p_transaction ? 'merchant'
-                         THEN left(NULLIF(p_transaction->>'merchant', ''), 200)
-                         ELSE merchant END,
-         notes = CASE WHEN p_transaction ? 'notes'
-                      THEN NULLIF(p_transaction->>'notes', '') ELSE notes END,
-         kind = coalesce(NULLIF(p_transaction->>'kind', '')::fin_transaction_kind, kind),
-         is_pending = coalesce((p_transaction->>'is_pending')::boolean, is_pending)
-   WHERE id = p_id AND user_id = v_uid;
-
-  DELETE FROM fin_posting WHERE transaction_id = p_id;
-
-  FOR v_posting IN SELECT value FROM jsonb_array_elements(p_postings) LOOP
-    v_account := NULLIF(v_posting->>'account_id', '')::uuid;
-    v_category := NULLIF(v_posting->>'category_id', '')::uuid;
-
-    IF v_account IS NOT NULL AND NOT EXISTS (
-      SELECT 1 FROM fin_account WHERE id = v_account AND user_id = v_uid
-    ) THEN
-      RAISE EXCEPTION 'Account not found';
-    END IF;
-    IF v_category IS NOT NULL AND NOT EXISTS (
-      SELECT 1 FROM fin_category WHERE id = v_category AND user_id = v_uid
-    ) THEN
-      RAISE EXCEPTION 'Category not found';
-    END IF;
-
-    INSERT INTO fin_posting (
-      user_id, transaction_id, account_id, category_id,
-      amount_minor, currency, fee_minor, fx_rate, base_amount_minor
-    )
-    VALUES (
-      v_uid, p_id, v_account, v_category,
-      (v_posting->>'amount_minor')::bigint,
-      upper(v_posting->>'currency'),
-      NULLIF(v_posting->>'fee_minor', '')::bigint,
-      NULLIF(v_posting->>'fx_rate', '')::numeric,
-      NULLIF(v_posting->>'base_amount_minor', '')::bigint
-    );
-  END LOOP;
-
-  SET CONSTRAINTS ALL IMMEDIATE;
-
+  PERFORM public.money_flush_checks();
   RETURN p_id;
 END;
 $$;
+REVOKE ALL ON FUNCTION public.money_update_transaction(UUID, JSONB, JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_update_transaction(UUID, JSONB, JSONB) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.fin_update_transaction(UUID, JSONB, JSONB) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.fin_update_transaction(UUID, JSONB, JSONB) TO authenticated;
+-- A bank export, all or nothing. Rows whose `import_hash` is already in the
+-- ledger are counted as duplicates and skipped rather than failing the batch.
+--
+-- p_batch: { account_id, file_name?, preset?, row_count }
+-- p_rows:  [{ transaction: {...}, postings: [...] }, …]   (≤ 2000)
+CREATE OR REPLACE FUNCTION public.money_import(p_batch JSONB, p_rows JSONB)
+RETURNS TABLE (batch_id UUID, imported INT, duplicates INT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_uid       UUID := auth.uid();
+  v_batch     UUID;
+  v_row       JSONB;
+  v_txn       JSONB;
+  v_id        UUID;
+  v_imported  INT := 0;
+  v_duplicate INT := 0;
+BEGIN
+  IF v_uid IS NULL OR NOT public.is_aal2() THEN
+    RAISE EXCEPTION 'Not authorised';
+  END IF;
+  -- Definer rights bypass the lockdown policies (V2-016), so check here.
+  IF public.writes_locked() THEN
+    RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'array' THEN
+    RAISE EXCEPTION 'Nothing to import';
+  END IF;
+  IF jsonb_array_length(p_rows) > 2000 THEN
+    RAISE EXCEPTION 'At most 2000 rows in one import';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM money_account
+     WHERE id = NULLIF(p_batch->>'account_id', '')::uuid AND user_id = v_uid
+  ) THEN
+    RAISE EXCEPTION 'Account not found';
+  END IF;
+
+  INSERT INTO money_import_batch (user_id, account_id, file_name, preset, row_count)
+  VALUES (
+    v_uid,
+    (p_batch->>'account_id')::uuid,
+    left(NULLIF(p_batch->>'file_name', ''), 200),
+    left(NULLIF(p_batch->>'preset', ''), 40),
+    coalesce((p_batch->>'row_count')::int, jsonb_array_length(p_rows))
+  )
+  RETURNING id INTO v_batch;
+
+  FOR v_row IN SELECT value FROM jsonb_array_elements(p_rows) LOOP
+    v_txn := v_row->'transaction';
+    IF NULLIF(v_txn->>'import_hash', '') IS NOT NULL AND EXISTS (
+      SELECT 1 FROM money_transaction
+       WHERE user_id = v_uid AND import_hash = v_txn->>'import_hash'
+    ) THEN
+      v_duplicate := v_duplicate + 1;
+      CONTINUE;
+    END IF;
+
+    INSERT INTO money_transaction (
+      user_id, date, kind, status, description, payee, raw_description,
+      import_hash, import_batch_id
+    ) VALUES (
+      v_uid,
+      (v_txn->>'date')::date,
+      (v_txn->>'kind')::money_transaction_kind,
+      coalesce(NULLIF(v_txn->>'status', ''), 'cleared')::money_transaction_status,
+      v_txn->>'description',
+      NULLIF(v_txn->>'payee', ''),
+      NULLIF(v_txn->>'raw_description', ''),
+      NULLIF(v_txn->>'import_hash', ''),
+      v_batch
+    )
+    RETURNING id INTO v_id;
+    PERFORM public.money_write_postings(v_uid, v_id, v_row->'postings');
+    v_imported := v_imported + 1;
+  END LOOP;
+
+  UPDATE money_import_batch
+     SET imported_count = v_imported, duplicate_count = v_duplicate
+   WHERE id = v_batch;
+
+  PERFORM public.money_flush_checks();
+  RETURN QUERY SELECT v_batch, v_imported, v_duplicate;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.money_import(JSONB, JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_import(JSONB, JSONB) TO authenticated;
 
 
--- ── Per-day money, from the v2 ledger ───────────────────────────────────────
+-- ── Recurring schedules ─────────────────────────────────────────────────────
 --
--- WHAT COUNTS, and why:
+-- Everything that repeats: the paycheque every other Friday, rent on the
+-- 1st, the phone bill, a monthly transfer home. A schedule does not write
+-- transactions by itself — this is a static site with no server to run a
+-- job — it says what is due, and the owner records it (one click, or all at
+-- once). A recorded occurrence carries `schedule_id` + `occurrence_date`,
+-- the *due* date, so a paycheque due Friday and entered Monday is still
+-- Friday's, and it can never be recorded twice.
+
+DO $$ BEGIN
+  CREATE TYPE money_frequency AS ENUM
+    ('once','weekly','biweekly','semimonthly','monthly','quarterly','yearly');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_schedule (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  name          TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
+  kind          money_transaction_kind NOT NULL,
+  account_id    UUID NOT NULL REFERENCES money_account(id) ON DELETE CASCADE,
+  to_account_id UUID REFERENCES money_account(id) ON DELETE CASCADE,
+  category_id   UUID REFERENCES money_category(id) ON DELETE SET NULL,
+  -- In `account_id`'s currency, always positive; the kind gives direction.
+  amount_minor  BIGINT NOT NULL CHECK (amount_minor > 0),
+  -- A transfer into another currency: roughly what arrives.
+  to_amount_minor BIGINT CHECK (to_amount_minor IS NULL OR to_amount_minor > 0),
+  -- Hydro, a phone bill with usage: the amount is a guess until it lands.
+  is_estimate   BOOLEAN NOT NULL DEFAULT false,
+  frequency     money_frequency NOT NULL DEFAULT 'monthly',
+  start_date    DATE NOT NULL,
+  end_date      DATE,
+  -- Semi-monthly pay: the two days of the month (e.g. 15 and 31 = last).
+  day_one       SMALLINT CHECK (day_one IS NULL OR day_one BETWEEN 1 AND 31),
+  day_two       SMALLINT CHECK (day_two IS NULL OR day_two BETWEEN 1 AND 31),
+  payee         TEXT CHECK (payee IS NULL OR char_length(payee) <= 200),
+  notes         TEXT CHECK (notes IS NULL OR char_length(notes) <= 1000),
+  archived_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_schedule_kind CHECK (kind IN ('expense','income','transfer')),
+  CONSTRAINT money_schedule_transfer_target CHECK (
+    (kind = 'transfer') = (to_account_id IS NOT NULL)
+  ),
+  CONSTRAINT money_schedule_distinct_accounts CHECK (to_account_id IS DISTINCT FROM account_id),
+  CONSTRAINT money_schedule_ends_after_start CHECK (end_date IS NULL OR end_date >= start_date),
+  CONSTRAINT money_schedule_semimonthly_days CHECK (
+    (frequency = 'semimonthly') = (day_one IS NOT NULL AND day_two IS NOT NULL)
+  ),
+  CONSTRAINT money_schedule_days_differ CHECK (day_one IS NULL OR day_one <> day_two)
+);
+CREATE INDEX IF NOT EXISTS money_schedule_user_idx ON money_schedule (user_id) WHERE archived_at IS NULL;
+ALTER TABLE money_schedule ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages schedules" ON money_schedule;
+CREATE POLICY "Owner manages schedules" ON money_schedule FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_schedule_updated_at ON money_schedule;
+CREATE TRIGGER update_money_schedule_updated_at BEFORE UPDATE ON money_schedule
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS money_schedule_skip (
+  schedule_id UUID NOT NULL REFERENCES money_schedule(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  due_date    DATE NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (schedule_id, due_date)
+);
+ALTER TABLE money_schedule_skip ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages schedule skips" ON money_schedule_skip;
+CREATE POLICY "Owner manages schedule skips" ON money_schedule_skip FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+DO $$ BEGIN
+  ALTER TABLE money_transaction
+    ADD CONSTRAINT money_transaction_schedule_fkey
+    FOREIGN KEY (schedule_id) REFERENCES money_schedule(id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Deleting a schedule keeps the transactions it produced, unlinked. Both
+-- link columns are cleared together — the pair CHECK allows neither alone.
+CREATE OR REPLACE FUNCTION public.money_unlink_schedule()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  UPDATE money_transaction SET schedule_id = NULL, occurrence_date = NULL
+   WHERE schedule_id = OLD.id;
+  RETURN OLD;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_schedule_unlink ON money_schedule;
+CREATE TRIGGER money_schedule_unlink BEFORE DELETE ON money_schedule
+  FOR EACH ROW EXECUTE FUNCTION public.money_unlink_schedule();
+
+
+-- ── Budgets ─────────────────────────────────────────────────────────────────
 --
--- * **Direction comes from the sign of the posting**, never from
---   `fin_transaction.kind`. Kind is intent, for display; a row mislabelled at
---   entry still behaves correctly here, which is the same rule the TypeScript
---   domain layer follows.
--- * **Self-transfers are excluded.** Money moving between two accounts you own
---   is not earned or spent, and counting both legs would report it as both. A
---   transfer is recognised from its postings — two or more distinct accounts on
---   one transaction — rather than from its `kind`, for the reason above.
--- * **Pending rows are excluded**, matching "what do I actually have".
--- * **Unpriced postings are excluded.** A posting with no `base_amount_minor`
---   has no exchange rate for its date and cannot be added to a base-currency
---   total. It is left out rather than counted as zero — the same choice the
---   budgets and the forecast make.
+-- "From March, $450 a month on groceries." A budget row applies from its
+-- month until the next row for the same category, so changing a budget
+-- never rewrites last month's. Amounts are in the base currency, like the
+-- spending they are compared with. `rollover` carries an unspent (or
+-- overspent) remainder into the next month.
+
+CREATE TABLE IF NOT EXISTS money_budget (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  category_id  UUID NOT NULL REFERENCES money_category(id) ON DELETE CASCADE,
+  -- The first day of the month it starts in.
+  from_month   DATE NOT NULL CHECK (extract(day FROM from_month) = 1),
+  -- Zero means "stop budgeting this from here".
+  amount_minor BIGINT NOT NULL CHECK (amount_minor >= 0),
+  rollover     BOOLEAN NOT NULL DEFAULT false,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (category_id, from_month)
+);
+ALTER TABLE money_budget ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages budgets" ON money_budget;
+CREATE POLICY "Owner manages budgets" ON money_budget FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+
+-- ── Goals ───────────────────────────────────────────────────────────────────
 --
--- RETURNS MAJOR UNITS, deliberately, unlike everything else in finance v2.
--- Both callers are read-only summaries whose consumers format a base-currency
--- amount with the shared `formatMoney({ amount, currency })` helper, and those
--- consumers are not part of the finance module. Converting here means the
--- division happens in exactly one place instead of at each call site. The
--- exponent comes from `fin_currency`, never from a hard-coded 100 — the yen has
--- no minor unit and the Kuwaiti dinar has three.
-CREATE OR REPLACE FUNCTION public.fin_day_money(p_from DATE, p_to DATE)
+-- What the owner is saving towards — an emergency fund, a down payment, a
+-- trip home — measured by the balances of the accounts set aside for it.
+-- Progress is derived, never typed: the goal is exactly as far along as
+-- those accounts say.
+
+CREATE TABLE IF NOT EXISTS money_goal (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  name         TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
+  target_minor BIGINT NOT NULL CHECK (target_minor > 0),
+  currency     CHAR(3) NOT NULL REFERENCES money_currency(code),
+  target_date  DATE,
+  notes        TEXT CHECK (notes IS NULL OR char_length(notes) <= 1000),
+  sort_order   INT NOT NULL DEFAULT 0,
+  achieved_at  TIMESTAMPTZ,
+  archived_at  TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE money_goal ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages goals" ON money_goal;
+CREATE POLICY "Owner manages goals" ON money_goal FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_goal_updated_at ON money_goal;
+CREATE TRIGGER update_money_goal_updated_at BEFORE UPDATE ON money_goal
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS money_goal_account (
+  goal_id    UUID NOT NULL REFERENCES money_goal(id) ON DELETE CASCADE,
+  account_id UUID NOT NULL REFERENCES money_account(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  PRIMARY KEY (goal_id, account_id)
+);
+ALTER TABLE money_goal_account ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages goal accounts" ON money_goal_account;
+CREATE POLICY "Owner manages goal accounts" ON money_goal_account FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+-- An account counts towards one goal only: two goals claiming the same
+-- savings would both look funded by the same dollars.
+CREATE UNIQUE INDEX IF NOT EXISTS money_goal_account_once ON money_goal_account (account_id);
+
+-- A goal and its accounts saved together. Invoker rights: row-level security
+-- applies as for any write, and one call is one transaction, so the goal is
+-- never saved with half its accounts.
+CREATE OR REPLACE FUNCTION public.money_save_goal(p_goal JSONB, p_accounts UUID[])
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_id UUID := NULLIF(p_goal->>'id', '')::uuid;
+BEGIN
+  IF v_id IS NULL THEN
+    INSERT INTO money_goal (name, target_minor, currency, target_date, notes, sort_order)
+    VALUES (
+      p_goal->>'name',
+      (p_goal->>'target_minor')::bigint,
+      p_goal->>'currency',
+      NULLIF(p_goal->>'target_date', '')::date,
+      NULLIF(p_goal->>'notes', ''),
+      coalesce((p_goal->>'sort_order')::int, 0)
+    )
+    RETURNING id INTO v_id;
+  ELSE
+    UPDATE money_goal SET
+      name         = p_goal->>'name',
+      target_minor = (p_goal->>'target_minor')::bigint,
+      currency     = p_goal->>'currency',
+      target_date  = NULLIF(p_goal->>'target_date', '')::date,
+      notes        = NULLIF(p_goal->>'notes', '')
+    WHERE id = v_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Goal not found';
+    END IF;
+  END IF;
+
+  DELETE FROM money_goal_account WHERE goal_id = v_id;
+  INSERT INTO money_goal_account (goal_id, account_id)
+  SELECT v_id, account FROM unnest(coalesce(p_accounts, '{}')) AS account;
+  RETURN v_id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.money_save_goal(JSONB, UUID[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_save_goal(JSONB, UUID[]) TO authenticated;
+
+
+-- ── Loans ───────────────────────────────────────────────────────────────────
+--
+-- The terms of a debt, attached to the ledger account that holds it. The
+-- account's balance is what is owed — it moves with the payments the owner
+-- records — and these terms turn it into a schedule: what each payment is,
+-- how much of it is interest, when it ends, what a lump sum would save.
+--
+-- Canadian fixed-rate mortgages compound semi-annually by law (the Interest
+-- Act), most other loans monthly; lines of credit accrue daily. Accelerated
+-- bi-weekly pays half the monthly payment every two weeks — 26 halves, one
+-- extra monthly payment a year.
+
+DO $$ BEGIN
+  CREATE TYPE money_compounding AS ENUM ('monthly','semiannual','daily');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE money_payment_frequency AS ENUM
+    ('monthly','semimonthly','biweekly','accelerated_biweekly','weekly','accelerated_weekly');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_loan (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  account_id          UUID NOT NULL UNIQUE REFERENCES money_account(id) ON DELETE CASCADE,
+  lender              TEXT CHECK (lender IS NULL OR char_length(lender) <= 120),
+  -- What was borrowed, in the account's currency.
+  principal_minor     BIGINT NOT NULL CHECK (principal_minor > 0),
+  annual_rate         NUMERIC(6,3) NOT NULL CHECK (annual_rate BETWEEN 0 AND 100),
+  rate_type           TEXT NOT NULL DEFAULT 'fixed' CHECK (rate_type IN ('fixed','variable')),
+  compounding         money_compounding NOT NULL DEFAULT 'monthly',
+  payment_frequency   money_payment_frequency NOT NULL DEFAULT 'monthly',
+  -- The payment the lender set; null means "whatever amortises the loan".
+  payment_minor       BIGINT CHECK (payment_minor IS NULL OR payment_minor > 0),
+  amortization_months INT NOT NULL CHECK (amortization_months BETWEEN 1 AND 600),
+  -- A mortgage's term (e.g. 60 months), after which it renews.
+  term_months         INT CHECK (term_months IS NULL OR term_months BETWEEN 1 AND 600),
+  first_payment_date  DATE NOT NULL,
+  -- Lump sums the lender allows each year without penalty, as a share of
+  -- the original principal (often 10–20% on a Canadian mortgage).
+  prepayment_allowance_pct NUMERIC(5,2) CHECK (prepayment_allowance_pct IS NULL OR prepayment_allowance_pct BETWEEN 0 AND 100),
+  notes               TEXT CHECK (notes IS NULL OR char_length(notes) <= 1000),
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_loan_term_within_amortization CHECK (term_months IS NULL OR term_months <= amortization_months)
+);
+ALTER TABLE money_loan ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages loans" ON money_loan;
+CREATE POLICY "Owner manages loans" ON money_loan FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_loan_updated_at ON money_loan;
+CREATE TRIGGER update_money_loan_updated_at BEFORE UPDATE ON money_loan
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Terms only make sense on a debt.
+CREATE OR REPLACE FUNCTION public.money_check_loan_account()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM money_account
+     WHERE id = NEW.account_id AND user_id = NEW.user_id
+       AND kind IN ('loan','mortgage','line_of_credit')
+  ) THEN
+    RAISE EXCEPTION 'Loan terms belong on a loan, mortgage or line-of-credit account';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_loan_account_kind ON money_loan;
+CREATE TRIGGER money_loan_account_kind BEFORE INSERT OR UPDATE ON money_loan
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_loan_account();
+
+-- …and an account with loan terms stays a debt.
+CREATE OR REPLACE FUNCTION public.money_keep_loan_account_kind()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.kind NOT IN ('loan','mortgage','line_of_credit')
+     AND EXISTS (SELECT 1 FROM money_loan WHERE account_id = NEW.id) THEN
+    RAISE EXCEPTION 'This account has loan terms; remove them before changing its type';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_account_keeps_loan_kind ON money_account;
+CREATE TRIGGER money_account_keeps_loan_kind BEFORE UPDATE OF kind ON money_account
+  FOR EACH ROW EXECUTE FUNCTION public.money_keep_loan_account_kind();
+
+
+-- ── Income sources ──────────────────────────────────────────────────────────
+--
+-- What a lender asks first: who pays you, since when, and how much before
+-- deductions. Deposits show take-home pay; this is the gross figure, the
+-- employment type and the start date (probation and tenure matter).
+
+DO $$ BEGIN
+  CREATE TYPE money_employment AS ENUM
+    ('full_time','part_time','contract','self_employed','other');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_income_source (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  name          TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
+  employment    money_employment NOT NULL DEFAULT 'full_time',
+  role          TEXT CHECK (role IS NULL OR char_length(role) <= 120),
+  gross_annual_minor BIGINT NOT NULL CHECK (gross_annual_minor > 0),
+  currency      CHAR(3) NOT NULL REFERENCES money_currency(code),
+  start_date    DATE NOT NULL,
+  end_date      DATE,
+  country       CHAR(2) NOT NULL DEFAULT 'CA' CHECK (country ~ '^[A-Z]{2}$'),
+  notes         TEXT CHECK (notes IS NULL OR char_length(notes) <= 1000),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_income_source_dates CHECK (end_date IS NULL OR end_date >= start_date)
+);
+ALTER TABLE money_income_source ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages income sources" ON money_income_source;
+CREATE POLICY "Owner manages income sources" ON money_income_source FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_income_source_updated_at ON money_income_source;
+CREATE TRIGGER update_money_income_source_updated_at BEFORE UPDATE ON money_income_source
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- ── Credit scores ───────────────────────────────────────────────────────────
+-- Canadian bureau scores run 300–900. Logged by hand from a free service
+-- (Borrowell, Credit Karma, a bank app), so the trend is visible.
+
+DO $$ BEGIN
+  CREATE TYPE money_bureau AS ENUM ('equifax','transunion','other');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_credit_score (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  bureau     money_bureau NOT NULL,
+  score      SMALLINT NOT NULL CHECK (score BETWEEN 300 AND 900),
+  as_of      DATE NOT NULL,
+  source     TEXT CHECK (source IS NULL OR char_length(source) <= 80),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, bureau, as_of)
+);
+ALTER TABLE money_credit_score ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages credit scores" ON money_credit_score;
+CREATE POLICY "Owner manages credit scores" ON money_credit_score FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+
+-- ── Loan applications ───────────────────────────────────────────────────────
+--
+-- Each time the owner applies for credit: with whom, for what, where it
+-- stands, what the lender still needs — and the hard inquiry it put on the
+-- credit file, because several in a short time cost points.
+
+DO $$ BEGIN
+  CREATE TYPE money_credit_product AS ENUM
+    ('mortgage','auto_loan','personal_loan','line_of_credit','credit_card','student_loan','other');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE money_application_status AS ENUM
+    ('planning','submitted','conditional','approved','declined','withdrawn','funded');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_application (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  lender              TEXT NOT NULL CHECK (char_length(lender) BETWEEN 1 AND 120),
+  product             money_credit_product NOT NULL,
+  status              money_application_status NOT NULL DEFAULT 'planning',
+  amount_minor        BIGINT CHECK (amount_minor IS NULL OR amount_minor > 0),
+  currency            CHAR(3) NOT NULL REFERENCES money_currency(code),
+  -- Offered or expected, annual %.
+  rate                NUMERIC(6,3) CHECK (rate IS NULL OR rate BETWEEN 0 AND 100),
+  term_months         INT CHECK (term_months IS NULL OR term_months BETWEEN 1 AND 600),
+  amortization_months INT CHECK (amortization_months IS NULL OR amortization_months BETWEEN 1 AND 600),
+  -- Mortgage: the home, and the costs lenders count against income.
+  purchase_price_minor   BIGINT CHECK (purchase_price_minor IS NULL OR purchase_price_minor > 0),
+  down_payment_minor     BIGINT CHECK (down_payment_minor IS NULL OR down_payment_minor >= 0),
+  property_tax_monthly_minor BIGINT CHECK (property_tax_monthly_minor IS NULL OR property_tax_monthly_minor >= 0),
+  heating_monthly_minor  BIGINT CHECK (heating_monthly_minor IS NULL OR heating_monthly_minor >= 0),
+  condo_fees_monthly_minor BIGINT CHECK (condo_fees_monthly_minor IS NULL OR condo_fees_monthly_minor >= 0),
+  submitted_on        DATE,
+  decided_on          DATE,
+  hard_inquiry_on     DATE,
+  notes               TEXT CHECK (notes IS NULL OR char_length(notes) <= 2000),
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_application_decided_after_submitted
+    CHECK (decided_on IS NULL OR submitted_on IS NULL OR decided_on >= submitted_on),
+  CONSTRAINT money_application_down_payment_fits
+    CHECK (down_payment_minor IS NULL OR purchase_price_minor IS NULL OR down_payment_minor <= purchase_price_minor)
+);
+ALTER TABLE money_application ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages applications" ON money_application;
+CREATE POLICY "Owner manages applications" ON money_application FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_application_updated_at ON money_application;
+CREATE TRIGGER update_money_application_updated_at BEFORE UPDATE ON money_application
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DO $$ BEGIN
+  CREATE TYPE money_document_status AS ENUM ('needed','ready','sent');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_application_doc (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  application_id UUID NOT NULL REFERENCES money_application(id) ON DELETE CASCADE,
+  name           TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 160),
+  status         money_document_status NOT NULL DEFAULT 'needed',
+  note           TEXT CHECK (note IS NULL OR char_length(note) <= 300),
+  sort_order     INT NOT NULL DEFAULT 0,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (application_id, name)
+);
+ALTER TABLE money_application_doc ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages application documents" ON money_application_doc;
+CREATE POLICY "Owner manages application documents" ON money_application_doc FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+-- A new application and its starter checklist in one step (invoker rights,
+-- so row-level security applies as for any write).
+CREATE OR REPLACE FUNCTION public.money_create_application(p_application JSONB, p_documents TEXT[])
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_id UUID;
+BEGIN
+  INSERT INTO money_application (
+    lender, product, status, amount_minor, currency, rate, term_months,
+    amortization_months, purchase_price_minor, down_payment_minor,
+    property_tax_monthly_minor, heating_monthly_minor, condo_fees_monthly_minor,
+    submitted_on, decided_on, hard_inquiry_on, notes
+  ) VALUES (
+    p_application->>'lender',
+    (p_application->>'product')::money_credit_product,
+    coalesce(NULLIF(p_application->>'status', ''), 'planning')::money_application_status,
+    NULLIF(p_application->>'amount_minor', '')::bigint,
+    p_application->>'currency',
+    NULLIF(p_application->>'rate', '')::numeric,
+    NULLIF(p_application->>'term_months', '')::int,
+    NULLIF(p_application->>'amortization_months', '')::int,
+    NULLIF(p_application->>'purchase_price_minor', '')::bigint,
+    NULLIF(p_application->>'down_payment_minor', '')::bigint,
+    NULLIF(p_application->>'property_tax_monthly_minor', '')::bigint,
+    NULLIF(p_application->>'heating_monthly_minor', '')::bigint,
+    NULLIF(p_application->>'condo_fees_monthly_minor', '')::bigint,
+    NULLIF(p_application->>'submitted_on', '')::date,
+    NULLIF(p_application->>'decided_on', '')::date,
+    NULLIF(p_application->>'hard_inquiry_on', '')::date,
+    NULLIF(p_application->>'notes', '')
+  )
+  RETURNING id INTO v_id;
+  INSERT INTO money_application_doc (application_id, name, sort_order)
+  SELECT v_id, name, ordinality - 1
+    FROM unnest(coalesce(p_documents, '{}')) WITH ORDINALITY AS d(name, ordinality);
+  RETURN v_id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.money_create_application(JSONB, TEXT[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_create_application(JSONB, TEXT[]) TO authenticated;
+
+
+-- ── Investing ───────────────────────────────────────────────────────────────
+--
+-- Securities, their prices (entered by hand or pasted from a CSV) and the
+-- trades in each investment account.
+--
+-- The ledger keeps only what is income or expense: a dividend, interest, a
+-- fee — each trade of that kind owns one ledger transaction, written by
+-- money_save_trade from the trade itself so the two cannot disagree. Buys,
+-- sells, returns of capital and splits never touch the ledger: the account's
+-- cash, each holding's quantity and adjusted cost base (ACB), and realised
+-- gains are worked out from the trades (domain/invest.ts). Editing an old
+-- buy therefore changes every later gain without any posted figure going
+-- stale.
+
+DO $$ BEGIN
+  CREATE TYPE money_asset_class AS ENUM
+    ('equity','fixed_income','cash','real_estate','commodity','crypto','balanced','other');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE money_region AS ENUM
+    ('canada','us','india','international','emerging','global','other');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE money_trade_kind AS ENUM
+    ('buy','sell','reinvest','dividend','interest','fee','return_of_capital','split');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE TABLE IF NOT EXISTS money_security (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  symbol       TEXT NOT NULL CHECK (symbol ~ '^[A-Z0-9][A-Z0-9.:^-]{0,19}$'),
+  name         TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
+  currency     CHAR(3) NOT NULL REFERENCES money_currency(code),
+  asset_class  money_asset_class NOT NULL DEFAULT 'equity',
+  region       money_region NOT NULL DEFAULT 'global',
+  notes        TEXT CHECK (notes IS NULL OR char_length(notes) <= 1000),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, symbol)
+);
+ALTER TABLE money_security ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages securities" ON money_security;
+CREATE POLICY "Owner manages securities" ON money_security FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_security_updated_at ON money_security;
+CREATE TRIGGER update_money_security_updated_at BEFORE UPDATE ON money_security
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- A price per unit, in the security's currency, at the close of a day.
+CREATE TABLE IF NOT EXISTS money_price (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  security_id  UUID NOT NULL REFERENCES money_security(id) ON DELETE CASCADE,
+  date         DATE NOT NULL,
+  price        NUMERIC(20,6) NOT NULL CHECK (price > 0),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (security_id, date)
+);
+ALTER TABLE money_price ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages prices" ON money_price;
+CREATE POLICY "Owner manages prices" ON money_price FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+CREATE TABLE IF NOT EXISTS money_trade (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  account_id     UUID NOT NULL REFERENCES money_account(id) ON DELETE CASCADE,
+  security_id    UUID REFERENCES money_security(id) ON DELETE RESTRICT,
+  date           DATE NOT NULL,
+  kind           money_trade_kind NOT NULL,
+  -- Units bought, sold or reinvested; for a split, new units per old unit.
+  quantity       NUMERIC(24,8) CHECK (quantity IS NULL OR quantity > 0),
+  -- Cash, in the account's currency: the gross value of a buy or sell, or
+  -- the dividend, interest, fee or return of capital.
+  amount_minor   BIGINT NOT NULL DEFAULT 0 CHECK (amount_minor >= 0),
+  -- Commission on a buy or sell. Added to the cost of a buy and taken off
+  -- the proceeds of a sell, as the CRA counts it.
+  fee_minor      BIGINT NOT NULL DEFAULT 0 CHECK (fee_minor >= 0),
+  -- The ledger's record of a dividend, interest, fee or reinvested
+  -- distribution. Deleting that transaction deletes the trade with it.
+  transaction_id UUID UNIQUE REFERENCES money_transaction(id) ON DELETE CASCADE,
+  notes          TEXT CHECK (notes IS NULL OR char_length(notes) <= 500),
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT money_trade_shape CHECK (
+    CASE kind
+      WHEN 'buy'      THEN security_id IS NOT NULL AND quantity IS NOT NULL
+      WHEN 'sell'     THEN security_id IS NOT NULL AND quantity IS NOT NULL
+      WHEN 'reinvest' THEN security_id IS NOT NULL AND quantity IS NOT NULL AND amount_minor > 0 AND fee_minor = 0
+      WHEN 'split'    THEN security_id IS NOT NULL AND quantity IS NOT NULL AND amount_minor = 0 AND fee_minor = 0
+      WHEN 'dividend' THEN security_id IS NOT NULL AND quantity IS NULL AND amount_minor > 0 AND fee_minor = 0
+      WHEN 'return_of_capital' THEN security_id IS NOT NULL AND quantity IS NULL AND amount_minor > 0 AND fee_minor = 0
+      ELSE quantity IS NULL AND amount_minor > 0 AND fee_minor = 0   -- interest, fee
+    END),
+  CONSTRAINT money_trade_in_ledger CHECK (
+    (kind IN ('dividend','interest','fee','reinvest')) = (transaction_id IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS money_trade_account_date ON money_trade (account_id, date);
+CREATE INDEX IF NOT EXISTS money_trade_security ON money_trade (security_id);
+ALTER TABLE money_trade ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages trades" ON money_trade;
+CREATE POLICY "Owner manages trades" ON money_trade FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_trade_updated_at ON money_trade;
+CREATE TRIGGER update_money_trade_updated_at BEFORE UPDATE ON money_trade
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- A price or trade may only point at the owner's own rows (foreign keys
+-- ignore row-level security), a trade only into an investment account, and
+-- only in a security priced in the account's currency.
+CREATE OR REPLACE FUNCTION public.money_check_price()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM money_security WHERE id = NEW.security_id AND user_id = NEW.user_id) THEN
+    RAISE EXCEPTION 'Security not found';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_price_owner ON money_price;
+CREATE TRIGGER money_price_owner BEFORE INSERT OR UPDATE ON money_price
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_price();
+
+CREATE OR REPLACE FUNCTION public.money_check_trade()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_account money_account%ROWTYPE;
+  v_currency CHAR(3);
+BEGIN
+  SELECT * INTO v_account FROM money_account WHERE id = NEW.account_id AND user_id = NEW.user_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Account not found';
+  END IF;
+  IF v_account.kind <> 'investment' THEN
+    RAISE EXCEPTION 'Trades belong in an investment account';
+  END IF;
+  IF NEW.date < v_account.opening_date THEN
+    RAISE EXCEPTION 'A trade cannot come before the account''s opening date';
+  END IF;
+  IF NEW.security_id IS NOT NULL THEN
+    SELECT currency INTO v_currency FROM money_security WHERE id = NEW.security_id AND user_id = NEW.user_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Security not found';
+    END IF;
+    IF v_currency <> v_account.currency THEN
+      RAISE EXCEPTION 'This security trades in %, the account holds %: keep a separate account for each currency', v_currency, v_account.currency;
+    END IF;
+  END IF;
+  IF NEW.transaction_id IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM money_transaction WHERE id = NEW.transaction_id AND user_id = NEW.user_id) THEN
+    RAISE EXCEPTION 'Transaction not found';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_trade_check ON money_trade;
+CREATE TRIGGER money_trade_check BEFORE INSERT OR UPDATE ON money_trade
+  FOR EACH ROW EXECUTE FUNCTION public.money_check_trade();
+
+-- …and neither side can later change under the trades.
+CREATE OR REPLACE FUNCTION public.money_keep_security_currency()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW.currency <> OLD.currency AND EXISTS (SELECT 1 FROM money_trade WHERE security_id = NEW.id) THEN
+    RAISE EXCEPTION 'This security has trades; its currency cannot change';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_security_keeps_currency ON money_security;
+CREATE TRIGGER money_security_keeps_currency BEFORE UPDATE OF currency ON money_security
+  FOR EACH ROW EXECUTE FUNCTION public.money_keep_security_currency();
+
+CREATE OR REPLACE FUNCTION public.money_keep_trade_account()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF (NEW.kind <> 'investment' OR NEW.currency <> OLD.currency)
+     AND EXISTS (SELECT 1 FROM money_trade WHERE account_id = NEW.id) THEN
+    RAISE EXCEPTION 'This account has trades; it stays an investment account in %', OLD.currency;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS money_account_keeps_trades ON money_account;
+CREATE TRIGGER money_account_keeps_trades BEFORE UPDATE OF kind, currency ON money_account
+  FOR EACH ROW EXECUTE FUNCTION public.money_keep_trade_account();
+
+-- One trade and, for the kinds that are income or expense, its ledger
+-- transaction — written together from the trade, all or nothing. Invoker
+-- rights: row-level security applies, and money_record_transaction /
+-- money_update_transaction make their own checks.
+--
+-- p_trade: { id?, account_id, security_id?, date, kind, quantity?, amount_minor,
+--            fee_minor?, notes?, category_id?, description?, fx_rate?,
+--            base_amount_minor? (unsigned, when the account is not in the base currency) }
+CREATE OR REPLACE FUNCTION public.money_save_trade(p_trade JSONB)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_id       UUID := NULLIF(p_trade->>'id', '')::uuid;
+  v_kind     money_trade_kind := (p_trade->>'kind')::money_trade_kind;
+  v_amount   BIGINT := coalesce(NULLIF(p_trade->>'amount_minor', '')::bigint, 0);
+  v_old_txn  UUID;
+  v_txn      UUID;
+  v_header   JSONB;
+  v_postings JSONB;
+BEGIN
+  IF v_id IS NOT NULL THEN
+    SELECT transaction_id INTO v_old_txn FROM money_trade WHERE id = v_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Trade not found';
+    END IF;
+  END IF;
+
+  IF v_kind IN ('dividend','interest','fee','reinvest') THEN
+    IF v_amount <= 0 THEN
+      RAISE EXCEPTION 'The amount has to be more than zero';
+    END IF;
+    v_header := jsonb_build_object(
+      'date', p_trade->>'date',
+      'kind', CASE WHEN v_kind = 'fee' THEN 'expense' ELSE 'income' END,
+      'status', 'cleared',
+      'description', coalesce(NULLIF(p_trade->>'description', ''), initcap(replace(v_kind::text, '_', ' '))));
+    v_postings := jsonb_build_array(jsonb_build_object(
+      'account_id', p_trade->>'account_id',
+      'category_id', p_trade->>'category_id',
+      'amount_minor', CASE WHEN v_kind = 'fee' THEN -v_amount ELSE v_amount END,
+      'fx_rate', p_trade->>'fx_rate',
+      'base_amount_minor', CASE WHEN v_kind = 'fee' THEN -(p_trade->>'base_amount_minor')::bigint
+                                ELSE (p_trade->>'base_amount_minor')::bigint END));
+    IF v_old_txn IS NOT NULL THEN
+      v_txn := public.money_update_transaction(v_old_txn, v_header, v_postings);
+    ELSE
+      v_txn := public.money_record_transaction(v_header, v_postings);
+    END IF;
+  END IF;
+
+  IF v_id IS NULL THEN
+    INSERT INTO money_trade (account_id, security_id, date, kind, quantity, amount_minor, fee_minor, transaction_id, notes)
+    VALUES (
+      (p_trade->>'account_id')::uuid,
+      NULLIF(p_trade->>'security_id', '')::uuid,
+      (p_trade->>'date')::date,
+      v_kind,
+      NULLIF(p_trade->>'quantity', '')::numeric,
+      v_amount,
+      coalesce(NULLIF(p_trade->>'fee_minor', '')::bigint, 0),
+      v_txn,
+      NULLIF(p_trade->>'notes', ''))
+    RETURNING id INTO v_id;
+  ELSE
+    UPDATE money_trade SET
+      account_id     = (p_trade->>'account_id')::uuid,
+      security_id    = NULLIF(p_trade->>'security_id', '')::uuid,
+      date           = (p_trade->>'date')::date,
+      kind           = v_kind,
+      quantity       = NULLIF(p_trade->>'quantity', '')::numeric,
+      amount_minor   = v_amount,
+      fee_minor      = coalesce(NULLIF(p_trade->>'fee_minor', '')::bigint, 0),
+      transaction_id = v_txn,
+      notes          = NULLIF(p_trade->>'notes', '')
+    WHERE id = v_id;
+    -- A dividend edited into a buy no longer belongs in the ledger.
+    IF v_old_txn IS NOT NULL AND v_txn IS NULL THEN
+      DELETE FROM money_transaction WHERE id = v_old_txn;
+    END IF;
+  END IF;
+  RETURN v_id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.money_save_trade(JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_save_trade(JSONB) TO authenticated;
+
+-- A trade and its ledger transaction go together.
+CREATE OR REPLACE FUNCTION public.money_delete_trade(p_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_txn UUID;
+BEGIN
+  DELETE FROM money_trade WHERE id = p_id RETURNING transaction_id INTO v_txn;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Trade not found';
+  END IF;
+  IF v_txn IS NOT NULL THEN
+    DELETE FROM money_transaction WHERE id = v_txn;
+  END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.money_delete_trade(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_delete_trade(UUID) TO authenticated;
+
+-- ── Contribution room ───────────────────────────────────────────────────────
+--
+-- The room the CRA reports at the start of a year (My Account, or the
+-- Notice of Assessment for RRSP). What was put in since is read from the
+-- ledger: transfers into accounts with that registration.
+
+CREATE TABLE IF NOT EXISTS money_room (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  registration  money_registration NOT NULL CHECK (registration IN ('tfsa','rrsp','fhsa')),
+  year          INT NOT NULL CHECK (year BETWEEN 2009 AND 2100),
+  -- Can be below zero after an over-contribution.
+  room_minor    BIGINT NOT NULL CHECK (room_minor BETWEEN -100000000 AND 100000000),
+  notes         TEXT CHECK (notes IS NULL OR char_length(notes) <= 500),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, registration, year)
+);
+ALTER TABLE money_room ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Owner manages contribution room" ON money_room;
+CREATE POLICY "Owner manages contribution room" ON money_room FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+DROP TRIGGER IF EXISTS update_money_room_updated_at ON money_room;
+CREATE TRIGGER update_money_room_updated_at BEFORE UPDATE ON money_room
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- ── Reading balances ────────────────────────────────────────────────────────
+-- The app derives balances from postings itself (domain/ledger.ts); this is
+-- the same arithmetic in SQL, for callers that should not load a ledger —
+-- and for the database tests, which hold the two to the same answer.
+
+CREATE OR REPLACE FUNCTION public.money_balances(p_as_of DATE DEFAULT CURRENT_DATE)
+RETURNS TABLE (account_id UUID, currency CHAR(3), balance_minor BIGINT, cleared_minor BIGINT)
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+  SELECT a.id,
+         a.currency,
+         a.opening_balance_minor + coalesce(s.total, 0),
+         a.opening_balance_minor + coalesce(s.cleared, 0)
+    FROM money_account a
+    LEFT JOIN LATERAL (
+      SELECT sum(p.amount_minor)::bigint AS total,
+             (sum(p.amount_minor) FILTER (WHERE t.status <> 'pending'))::bigint AS cleared
+        FROM money_posting p
+        JOIN money_transaction t ON t.id = p.transaction_id
+       WHERE p.account_id = a.id AND t.date <= p_as_of
+    ) s ON true
+   WHERE a.user_id = auth.uid();
+$$;
+REVOKE ALL ON FUNCTION public.money_balances(DATE) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_balances(DATE) TO authenticated;
+
+-- Per day, what came in and went out, in the base currency's MAJOR units —
+-- for the calendar and the dashboard, which format but never do money
+-- arithmetic. `earned` is income; `spent` is expenses less refunds, plus
+-- transfer fees. Transfers between the owner's own accounts are neither.
+-- Pending and unpriced postings are left out rather than guessed.
+CREATE OR REPLACE FUNCTION public.money_day_flows(p_from DATE, p_to DATE)
 RETURNS TABLE (day DATE, earned NUMERIC, spent NUMERIC, entries BIGINT)
 LANGUAGE sql
 STABLE
 SECURITY INVOKER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
-  WITH base AS (
-    SELECT coalesce(
-             (SELECT c.exponent
-                FROM fin_settings s
-                JOIN fin_currency c ON c.code = s.base_currency
-               WHERE s.user_id = auth.uid()),
-             2
-           ) AS exponent
+  WITH unit AS (
+    SELECT power(10, coalesce(
+      (SELECT c.exponent FROM money_settings s
+         JOIN money_currency c ON c.code = s.base_currency
+        WHERE s.user_id = auth.uid()),
+      2))::numeric AS scale
   ),
   counted AS (
-    SELECT t.date, p.base_amount_minor
-      FROM fin_transaction t
-      JOIN fin_posting p ON p.transaction_id = t.id
+    SELECT t.id, t.date, t.kind, p.base_amount_minor AS amount
+      FROM money_transaction t
+      JOIN money_posting p ON p.transaction_id = t.id
      WHERE t.user_id = auth.uid()
        AND t.date BETWEEN p_from AND p_to
-       AND t.is_pending = false
+       AND t.status <> 'pending'
        AND p.base_amount_minor IS NOT NULL
-       -- Not a self-transfer: fewer than two distinct accounts on the
-       -- transaction. Read from the postings, so a row whose `kind` is wrong
-       -- still behaves.
-       AND (
-         SELECT count(DISTINCT q.account_id)
-           FROM fin_posting q
-          WHERE q.transaction_id = t.id
-            AND q.account_id IS NOT NULL
-       ) < 2
+       AND (t.kind IN ('expense','income','refund')
+            OR (t.kind = 'transfer' AND p.category_id IS NOT NULL))
   )
-  SELECT
-    counted.date AS day,
-    coalesce(sum(CASE WHEN counted.base_amount_minor > 0
-                      THEN counted.base_amount_minor ELSE 0 END), 0)
-      / power(10, (SELECT exponent FROM base))::NUMERIC AS earned,
-    coalesce(sum(CASE WHEN counted.base_amount_minor < 0
-                      THEN -counted.base_amount_minor ELSE 0 END), 0)
-      / power(10, (SELECT exponent FROM base))::NUMERIC AS spent,
-    count(*) AS entries
-  FROM counted
-  GROUP BY counted.date;
+  SELECT counted.date,
+         coalesce(sum(amount) FILTER (WHERE kind = 'income'), 0) / (SELECT scale FROM unit),
+         coalesce(-sum(amount) FILTER (WHERE kind <> 'income'), 0) / (SELECT scale FROM unit),
+         count(DISTINCT counted.id)
+    FROM counted
+   GROUP BY counted.date;
+$$;
+REVOKE ALL ON FUNCTION public.money_day_flows(DATE, DATE) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.money_day_flows(DATE, DATE) TO authenticated;
+
+
+-- =========================================================
+-- 20. MAPS — visual concept & problem-solving maps (V2-070)
+-- =========================================================
+--
+-- One row per map; the whole graph lives in `doc` (ADR-007), the same
+-- document the app exports as JSON. Saves are whole-document and debounced.
+--
+-- `revision` is optimistic concurrency: the app saves with
+--   UPDATE … SET revision = revision + 1 … WHERE id = $1 AND revision = $2
+-- and treats "no row updated" as "changed in another tab" instead of
+-- overwriting it. `node_count` / `edge_count` are for the list view, which
+-- never loads `doc`.
+
+CREATE TABLE IF NOT EXISTS thinking_maps (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+  name           TEXT NOT NULL DEFAULT 'Untitled map'
+                   CHECK (char_length(name) BETWEEN 1 AND 200),
+  doc            JSONB NOT NULL DEFAULT '{}'::jsonb,
+  schema_version INT NOT NULL DEFAULT 1 CHECK (schema_version >= 1),
+  revision       INT NOT NULL DEFAULT 0 CHECK (revision >= 0),
+  node_count     INT NOT NULL DEFAULT 0 CHECK (node_count >= 0),
+  edge_count     INT NOT NULL DEFAULT 0 CHECK (edge_count >= 0),
+  is_pinned      BOOLEAN NOT NULL DEFAULT false,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- ~5 MB. A 1,000-node map is ~300 KB; this stops a runaway paste, not use.
+  CONSTRAINT thinking_maps_doc_size CHECK (octet_length(doc::text) <= 5000000)
+);
+
+CREATE INDEX IF NOT EXISTS thinking_maps_list_idx
+  ON thinking_maps (user_id, is_pinned DESC, updated_at DESC);
+
+ALTER TABLE thinking_maps ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admin manage thinking maps" ON thinking_maps;
+CREATE POLICY "Admin manage thinking maps" ON thinking_maps FOR ALL
+  USING (auth.uid() = user_id AND public.is_aal2())
+  WITH CHECK (auth.uid() = user_id AND public.is_aal2());
+
+DROP TRIGGER IF EXISTS update_thinking_maps_updated_at ON thinking_maps;
+CREATE TRIGGER update_thinking_maps_updated_at BEFORE UPDATE ON thinking_maps
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+-- =========================================================
+-- 99. LOCKDOWN ENFORCEMENT (V2-016)
+-- =========================================================
+--
+-- The Security page promised that level 2 makes the database refuse every
+-- admin write, and nothing enforced it: the rule lived in a migration that was
+-- never folded into this file. A security switch that only changes a message
+-- is worse than no switch, because the owner stops looking.
+--
+-- RESTRICTIVE policies are ANDed with the permissive ones, so they can only
+-- take access away. Reads are untouched — during an incident the owner still
+-- needs to see what happened. Two deliberate exemptions:
+--   * security_settings, so the level can always be lowered again;
+--   * anonymous INSERTs into contact_submissions and site_visits, which are
+--     visitor actions, not admin writes, and the analytics beacon must never
+--     turn a page view into an error.
+--
+-- This block is last on purpose: it covers every public table that exists
+-- when it runs, including ones added above it later.
+
+CREATE OR REPLACE FUNCTION public.writes_locked()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+  -- An unknown level counts as locked, matching lockdownMeta() in the UI:
+  -- guessing "probably fine" is the wrong direction to be wrong in.
+  SELECT coalesce(
+    (SELECT lockdown_level FROM security_settings WHERE id = 1),
+    0
+  ) >= 2;
+$$;
+GRANT EXECUTE ON FUNCTION public.writes_locked() TO anon, authenticated;
+
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOR t IN
+    SELECT c.relname
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public'
+       AND c.relkind = 'r'
+       AND c.relrowsecurity
+       AND c.relname <> 'security_settings'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "Lockdown blocks inserts" ON public.%I', t);
+    EXECUTE format('DROP POLICY IF EXISTS "Lockdown blocks updates" ON public.%I', t);
+    EXECUTE format('DROP POLICY IF EXISTS "Lockdown blocks deletes" ON public.%I', t);
+
+    IF t NOT IN ('contact_submissions', 'site_visits') THEN
+      EXECUTE format(
+        'CREATE POLICY "Lockdown blocks inserts" ON public.%I AS RESTRICTIVE
+           FOR INSERT WITH CHECK (NOT public.writes_locked())', t);
+    END IF;
+    EXECUTE format(
+      'CREATE POLICY "Lockdown blocks updates" ON public.%I AS RESTRICTIVE
+         FOR UPDATE USING (NOT public.writes_locked())', t);
+    EXECUTE format(
+      'CREATE POLICY "Lockdown blocks deletes" ON public.%I AS RESTRICTIVE
+         FOR DELETE USING (NOT public.writes_locked())', t);
+  END LOOP;
+END $$;
+
+-- Uploads are admin writes too. Scoped to the site bucket so a lockdown here
+-- never touches another bucket in the same project.
+DROP POLICY IF EXISTS "Lockdown blocks asset uploads" ON storage.objects;
+CREATE POLICY "Lockdown blocks asset uploads" ON storage.objects AS RESTRICTIVE
+  FOR INSERT WITH CHECK (bucket_id <> 'assets' OR NOT public.writes_locked());
+DROP POLICY IF EXISTS "Lockdown blocks asset updates" ON storage.objects;
+CREATE POLICY "Lockdown blocks asset updates" ON storage.objects AS RESTRICTIVE
+  FOR UPDATE USING (bucket_id <> 'assets' OR NOT public.writes_locked());
+DROP POLICY IF EXISTS "Lockdown blocks asset deletes" ON storage.objects;
+CREATE POLICY "Lockdown blocks asset deletes" ON storage.objects AS RESTRICTIVE
+  FOR DELETE USING (bucket_id <> 'assets' OR NOT public.writes_locked());
+
+-- ── Restore from a workspace backup (runbook gap after ADM-008) ─────────────
+-- Admin → Security → "Download a backup" writes every owner table to one JSON
+-- file; this reads it back. One call, one transaction: the money ledger's
+-- balance checks are deferred to commit, so a transaction and its postings
+-- have to arrive together, and a restore that fails half-way leaves nothing.
+--
+-- Merge, never overwrite: rows whose key (or any unique value) already exists
+-- are skipped, so restoring into a live workspace only adds what is missing,
+-- and restoring twice adds nothing the second time. Rows take the caller as
+-- owner, so a backup restores into a new project with a new user id. Only
+-- columns present in the backup are written; the rest take their defaults, so
+-- an older backup still restores after columns are added.
+--
+-- SECURITY INVOKER: every row passes the same RLS (owner, AAL2, lockdown) as
+-- a write from the app. Table names come from the list below, never from the
+-- backup; values are bound, not interpolated.
+
+CREATE OR REPLACE FUNCTION public.workspace_restore_tables()
+RETURNS TEXT[]
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  -- Parents before children. db/test/30-restore.sql checks this order against
+  -- every foreign key in the database.
+  SELECT ARRAY[
+    'site_identity', 'navigation_links', 'security_settings',
+    'portfolio_sections', 'portfolio_items', 'blog_posts',
+    'task_projects', 'tasks', 'sub_tasks', 'task_dependencies', 'focus_logs',
+    'notes', 'whiteboards', 'thinking_maps',
+    'calendars', 'events', 'event_exceptions', 'calendar_settings',
+    'learning_subjects', 'learning_topics', 'learning_sessions', 'learning_reviews',
+    'habits', 'habit_logs',
+    'storage_assets', 'public_notes', 'contact_submissions',
+    'discover_watchlist', 'discover_places', 'discover_topics',
+    'library_sources', 'library_highlights',
+    'money_settings', 'money_institution', 'money_account', 'money_category',
+    'money_import_batch', 'money_schedule', 'money_schedule_skip',
+    'money_transaction', 'money_posting', 'money_reconciliation', 'money_rule',
+    'money_budget', 'money_goal', 'money_goal_account', 'money_loan',
+    'money_income_source', 'money_credit_score', 'money_application',
+    'money_application_doc', 'money_security', 'money_price', 'money_trade',
+    'money_room',
+    'inventory_items'
+  ]::TEXT[];
 $$;
 
-REVOKE ALL ON FUNCTION public.fin_day_money(DATE, DATE) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.fin_day_money(DATE, DATE) TO authenticated;
+CREATE OR REPLACE FUNCTION public.restore_workspace(backup JSONB)
+RETURNS JSONB
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  t TEXT;
+  rows JSONB;
+  cols TEXT;
+  sel TEXT;
+  ord TEXT;
+  n BIGINT;
+  added JSONB := '{}'::JSONB;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_aal2() THEN
+    RAISE EXCEPTION 'Not authorised' USING ERRCODE = '42501';
+  END IF;
+  IF backup->>'format' IS DISTINCT FROM 'two.oooo-workspace'
+     OR backup->>'version' IS DISTINCT FROM '1' THEN
+    RAISE EXCEPTION 'This file is not a workspace backup this version can read'
+      USING ERRCODE = '22023';
+  END IF;
+
+  FOREACH t IN ARRAY public.workspace_restore_tables() LOOP
+    rows := backup->'tables'->t;
+    CONTINUE WHEN rows IS NULL OR jsonb_typeof(rows) <> 'array'
+      OR jsonb_array_length(rows) = 0;
+
+    -- Writable columns the backup carries; user_id always, as the caller.
+    SELECT string_agg(quote_ident(c.column_name), ', ' ORDER BY c.ordinal_position),
+           string_agg(CASE WHEN c.column_name = 'user_id' THEN 'auth.uid()'
+                           ELSE 'r.' || quote_ident(c.column_name) END,
+                      ', ' ORDER BY c.ordinal_position)
+      INTO cols, sel
+      FROM information_schema.columns c
+     WHERE c.table_schema = 'public'
+       AND c.table_name = t
+       AND c.is_generated = 'NEVER'
+       AND (c.column_name = 'user_id'
+            OR c.column_name IN (SELECT jsonb_object_keys(rows->0)));
+    CONTINUE WHEN cols IS NULL;
+
+    -- A subcategory's parent is checked as it is inserted, so parents first.
+    ord := CASE WHEN t = 'money_category' THEN ' ORDER BY r.parent_id NULLS FIRST' ELSE '' END;
+
+    EXECUTE format(
+      'INSERT INTO public.%I (%s) SELECT %s FROM jsonb_populate_recordset(NULL::public.%I, $1) r%s ON CONFLICT DO NOTHING',
+      t, cols, sel, t, ord)
+    USING rows;
+    GET DIAGNOSTICS n = ROW_COUNT;
+    added := added || jsonb_build_object(t, n);
+  END LOOP;
+
+  RETURN added;
+END $$;
+
+REVOKE ALL ON FUNCTION public.restore_workspace(JSONB) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.restore_workspace(JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.workspace_restore_tables() TO authenticated;

@@ -30,7 +30,7 @@ export const calendarApi = adminApi.injectEndpoints({
         if (error) return { error };
         return { data: (data ?? []) as CalendarRow[] };
       },
-      providesTags: ["Calendar", "Tasks", "Transactions"],
+      providesTags: ["Calendar", "Tasks", "MoneyLedger", "MoneyPlan"],
     }),
     addEvent: builder.mutation<Event, Partial<Event>>({
       queryFn: insertQueryFn<Event>("events"),

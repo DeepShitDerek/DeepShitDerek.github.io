@@ -1,6 +1,7 @@
 // Utilities for storage operations
 
-import { supabase } from "@/supabase/client";
+import { isSupabaseConfigured } from "@/lib/config";
+import { publicStorageUrl } from "@/lib/rest";
 import { BUCKET_NAME } from "./constants";
 
 /**
@@ -16,8 +17,8 @@ import { BUCKET_NAME } from "./constants";
 export function getStorageUrl(filePath: string | null | undefined): string {
   if (!filePath) return "";
   if (filePath.startsWith("http")) return filePath;
-  if (!supabase) return filePath;
-
-  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-  return data.publicUrl;
+  if (!isSupabaseConfigured) return filePath;
+  // Built without supabase-js, which this helper used to pull into every
+  // page through lib/utils (V2-026).
+  return publicStorageUrl(BUCKET_NAME, filePath);
 }

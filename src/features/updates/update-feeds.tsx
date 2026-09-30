@@ -5,6 +5,7 @@ import type { LifeUpdate } from "@/types";
 import { Reveal } from "@/components/layout/motion";
 import { distributeColumns, useColumnCount } from "@/hooks/use-column-count";
 import { groupByMonth } from "@/lib/life-update";
+import { useDisplayTimeZone } from "@/hooks/use-hydrated";
 import { UpdateCard } from "./update-card";
 
 interface FeedProps {
@@ -57,7 +58,11 @@ export function PinnedUpdates({ updates, onTag, activeTag }: FeedProps) {
  * months carry it.
  */
 export function JournalFeed({ updates, onTag, activeTag }: FeedProps) {
-  const groups = useMemo(() => groupByMonth(updates), [updates]);
+  const timeZone = useDisplayTimeZone();
+  const groups = useMemo(
+    () => groupByMonth(updates, undefined, timeZone),
+    [updates, timeZone],
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-14">
@@ -97,15 +102,16 @@ export function JournalFeed({ updates, onTag, activeTag }: FeedProps) {
 }
 
 function DayMark({ iso }: { iso?: string }) {
+  const timeZone = useDisplayTimeZone();
   const date = iso ? new Date(iso) : null;
   if (!date || Number.isNaN(date.getTime())) return <span aria-hidden />;
   return (
     <time dateTime={iso} className="pt-4 text-right">
       <span className="block font-heading text-2xl font-semibold leading-none tabular-nums text-foreground sm:text-3xl">
-        {date.getDate()}
+        {date.toLocaleDateString("en-US", { day: "numeric", timeZone })}
       </span>
       <span className="mt-1 block text-xs text-muted-foreground">
-        {date.toLocaleDateString("en-US", { weekday: "short" })}
+        {date.toLocaleDateString("en-US", { weekday: "short", timeZone })}
       </span>
     </time>
   );

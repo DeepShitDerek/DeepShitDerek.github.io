@@ -1,5 +1,3 @@
-"use client";
-
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -23,8 +21,11 @@ import { cn } from "@/lib/cn";
  * keep GFM task-list checkboxes) → Prism highlighting → slug heading ids, so
  * Prism classes and heading ids survive sanitization.
  *
- * Only reached from `next/dynamic` boundaries or admin routes, so the cost is
- * paid where the feature is used.
+ * No "use client": it has no state, so it renders on the server too. A
+ * prerendered blog post's body is rendered here at build time and its
+ * visitors never download the pipeline (V2-043). Imported from a client
+ * module (notes, the /blog/view fallback) it is client code as before, still
+ * only behind `next/dynamic` boundaries or on admin routes.
  */
 const sanitizeSchema = {
   ...defaultSchema,

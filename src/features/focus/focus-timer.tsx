@@ -7,10 +7,12 @@ import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   pauseFocus,
+  restoreFocus,
   resumeFocus,
   stopFocus,
-  tick,
+  syncFocus,
 } from "@/store/slices/focusSlice";
+import { loadFocus, saveFocus } from "./focus-persistence";
 import {
   useAddTaskTimeMutation,
   useLogFocusSessionMutation,
@@ -35,19 +37,37 @@ export function FocusTimer() {
   const [addTaskTime] = useAddTaskTimeMutation();
   const [isMinimized, setIsMinimized] = React.useState(false);
 
-  // Timer tick loop; completion fires when the countdown hits zero
+  const focus = useAppSelector((state) => state.focus);
+
+  // A session running before a reload picks up where the clock says it is.
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isActive && !isPaused && timeLeft > 0) {
-      interval = setInterval(() => {
-        dispatch(tick());
-      }, 1000);
-    } else if (timeLeft === 0 && isActive) {
-      handleComplete();
+    const saved = loadFocus();
+    if (saved) {
+      dispatch(restoreFocus(saved));
+      dispatch(syncFocus());
     }
-    return () => clearInterval(interval);
+  }, [dispatch]);
+
+  useEffect(() => saveFocus(focus), [focus]);
+
+  // The interval only repaints; the time comes from the clock, so a slowed
+  // background tab catches up on its next tick or when it is shown again.
+  useEffect(() => {
+    if (!isActive || isPaused) return;
+    const sync = () => dispatch(syncFocus());
+    const interval = setInterval(sync, 1000);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [isActive, isPaused, dispatch]);
+
+  // Completion fires when the countdown reaches zero.
+  useEffect(() => {
+    if (isActive && !isPaused && timeLeft === 0) handleComplete();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, isPaused, timeLeft, dispatch]);
+  }, [isActive, isPaused, timeLeft]);
 
   /**
    * Record the work that actually happened, then clear the timer.
@@ -114,7 +134,9 @@ export function FocusTimer() {
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed bottom-6 right-6 z-50"
+        // Above the palette's floating button on phones, which sits at
+        // bottom-right below md (ADM-007).
+        className="fixed bottom-20 right-4 z-overlay md:bottom-6 md:right-6"
       >
         <Card className="flex items-center gap-4 border-primary/20 bg-background/80 p-3 shadow-e3 backdrop-blur">
           <div className="flex flex-col">
@@ -169,7 +191,7 @@ export function FocusTimer() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md"
+        className="fixed inset-0 z-overlay flex flex-col items-center justify-center bg-background/95 backdrop-blur-md"
       >
         <div className="absolute right-6 top-6">
           <Button variant="ghost" onClick={() => setIsMinimized(true)}>

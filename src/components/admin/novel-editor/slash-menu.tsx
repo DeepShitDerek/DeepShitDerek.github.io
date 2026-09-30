@@ -83,7 +83,7 @@ export function SuggestionMenu({
       style={style}
       // Keeps the editor focused while the menu is clicked.
       onMouseDown={(event) => event.preventDefault()}
-      className="fixed z-50 max-h-80 w-72 overflow-y-auto rounded-surface bg-popover p-1.5 text-popover-foreground shadow-e3"
+      className="fixed z-overlay max-h-80 w-72 overflow-y-auto rounded-surface bg-popover p-1.5 text-popover-foreground shadow-e3"
     >
       {items.map((item, i) => {
         const Icon = item.icon;

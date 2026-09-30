@@ -122,7 +122,7 @@ export function SetupChecklist() {
                   </span>
                 </span>
                 <ArrowRight
-                  className="mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  className="mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
                   aria-hidden
                 />
               </Link>

@@ -32,7 +32,9 @@ export function categoryOption(category?: string | null): CategoryOption {
 
 /** Whether the value is one of the five the column allows. */
 export function isKnownCategory(category?: string | null): boolean {
-  return LIFE_UPDATE_CATEGORY_OPTIONS.some((option) => option.value === category);
+  return LIFE_UPDATE_CATEGORY_OPTIONS.some(
+    (option) => option.value === category,
+  );
 }
 
 /**
@@ -50,8 +52,34 @@ export function updateHeadline(update: Pick<LifeUpdate, "title" | "content">): {
   return { text: line || "Empty update", fromTitle: false };
 }
 
-/** "today" / "yesterday" / "Nd ago" / a short date beyond 30 days. */
-export function relativeDate(iso?: string | null, now: number = Date.now()): string {
+/*
+  Date helpers take an optional `timeZone`. Omitted, they use the viewer's —
+  right in the admin. Prerendered public pages pass "UTC" until hydrated (see
+  useDisplayTimeZone), so the build's HTML and the first render agree.
+*/
+
+/** "Mar 4, 2026". */
+export function shortDate(iso?: string | null, timeZone?: string): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone,
+  });
+}
+
+/**
+ * "today" / "yesterday" / "Nd ago" / a short date beyond 30 days.
+ * Depends on the clock, so a prerendered page shows shortDate() until it has
+ * hydrated and only then switches to this.
+ */
+export function relativeDate(
+  iso?: string | null,
+  now: number = Date.now(),
+): string {
   if (!iso) return "";
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return "";
@@ -59,15 +87,11 @@ export function relativeDate(iso?: string | null, now: number = Date.now()): str
   if (days <= 0) return "today";
   if (days === 1) return "yesterday";
   if (days <= 30) return `${days}d ago`;
-  return then.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return shortDate(iso);
 }
 
 /** "March 4, 2026" — the full date, for a `title` beside a relative one. */
-export function fullDate(iso?: string | null): string {
+export function fullDate(iso?: string | null, timeZone?: string): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -75,14 +99,19 @@ export function fullDate(iso?: string | null): string {
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone,
   });
 }
 
-export function monthLabel(iso?: string | null): string {
+export function monthLabel(iso?: string | null, timeZone?: string): string {
   if (!iso) return "Undated";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "Undated";
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone,
+  });
 }
 
 export interface MonthGroup {
@@ -98,10 +127,11 @@ export function groupByMonth(
   updates: LifeUpdate[],
   dateOf: (update: LifeUpdate) => string | null | undefined = (update) =>
     update.created_at,
+  timeZone?: string,
 ): MonthGroup[] {
   const groups: MonthGroup[] = [];
   for (const update of updates) {
-    const label = monthLabel(dateOf(update));
+    const label = monthLabel(dateOf(update), timeZone);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.updates.push(update);
     else groups.push({ label, updates: [update] });

@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Trash2,
   Upload,
+  Globe,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,7 +26,7 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   LoadingState,
@@ -381,6 +382,7 @@ export default function AssetsPage() {
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
               size="sm"
+              aria-describedby="assets-public-note"
             >
               {isUploading ? (
                 <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
@@ -393,12 +395,23 @@ export default function AssetsPage() {
         }
       />
 
+      {/*
+        SEC-003 (V2-013): the bucket is public. Every file here is readable by
+        anyone who has its link, so say so where the upload happens rather than
+        let a receipt or an ID scan end up world-readable by accident.
+      */}
+      <p id="assets-public-note" className="-mt-2 mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Globe className="size-3.5 shrink-0" aria-hidden />
+        Public: anyone with a file&apos;s link can open it. Keep private documents out of Assets.
+      </p>
+
       <input
         type="file"
         ref={fileInputRef}
         multiple
         onChange={handleFileSelect}
         aria-label="Upload assets"
+        aria-describedby="assets-public-note"
         className="sr-only"
       />
 
@@ -419,11 +432,12 @@ export default function AssetsPage() {
         onDrop={handleDrop}
       >
         {isDragging && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-surface border border-dashed border-primary bg-primary/10 backdrop-blur-sm">
+          <div className="absolute inset-0 z-overlay flex flex-col items-center justify-center rounded-surface border border-dashed border-primary bg-primary/10 backdrop-blur-sm">
             <Upload className="mb-2 size-10 text-primary" aria-hidden />
             <p className="font-medium text-primary">
               Drop to upload into this folder
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">Uploads are public to anyone with the link.</p>
           </div>
         )}
 

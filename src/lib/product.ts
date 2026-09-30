@@ -27,9 +27,11 @@ export interface ProductConfig {
   plans: ProductPlan[];
 }
 
-const configured = (portfolioConfig as unknown as {
-  product?: Partial<ProductConfig>;
-}).product;
+const configured = (
+  portfolioConfig as unknown as {
+    product?: Partial<ProductConfig>;
+  }
+).product;
 
 export const PRODUCT: ProductConfig = {
   show: configured?.show ?? false,

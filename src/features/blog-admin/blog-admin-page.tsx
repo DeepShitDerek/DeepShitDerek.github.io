@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { PublishSiteButton } from "@/components/admin/publish-site-button";
+import { useUrlParam } from "@/hooks/use-url-param";
+import { useCreateIntent } from "@/features/admin-shell/create-intent";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { FileText, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -13,15 +16,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
-import { draftFromPost, postProblems, recordFromDraft } from "./post-draft";
+import {
+  draftFromPost,
+  postProblems,
+  PUBLISHED_UNTIL_DEPLOY,
+  recordFromDraft,
+} from "./post-draft";
 import { ContinueWriting, PostSection } from "./post-list";
 
 // The editor pulls in TipTap — loaded only when a post is opened, so the list
@@ -45,7 +54,7 @@ const time = (iso?: string | null) => (iso ? new Date(iso).getTime() || 0 : 0);
  */
 export default function BlogAdminPage() {
   const confirm = useConfirm();
-  const { data: posts = [], isLoading } = useGetAdminBlogPostsQuery();
+  const { data: posts = [], isLoading, error: loadError, refetch } = useGetAdminBlogPostsQuery();
   const [updateBlogPost] = useUpdateBlogPostMutation();
   const [deleteBlogPost] = useDeleteBlogPostMutation();
 
@@ -60,8 +69,24 @@ export default function BlogAdminPage() {
   const [status, setStatus] = useState<Status>("all");
   const [search, setSearch] = useState("");
 
-  const open = (post: BlogPost | null) =>
+  // The open post lives in the URL, "new" for one not yet saved (ADM-004).
+  const [postParam, setPostParam] = useUrlParam("post", "replace");
+  const open = (post: BlogPost | null) => {
     setSession({ key: Date.now(), id: post?.id ?? null });
+    setPostParam(post?.id ?? "new");
+  };
+  const close = () => {
+    setSession(null);
+    setPostParam(null);
+  };
+  useEffect(() => {
+    if (session || !postParam) return;
+    if (postParam === "new") setSession({ key: Date.now(), id: null });
+    else if (posts.some((p) => p.id === postParam)) setSession({ key: Date.now(), id: postParam });
+    // Once the posts have loaded; after that `session` is the source of truth.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postParam, posts]);
+  useCreateIntent("post", () => open(null));
 
   const handleDelete = async (post: BlogPost) => {
     const ok = await confirm({
@@ -75,7 +100,7 @@ export default function BlogAdminPage() {
     if (!ok) return;
     try {
       await deleteBlogPost(post).unwrap();
-      if (session?.id === post.id) setSession(null);
+      if (session?.id === post.id) close();
       toast.success("Post deleted.");
     } catch (err) {
       toast.error("Couldn't delete the post", {
@@ -105,7 +130,10 @@ export default function BlogAdminPage() {
         published: publishing,
         published_at: publishing ? new Date().toISOString() : null,
       }).unwrap();
-      toast.success(publishing ? "Published." : "Moved back to drafts.");
+      toast.success(
+        publishing ? "Published." : "Moved back to drafts.",
+        publishing ? { description: PUBLISHED_UNTIL_DEPLOY } : undefined,
+      );
     } catch (err) {
       toast.error("Couldn't update the post", {
         description: getErrorMessage(err),
@@ -136,10 +164,11 @@ export default function BlogAdminPage() {
       <BlogEditor
         key={session.key}
         post={post}
-        onClose={() => setSession(null)}
-        onCreated={(created) =>
-          setSession((s) => (s ? { ...s, id: created.id } : s))
-        }
+        onClose={close}
+        onCreated={(created) => {
+          setSession((s) => (s ? { ...s, id: created.id } : s));
+          setPostParam(created.id);
+        }}
         onDelete={handleDelete}
       />
     );
@@ -175,7 +204,7 @@ export default function BlogAdminPage() {
     <ManagerWrapper>
       <PageHeader
         title="Blog"
-        description="What you're writing, and how published posts are doing."
+        description="What you're writing, and how published posts are doing. New posts are live at once; their own page and link preview arrive with the next deploy."
         actions={
           <Button onClick={() => open(null)}>
             <Plus className="mr-2 size-4" aria-hidden /> New post
@@ -183,8 +212,14 @@ export default function BlogAdminPage() {
         }
       />
 
+      <div className="mb-4">
+        <PublishSiteButton />
+      </div>
+
       {isLoading ? (
         <LoadingState label="Loading posts" />
+      ) : loadError && posts.length === 0 ? (
+        <LoadError what="your posts" error={loadError} onRetry={refetch} />
       ) : posts.length === 0 ? (
         <EmptyState
           variant="card"

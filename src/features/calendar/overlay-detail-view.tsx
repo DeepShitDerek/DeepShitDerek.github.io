@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { CalendarEntry } from "@/types";
-import { useGetFinSettingsQuery } from "@/store/api/adminApi";
+import { useGetMoneySettingsQuery } from "@/features/money/data/money-api";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { detailRows, habitsFrom, moneyFrom } from "./overlay-detail";
@@ -48,11 +48,11 @@ export function OverlayDetailView({ entry }: { entry: CalendarEntry }) {
   const money = moneyFrom(entry);
 
   // Only asked for when there is money to render — the calendar has no other
-  // reason to load the finance module's settings.
-  const { data: financeSettings } = useGetFinSettingsQuery(undefined, {
+  // reason to load the money module's settings.
+  const { data: moneySettings } = useGetMoneySettingsQuery(undefined, {
     skip: money === null,
   });
-  const currency = financeSettings?.base_currency ?? "CAD";
+  const currency = moneySettings?.baseCurrency ?? "CAD";
 
   return (
     <div className="space-y-5">

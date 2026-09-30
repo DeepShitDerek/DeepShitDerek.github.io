@@ -1,7 +1,7 @@
 // Shared hook for standardized CRUD operations with confirmation and toast notifications
 
 import { useCallback } from "react";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { toast } from "sonner";
 
 interface UseCrudHandlersOptions {

@@ -1,72 +1,112 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Loader2, Send, TriangleAlert } from "lucide-react";
 import {
   CONTACT_LIMITS,
+  CONTACT_TOPICS,
   contactFormSchema,
   type ContactFormValues,
 } from "@/lib/schemas";
-import { useSubmitContactFormMutation } from "@/store/api/publicApi";
+import {
+  useGetSiteIdentityQuery,
+  useSubmitContactFormMutation,
+} from "@/store/api/publicApi";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { getErrorMessage } from "@/lib/utils";
-
-type Status = "idle" | "success" | "error";
-
-/**
- * The database refuses a flood with a message worth reading — three per
- * address per hour, ten site-wide per minute. Showing "something broke" for
- * that tells a real person nothing about what to do next, so the server's own
- * wording is preferred when there is one.
- */
-const GENERIC_ERROR = "Something broke. Try again or email me directly.";
-
-const STATUS_RESET_MS = 5000;
+import { safeLinkUrl } from "@/lib/safe-url";
+import { describeContactError, type ContactErrorView } from "./contact-errors";
 
 /**
  * Fields sit on the card as quiet wells — the page ground inside the card —
  * and take the theme colour on focus rather than a thicker border.
  */
 const FIELD =
-  "rounded-control bg-background transition-[box-shadow,border-color] duration-200 ease-enter focus-visible:border-primary/60 aria-[invalid=true]:border-destructive/60";
+  "rounded-control bg-background transition-[box-shadow,border-color] duration-base ease-enter focus-visible:border-primary/60 aria-[invalid=true]:border-destructive/60";
 
+/**
+ * The outcome stays until the visitor acts (V2-044). Both used to clear
+ * themselves after five seconds: a visitor who looked away came back to an
+ * empty form and no word on whether it had sent, and an error vanished before
+ * it could be read.
+ */
 export function ContactForm() {
   const [submitContactForm, { isLoading }] = useSubmitContactFormMutation();
-  const [status, setStatus] = useState<Status>("idle");
-  const [errorMessage, setErrorMessage] = useState(GENERIC_ERROR);
+  const { data: identity } = useGetSiteIdentityQuery();
+  /** The address replies will go to, once a message has been sent. */
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ContactErrorView | null>(null);
+  const sentHeading = useRef<HTMLHeadingElement>(null);
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: { name: "", email: "", subject: "", message: "" },
   });
 
+  // The form is replaced by the confirmation, so focus would otherwise fall
+  // to <body>; move it to the confirmation so it is announced and the next
+  // Tab lands on "Send another".
   useEffect(() => {
-    if (status === "idle") return;
-    const timer = setTimeout(() => setStatus("idle"), STATUS_RESET_MS);
-    return () => clearTimeout(timer);
-  }, [status]);
+    if (sentTo) sentHeading.current?.focus();
+  }, [sentTo]);
+
+  const email = identity?.social_links.find(
+    (social) => social.id.toLowerCase() === "email" && social.is_visible,
+  );
+  const emailHref = safeLinkUrl(email?.url);
 
   const onSubmit = async (values: ContactFormValues) => {
+    setFailure(null);
     try {
       await submitContactForm(values).unwrap();
-      setStatus("success");
+      setSentTo(values.email);
       form.reset();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error) || GENERIC_ERROR);
-      setStatus("error");
+      setFailure(describeContactError(error));
     }
   };
 
+  if (sentTo) {
+    return (
+      <div className="rounded-control bg-primary/10 p-6">
+        <h3
+          ref={sentHeading}
+          tabIndex={-1}
+          className="flex items-center gap-2 font-heading text-lg font-semibold focus:outline-none"
+        >
+          <Check className="size-5 shrink-0 text-primary" aria-hidden />
+          Message sent
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground [overflow-wrap:anywhere]">
+          Thanks for getting in touch. Replies go to{" "}
+          <span className="font-medium text-foreground">{sentTo}</span>.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-5 rounded-full"
+          onClick={() => setSentTo(null)}
+        >
+          Send another message
+        </Button>
+      </div>
+    );
+  }
+
   const errors = form.formState.errors;
+  // The choice shapes the prompts below it, so a visitor asking about a role
+  // is not asked "What are we building?".
+  const topic = CONTACT_TOPICS.find(
+    (option) => option.value === form.watch("topic"),
+  );
 
   const field = (
-    name: keyof ContactFormValues,
+    name: Exclude<keyof ContactFormValues, "topic">,
     label: string,
     props?: {
       textarea?: boolean;
@@ -105,6 +145,9 @@ export function ContactForm() {
             rows={6}
             placeholder={props.placeholder}
             aria-invalid={!!errors[name]}
+            aria-describedby={
+              errors[name] ? `contact-${name}-error` : undefined
+            }
             className={cn(FIELD, "resize-y py-3")}
             {...form.register(name)}
           />
@@ -114,12 +157,19 @@ export function ContactForm() {
             type={props?.type ?? "text"}
             placeholder={props?.placeholder}
             aria-invalid={!!errors[name]}
+            aria-describedby={
+              errors[name] ? `contact-${name}-error` : undefined
+            }
             className={cn(FIELD, "h-11")}
             {...form.register(name)}
           />
         )}
         {errors[name] && (
-          <p role="alert" className="text-xs text-destructive">
+          <p
+            id={`contact-${name}-error`}
+            role="alert"
+            className="text-xs text-destructive"
+          >
             {errors[name]?.message}
           </p>
         )}
@@ -133,6 +183,54 @@ export function ContactForm() {
       noValidate
       className="space-y-5"
     >
+      {/*
+        One path serves every kind of enquiry (V2-040b). Native radios in a
+        fieldset: the group is one Tab stop, arrow keys move the choice, and a
+        screen reader announces the legend with each option.
+      */}
+      <fieldset
+        aria-invalid={!!errors.topic}
+        aria-describedby={errors.topic ? "contact-topic-error" : undefined}
+        className="space-y-2"
+      >
+        <legend className="mb-2 text-sm font-medium leading-none">
+          What&apos;s this about?
+        </legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {CONTACT_TOPICS.map((option) => (
+            <label
+              key={option.value}
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center justify-center rounded-control border bg-background px-4 text-sm font-medium",
+                "transition-[border-color,background-color,color] duration-base ease-enter",
+                "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-card",
+                "has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-foreground",
+                errors.topic
+                  ? "border-destructive/60 text-muted-foreground"
+                  : "border-input text-muted-foreground hover:border-primary/40 hover:text-foreground",
+              )}
+            >
+              <input
+                type="radio"
+                value={option.value}
+                className="sr-only"
+                {...form.register("topic")}
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+        {errors.topic && (
+          <p
+            id="contact-topic-error"
+            role="alert"
+            className="text-xs text-destructive"
+          >
+            {errors.topic.message}
+          </p>
+        )}
+      </fieldset>
+
       <div className="grid gap-5 sm:grid-cols-2">
         {field("name", "Name", {
           placeholder: "Ada Lovelace",
@@ -145,12 +243,12 @@ export function ContactForm() {
         })}
       </div>
       {field("subject", "Subject", {
-        placeholder: "Project, role, or question",
+        placeholder: topic?.subjectPrompt ?? "Project, role, or question",
         max: CONTACT_LIMITS.SUBJECT,
       })}
       {field("message", "Message", {
         textarea: true,
-        placeholder: "What are we building?",
+        placeholder: topic?.messagePrompt ?? "What are we working on?",
         max: CONTACT_LIMITS.MESSAGE,
       })}
 
@@ -166,11 +264,6 @@ export function ContactForm() {
               <Loader2 className="size-4 animate-spin" aria-hidden />
               Sending…
             </>
-          ) : status === "success" ? (
-            <>
-              <Check className="size-4" aria-hidden />
-              Sent
-            </>
           ) : (
             <>
               <Send className="size-4" aria-hidden />
@@ -178,22 +271,33 @@ export function ContactForm() {
             </>
           )}
         </Button>
-        {/* One live region, always present, so a screen reader hears the
-            outcome whichever it is. */}
-        <div aria-live="polite" className="min-w-0 text-sm">
-          {status === "success" && (
-            <p className="flex items-center gap-2 rounded-control bg-primary/10 px-3 py-2 font-medium text-foreground">
-              <Check className="size-4 shrink-0 text-primary" aria-hidden />
-              Message received — I&apos;ll reply soon.
+      </div>
+      {/* Always present, so a screen reader hears the failure when it lands. */}
+      <div role="alert" className="text-sm empty:hidden">
+        {failure && (
+          <div
+            data-contact-error={failure.kind}
+            className="flex gap-2 rounded-control bg-destructive/10 px-3 py-2.5 font-medium text-destructive"
+          >
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p className="min-w-0">
+              {failure.message}
+              {emailHref && (
+                <>
+                  {" "}
+                  You can also{" "}
+                  <a
+                    href={emailHref}
+                    className="underline underline-offset-2 hover:no-underline"
+                  >
+                    email me directly
+                  </a>
+                  .
+                </>
+              )}
             </p>
-          )}
-          {status === "error" && (
-            <p className="flex items-center gap-2 rounded-control bg-destructive/10 px-3 py-2 font-medium text-destructive">
-              <TriangleAlert className="size-4 shrink-0" aria-hidden />
-              {errorMessage}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </form>
   );

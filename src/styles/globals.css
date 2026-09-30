@@ -115,7 +115,21 @@
   }
 
   html {
-    @apply scroll-smooth antialiased;
+    /* Smooth only for those who haven't asked for less motion (V2-060). */
+    @apply motion-safe:scroll-smooth antialiased;
+    /*
+     * WCAG 2.4.11 Focus Not Obscured (V2-060): when focus moves to something
+     * off-screen, the browser scrolls it clear of the sticky site header /
+     * admin top bar, and of the admin's fixed bottom nav on small screens.
+     */
+    scroll-padding-top: 6rem;
+    scroll-padding-bottom: 1.5rem;
+  }
+
+  @media (max-width: 1023px) {
+    html {
+      scroll-padding-bottom: 5.5rem;
+    }
   }
 
   body {
@@ -202,6 +216,47 @@
   .markdown pre code,
   .prose pre code {
     @apply bg-transparent p-0;
+  }
+
+  /*
+   * Highlighted code keeps One Dark's own ground in every theme (V2-060).
+   * The rule above painted it with the light `muted` surface, leaving One
+   * Dark's pale text on a pale ground at 1.8:1. And on its own ground One
+   * Dark's comments (2.3:1) and reds (4.4 and 3.0:1) are below AA, so those
+   * are lifted to 5.4 and 5.2:1; everything else in the theme already passes.
+   */
+  .markdown pre[class*="language-"],
+  .prose pre[class*="language-"] {
+    background: hsl(220 13% 18%);
+  }
+
+  /* A fence that was never highlighted (its <pre> has no language class)
+   * stays on the theme's muted ground, so it takes the theme's text colour
+   * rather than One Dark's pale one. */
+  pre:not([class*="language-"]) > code[class*="language-"] {
+    color: inherit;
+  }
+
+  pre[class*="language-"] .token.comment,
+  pre[class*="language-"] .token.prolog,
+  pre[class*="language-"] .token.cdata,
+  pre.language-markdown .token.blockquote.punctuation,
+  pre.language-markdown .token.hr.punctuation {
+    color: #9aa1ad;
+  }
+
+  pre[class*="language-"] .token.property,
+  pre[class*="language-"] .token.tag,
+  pre[class*="language-"] .token.symbol,
+  pre[class*="language-"] .token.deleted,
+  pre[class*="language-"] .token.important,
+  pre.language-css .token.selector,
+  pre.language-markdown .token.strike .token.content,
+  pre.language-markdown .token.strike .token.punctuation,
+  pre.language-markdown .token.list.punctuation,
+  pre.language-markdown .token.title.important > .token.punctuation,
+  pre.language-javascript .token.template-string > .token.interpolation > .token.interpolation-punctuation.punctuation {
+    color: #e57f88;
   }
 
   .markdown blockquote,

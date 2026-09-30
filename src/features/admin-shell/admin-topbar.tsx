@@ -29,6 +29,7 @@ import { AppLauncher } from "./app-launcher";
 import { LearningPill } from "./learning-pill";
 import { SHELL_LAYOUTS, type ShellLayout } from "./use-shell-layout";
 import { activeNavItem, NAV_ITEMS } from "./nav-config";
+import { requestCreate } from "./create-intent";
 
 /**
  * The admin top bar.
@@ -83,7 +84,7 @@ export function AdminTopbar({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 sm:px-6">
+    <header className="sticky top-0 z-chrome flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 sm:px-6">
       {onOpenSidebar && (
         <button
           type="button"
@@ -95,12 +96,14 @@ export function AdminTopbar({
         </button>
       )}
 
-      {/* The current page, as a heading rather than a control. */}
+      {/* The current module, as a label. Not a heading: the page's own
+          PageHeader is its one h1, and two made every page ambiguous to a
+          screen reader (ADM-005). */}
       <div className="flex min-w-0 items-center gap-2">
         {Icon && <Icon className="size-4 shrink-0 text-primary" aria-hidden />}
-        <h1 className="truncate text-sm font-semibold">
+        <p className="truncate text-sm font-semibold">
           {current?.name ?? "Personal OS"}
-        </h1>
+        </p>
       </div>
 
       <div className="ml-auto flex items-center gap-2">
@@ -123,18 +126,16 @@ export function AdminTopbar({
               Quick add
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/admin/tasks")}>
+            <DropdownMenuItem onClick={() => requestCreate("task", router.push)}>
               <ListTodo className="mr-2 size-4" aria-hidden /> New task
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/admin/notes")}>
+            <DropdownMenuItem onClick={() => requestCreate("note", router.push)}>
               <StickyNote className="mr-2 size-4" aria-hidden /> New note
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/admin/finance")}>
+            <DropdownMenuItem onClick={() => requestCreate("transaction", router.push)}>
               <Banknote className="mr-2 size-4" aria-hidden /> New transaction
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push("/admin/blog?create=true")}
-            >
+            <DropdownMenuItem onClick={() => requestCreate("post", router.push)}>
               <BookText className="mr-2 size-4" aria-hidden /> New blog post
             </DropdownMenuItem>
           </DropdownMenuContent>

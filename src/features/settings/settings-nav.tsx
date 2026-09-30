@@ -105,7 +105,7 @@ function NavItem({
       onClick={onSelect}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left text-sm transition-[box-shadow,color,background-color] duration-200 ease-enter",
+        "flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left text-sm transition-[box-shadow,color,background-color] duration-base ease-enter",
         active
           ? "bg-card font-medium text-foreground shadow-e1"
           : "text-muted-foreground hover:text-foreground",

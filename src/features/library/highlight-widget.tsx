@@ -107,7 +107,7 @@ export function HighlightWidget() {
           onClick={() => void refetch()}
           disabled={isFetching}
           aria-label="Show another line"
-          className="group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors duration-200 hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          className="group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors duration-base hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         >
           <RefreshCw
             className={cn(

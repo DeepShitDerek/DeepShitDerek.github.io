@@ -77,7 +77,7 @@ export function FaqLayout({ items }: LayoutProps) {
             <span className="[overflow-wrap:anywhere]">{item.title}</span>
             <ChevronDown
               aria-hidden
-              className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
+              className="size-4 shrink-0 text-muted-foreground transition-transform duration-base group-open:rotate-180 motion-reduce:transition-none"
             />
           </summary>
           <div className="px-6 pb-6">

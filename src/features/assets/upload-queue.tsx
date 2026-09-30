@@ -71,7 +71,7 @@ export function UploadQueue({
       {!settled && (
         <div className="mx-4 mb-2 h-1 overflow-hidden rounded-full bg-secondary">
           <div
-            className="h-full rounded-full bg-primary transition-[width] duration-200 ease-enter"
+            className="h-full rounded-full bg-primary transition-[width] duration-base ease-enter"
             style={{ width: `${Math.max(progress * 100, 2)}%` }}
           />
         </div>
@@ -106,7 +106,7 @@ export function UploadQueue({
                 className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-secondary"
               >
                 <span
-                  className="block h-full rounded-full bg-primary transition-[width] duration-200 ease-enter"
+                  className="block h-full rounded-full bg-primary transition-[width] duration-base ease-enter"
                   style={{
                     width: `${Math.min((task.loaded / task.size) * 100, 100)}%`,
                   }}

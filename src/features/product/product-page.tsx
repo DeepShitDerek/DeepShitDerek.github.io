@@ -60,7 +60,7 @@ function PrimaryActions({ className }: { className?: string }) {
         Get {PRODUCT.name}
         <ArrowRight
           aria-hidden
-          className="ml-2 size-4 transition-transform duration-200 ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
+          className="ml-2 size-4 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
         />
       </Cta>
       <Cta href="#plans" variant="outline">
@@ -127,7 +127,7 @@ function ThemePreview() {
                 applyTheme(theme, typography, undefined);
               }}
               className={cn(
-                "group rounded-surface bg-card p-2 text-left transition-shadow duration-200 ease-enter",
+                "group rounded-surface bg-card p-2 text-left transition-shadow duration-base ease-enter",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 selected ? "shadow-e3 ring-2 ring-primary" : "shadow-e1 hover:shadow-e2",
               )}

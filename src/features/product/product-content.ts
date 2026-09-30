@@ -121,7 +121,7 @@ export const WORKSPACE: {
       },
       {
         href: "/admin/finance",
-        name: "Finance",
+        name: "Money",
         icon: Banknote,
         description:
           "Accounts, bank CSV import, recurring bills and a cash-flow forecast.",

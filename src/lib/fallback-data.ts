@@ -61,6 +61,7 @@ export const MOCK_SITE_IDENTITY: SiteContent = {
   })),
   footer_data: {
     copyright_text: config.footerText,
+    links: config.footerLinks,
   },
 };
 
@@ -80,7 +81,18 @@ export const MOCK_LIFE_UPDATES: LifeUpdate[] = config.lifeUpdates.map(
 );
 
 // --- 3. BLOG POSTS (For /blog) ---
-export const MOCK_BLOG_POSTS: BlogPost[] = config.blogPosts.map((post, i) => ({
+
+/**
+ * Whether a post from portfolio.config.ts may appear on the site (V2-043).
+ * `draft: true` keeps it out of the list, its page and its link-preview card
+ * — the static-mode twin of `published = false` in the database,
+ * which static mode otherwise has no way to say.
+ */
+export function isPublicConfigPost(post: object): boolean {
+  return !("draft" in post && (post as { draft?: unknown }).draft === true);
+}
+
+export const MOCK_BLOG_POSTS: BlogPost[] = config.blogPosts.filter(isPublicConfigPost).map((post, i) => ({
   id: String(i + 1),
   title: post.title,
   slug: post.slug,

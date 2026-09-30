@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { FocusTimer } from "@/features/focus/focus-timer";
+import { LearningSessionManager } from "@/features/learning/learning-session-manager";
+import { CommandPalette } from "./command-palette";
+import { KeyboardMap } from "./keyboard-map";
 import { cn } from "@/lib/cn";
 import { useAdminGuard } from "./use-admin-guard";
 import { AdminSidebar } from "./admin-sidebar";
@@ -101,12 +104,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       )}
     >
       <FocusTimer />
+      <LearningSessionManager />
+      <CommandPalette />
+      <KeyboardMap />
 
       {railed && (
         <>
           <aside
             className={cn(
-              "fixed inset-y-0 left-0 z-40 hidden border-r lg:block",
+              "fixed inset-y-0 left-0 z-rail hidden border-r lg:block",
               collapsed ? "w-16" : "w-60",
             )}
           >

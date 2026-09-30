@@ -303,7 +303,7 @@ export function ItemImage({
           // A plain tinted surface. The v2 placeholder was a graph-paper
           // ground, which read as an intentional texture rather than as a
           // missing image.
-          "flex items-center justify-center bg-secondary text-muted-foreground/60",
+          "flex items-center justify-center bg-secondary text-muted-foreground",
           className,
           placeholderClassName,
         )}
@@ -326,13 +326,21 @@ export function ItemImage({
       loading="lazy"
       decoding="async"
       className={cn("bg-secondary", className)}
-      onError={(e) => {
-        const el = e.currentTarget;
-        el.style.visibility = "hidden";
-        el.parentElement?.classList.add("bg-secondary");
+      // Prerendered pages (V2-025): a dead URL can fail before React hydrates,
+      // and then onError never fires — the browser's broken-image glyph
+      // stays. So also check once React attaches to the element.
+      ref={(el) => {
+        if (el && el.complete && el.naturalWidth === 0) hideBrokenImage(el);
       }}
+      onError={(e) => hideBrokenImage(e.currentTarget)}
     />
   );
+}
+
+/** A failed image leaves its tinted well, not the broken-image glyph. */
+function hideBrokenImage(el: HTMLImageElement) {
+  el.style.visibility = "hidden";
+  el.parentElement?.classList.add("bg-secondary");
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -375,7 +383,7 @@ export const CARD = "rounded-surface bg-card shadow-e1";
  * under the pointer promises it goes somewhere.
  */
 export const CARD_INTERACTIVE =
-  "transition-[box-shadow,transform] duration-200 ease-enter hover:-translate-y-0.5 hover:shadow-e2 motion-reduce:transition-none motion-reduce:hover:translate-y-0";
+  "transition-[box-shadow,transform] duration-base ease-enter hover:-translate-y-0.5 hover:shadow-e2 motion-reduce:transition-none motion-reduce:hover:translate-y-0";
 
 /** Whether an item's link will actually render as one. */
 export function isLinkable(href?: string | null): boolean {
@@ -403,7 +411,7 @@ export function LinkCue({
       aria-hidden
       data-link-cue
       className={cn(
-        "size-4 shrink-0 text-muted-foreground transition-[transform,color] duration-200 ease-enter group-hover/link:text-primary motion-reduce:transition-none",
+        "size-4 shrink-0 text-muted-foreground transition-[transform,color] duration-base ease-enter group-hover/link:text-primary motion-reduce:transition-none",
         internal
           ? "group-hover/link:translate-x-0.5"
           : "group-hover/link:-translate-y-0.5 group-hover/link:translate-x-0.5",

@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { postHref } from "./post-href";
+import { useDisplayTimeZone } from "@/hooks/use-hydrated";
 import { ArrowUpRight, Eye, Search, X } from "lucide-react";
 import { useGetPublishedBlogPostsQuery } from "@/store/api/publicApi";
 import type { BlogPost } from "@/types";
-import { calculateReadTime, readTimeFromWordCount } from "@/lib/utils";
+import { formatPostDate, readTime } from "./post-meta";
 import { siteContent } from "@/lib/site-content";
 import { safeImageUrl } from "@/lib/safe-url";
 import { Band } from "@/components/layout/band";
@@ -18,20 +20,8 @@ import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 
-export function readTime(post: BlogPost): number {
-  return typeof post.word_count === "number"
-    ? readTimeFromWordCount(post.word_count)
-    : calculateReadTime(post.content ?? "");
-}
-
-function formatDate(iso?: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+export { readTime } from "./post-meta";
+const formatDate = formatPostDate;
 
 /** The tags worth offering as filters: most used first, at most `limit`. */
 export function topTags(posts: BlogPost[], limit = 8): string[] {
@@ -52,6 +42,8 @@ export function topTags(posts: BlogPost[], limit = 8): string[] {
 
 /** Date · read time · views, in the body face. */
 function PostMeta({ post, className }: { post: BlogPost; className?: string }) {
+  // Prerendered: UTC until hydrated, so the build and the browser agree.
+  const timeZone = useDisplayTimeZone();
   return (
     <p
       className={cn(
@@ -60,7 +52,9 @@ function PostMeta({ post, className }: { post: BlogPost; className?: string }) {
       )}
     >
       {post.published_at && (
-        <time dateTime={post.published_at}>{formatDate(post.published_at)}</time>
+        <time dateTime={post.published_at}>
+          {formatDate(post.published_at, timeZone)}
+        </time>
       )}
       {post.published_at && <span aria-hidden>·</span>}
       <span>{readTime(post)} min read</span>
@@ -69,7 +63,7 @@ function PostMeta({ post, className }: { post: BlogPost; className?: string }) {
           <span aria-hidden>·</span>
           <span className="inline-flex items-center gap-1">
             <Eye className="size-3.5" aria-hidden />
-            {post.views.toLocaleString()}
+            {post.views.toLocaleString("en-US")}
           </span>
         </>
       )}
@@ -88,6 +82,7 @@ function Cover({ post, className }: { post: BlogPost; className?: string }) {
           src={src}
           alt=""
           loading="lazy"
+          decoding="async"
           className="size-full object-cover transition-transform duration-700 ease-enter group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
       ) : (
@@ -103,18 +98,21 @@ function Cover({ post, className }: { post: BlogPost; className?: string }) {
 }
 
 const CARD_LINK =
-  "group flex h-full overflow-hidden rounded-surface bg-card shadow-e1 transition-[box-shadow,transform] duration-200 ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0";
+  "group flex h-full overflow-hidden rounded-surface bg-card shadow-e1 transition-[box-shadow,transform] duration-base ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0";
 
 /** The newest post, given the room a lead story gets. */
-function FeaturedPost({ post }: { post: BlogPost }) {
+function FeaturedPost({ post, href }: { post: BlogPost; href: string }) {
   return (
     <Reveal>
       <Link
-        href={`/blog/view?slug=${post.slug}`}
+        href={href}
         data-featured
         className={cn(CARD_LINK, "flex-col lg:grid lg:grid-cols-[1.25fr_1fr]")}
       >
-        <Cover post={post} className="aspect-[16/9] lg:aspect-auto lg:min-h-80" />
+        <Cover
+          post={post}
+          className="aspect-[16/9] lg:aspect-auto lg:min-h-80"
+        />
         <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8 lg:p-10">
           <p className="t-eyebrow">Latest</p>
           <h2 className="t-heading mt-3 text-balance [overflow-wrap:anywhere] transition-colors group-hover:text-primary">
@@ -130,7 +128,7 @@ function FeaturedPost({ post }: { post: BlogPost }) {
             Read the post
             <ArrowUpRight
               aria-hidden
-              className="size-4 transition-transform duration-200 ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
+              className="size-4 transition-transform duration-base ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
             />
           </span>
         </div>
@@ -139,12 +137,9 @@ function FeaturedPost({ post }: { post: BlogPost }) {
   );
 }
 
-function PostCard({ post }: { post: BlogPost }) {
+function PostCard({ post, href }: { post: BlogPost; href: string }) {
   return (
-    <Link
-      href={`/blog/view?slug=${post.slug}`}
-      className={cn(CARD_LINK, "flex-col")}
-    >
+    <Link href={href} className={cn(CARD_LINK, "flex-col")}>
       <Cover post={post} className="aspect-[16/10]" />
       <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
         {post.tags?.[0] && <p className="t-eyebrow">{post.tags[0]}</p>}
@@ -162,17 +157,37 @@ function PostCard({ post }: { post: BlogPost }) {
   );
 }
 
-export function BlogListPage() {
+/**
+ * Reads the initial ?tag= filter. On its own, inside its own Suspense
+ * boundary: under static export, useSearchParams opts its whole Suspense
+ * subtree out of prerendering, and that subtree used to be the entire list —
+ * so the page shipped with no posts in its HTML.
+ */
+function InitialTagFromUrl({ onTag }: { onTag: (tag: string) => void }) {
+  const searchParams = useSearchParams();
+  const initial = searchParams?.get("tag");
+  useEffect(() => {
+    if (initial) onTag(initial);
+  }, [initial, onTag]);
+  return null;
+}
+
+export function BlogListPage({
+  builtSlugs,
+}: {
+  /** Slugs prerendered at the last build; see postHref. */
+  builtSlugs?: readonly string[];
+} = {}) {
   const {
     data: posts,
     isLoading,
     isError,
     refetch,
   } = useGetPublishedBlogPostsQuery();
-  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
-  // A post's tag links land here as ?tag=, so the chip arrives pressed.
-  const [tag, setTag] = useState<string | null>(searchParams?.get("tag") ?? null);
+  // A post's tag links land here as ?tag=, so the chip arrives pressed
+  // (set by InitialTagFromUrl once the page has hydrated).
+  const [tag, setTag] = useState<string | null>(null);
 
   const tags = useMemo(() => topTags(posts ?? []), [posts]);
 
@@ -200,6 +215,9 @@ export function BlogListPage() {
 
   return (
     <Band weight="content">
+      <Suspense fallback={null}>
+        <InitialTagFromUrl onTag={setTag} />
+      </Suspense>
       <PageHeader
         kicker="Writing"
         title={siteContent.pages.blog.title}
@@ -249,14 +267,21 @@ export function BlogListPage() {
           </div>
         </div>
       ) : isError ? (
-        <div role="alert" className="rounded-surface bg-card px-6 py-14 text-center shadow-e1">
+        <div
+          role="alert"
+          className="rounded-surface bg-card px-6 py-14 text-center shadow-e1"
+        >
           <p className="font-heading text-lg font-semibold">
             The posts didn&apos;t load
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             Nothing is lost — it&apos;s the connection, not the writing.
           </p>
-          <Button variant="outline" className="mt-6 rounded-full" onClick={() => refetch()}>
+          <Button
+            variant="outline"
+            className="mt-6 rounded-full"
+            onClick={() => refetch()}
+          >
             Try again
           </Button>
         </div>
@@ -271,7 +296,11 @@ export function BlogListPage() {
               : "The first post is on its way."}
           </p>
           {filtering && (
-            <Button variant="outline" className="mt-6 gap-2 rounded-full" onClick={clear}>
+            <Button
+              variant="outline"
+              className="mt-6 gap-2 rounded-full"
+              onClick={clear}
+            >
               <X className="size-4" aria-hidden />
               Clear filters
             </Button>
@@ -279,7 +308,12 @@ export function BlogListPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {featured && <FeaturedPost post={featured} />}
+          {featured && (
+            <FeaturedPost
+              post={featured}
+              href={postHref(featured.slug, builtSlugs)}
+            />
+          )}
           {rest.length > 0 && (
             <Stagger
               as="ul"
@@ -288,7 +322,10 @@ export function BlogListPage() {
               {rest.map((post) =>
                 post ? (
                   <StaggerItem as="li" key={post.id}>
-                    <PostCard post={post} />
+                    <PostCard
+                      post={post}
+                      href={postHref(post.slug, builtSlugs)}
+                    />
                   </StaggerItem>
                 ) : null,
               )}

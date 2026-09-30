@@ -1,17 +1,22 @@
 import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react";
-import { supabase } from "@/supabase/client";
-import {
-  MOCK_SITE_IDENTITY,
-  MOCK_BLOG_POSTS,
-  MOCK_SECTIONS,
-  MOCK_NAV_LINKS,
-  MOCK_LIFE_UPDATES,
-  MOCK_HIGHLIGHTS,
-} from "@/lib/fallback-data";
+import { rest } from "@/lib/rest";
+import { MOCK_HIGHLIGHTS } from "@/lib/fallback-data";
 import { pickRandom } from "@/lib/random-pick";
-import { normalizeSiteContent } from "@/lib/site-identity";
+import { contactTopicLabel } from "@/lib/contact-topics";
+import type { ContactFormValues } from "@/lib/schemas";
+import {
+  fetchCaseStudyBySlug,
+  fetchNavLinks,
+  fetchPostBySlug,
+  fetchPublishedLifeUpdates,
+  fetchPublishedPosts,
+  fetchSectionsByPath,
+  fetchSiteIdentity,
+  type NavLink,
+} from "@/lib/public-data";
 import type {
   BlogPost,
+  CaseStudy,
   GitHubRepo,
   LifeUpdate,
   PortfolioSection,
@@ -19,8 +24,11 @@ import type {
   SiteContent,
 } from "@/types";
 
-type NavLink = { label: string; href: string };
-
+/*
+  The public read endpoints delegate to src/lib/public-data.ts, which the
+  public pages also call at build time to prerender the same data (ADR-004).
+  Change a query there, not here.
+*/
 export const publicApi = createApi({
   reducerPath: "publicApi",
   baseQuery: fakeBaseQuery(),
@@ -32,84 +40,21 @@ export const publicApi = createApi({
     "Navigation",
     "SiteSettings",
     "LifeUpdates",
+    "CaseStudy",
   ],
   endpoints: (builder) => ({
     getSiteIdentity: builder.query<SiteContent, void>({
-      queryFn: async () => {
-        // --- MOCK FALLBACK ---
-        if (!supabase) {
-          return { data: normalizeSiteContent(MOCK_SITE_IDENTITY) };
-        }
-        // ---------------------
-
-        const { data, error } = await supabase
-          .from("site_identity")
-          .select("*")
-          .single();
-        if (error) return { error };
-        // profile_data is unconstrained JSONB; normalising here means the
-        // public renderers can rely on the shape SiteContent promises.
-        return { data: normalizeSiteContent(data as Partial<SiteContent>) };
-      },
+      queryFn: () => fetchSiteIdentity(),
       providesTags: ["SiteContent"],
     }),
 
     getNavLinks: builder.query<NavLink[], void>({
-      queryFn: async () => {
-        // --- MOCK FALLBACK ---
-        if (!supabase) {
-          return { data: MOCK_NAV_LINKS };
-        }
-        // ---------------------
-
-        const [identityRes, linksRes] = await Promise.all([
-          supabase.from("site_identity").select("portfolio_mode").single(),
-          supabase
-            .from("navigation_links")
-            .select("label, href")
-            .eq("is_visible", true)
-            .order("display_order"),
-        ]);
-
-        if (linksRes.error) return { error: linksRes.error };
-
-        const portfolioMode = identityRes.data?.portfolio_mode || "multi-page";
-        let finalLinks = linksRes.data || [];
-
-        if (portfolioMode === "single-page") {
-          finalLinks = finalLinks.filter(
-            (link) =>
-              link.href === "/" ||
-              link.href === "/contact" ||
-              link.href === "/blog",
-          );
-        }
-        return { data: finalLinks };
-      },
+      queryFn: () => fetchNavLinks(),
       providesTags: ["Navigation", "SiteContent"],
     }),
 
     getPublishedBlogPosts: builder.query<BlogPost[], void>({
-      queryFn: async () => {
-        // --- MOCK FALLBACK ---
-        if (!supabase) {
-          return { data: MOCK_BLOG_POSTS };
-        }
-        // ---------------------
-
-        // List view: everything except `content` — read time comes from the
-        // word_count generated column, so full post bodies stay out of the
-        // list payload. Requires the current db/schema.sql to be applied.
-        const { data, error } = await supabase
-          .from("blog_posts")
-          .select(
-            "id, user_id, title, slug, excerpt, cover_image_url, published, published_at, show_toc, tags, views, word_count, created_at, updated_at",
-          )
-          .eq("published", true)
-          .order("published_at", { ascending: false });
-        if (error) return { error };
-        return { data };
-      },
+      queryFn: () => fetchPublishedPosts(),
       providesTags: (result) =>
         result
           ? [
@@ -120,47 +65,32 @@ export const publicApi = createApi({
     }),
 
     getBlogPostBySlug: builder.query<BlogPost, string>({
-      queryFn: async (slug) => {
-        // --- MOCK FALLBACK ---
-        if (!supabase) {
-          const post = MOCK_BLOG_POSTS.find((p) => p.slug === slug);
-          if (!post)
-            return {
-              error: {
-                message: "Not Found",
-                details: "Mock",
-                hint: "",
-                code: "404",
-              },
-            };
-          return { data: post };
-        }
-        // ---------------------
+      queryFn: (slug) => fetchPostBySlug(slug),
+      // Tagged by slug as well as id: a prerendered post is seeded into the
+      // cache by slug, and revalidation has to be able to find it.
+      providesTags: (result, error, slug) =>
+        result
+          ? [
+              { type: "Post", id: result.id },
+              { type: "Post", id: `slug:${slug}` },
+            ]
+          : [{ type: "Post", id: `slug:${slug}` }],
+    }),
 
-        const { data, error } = await supabase
-          .from("blog_posts")
-          .select("*")
-          .eq("slug", slug)
-          .eq("published", true)
-          .single();
-        if (error && error.code !== "PGRST116") return { error };
-        if (!data)
-          return {
-            error: { message: "Not Found", details: "", hint: "", code: "404" },
-          };
-        return { data };
-      },
-      providesTags: (result) =>
-        result ? [{ type: "Post", id: result.id }] : [],
+    getCaseStudyBySlug: builder.query<CaseStudy, string>({
+      queryFn: (slug) => fetchCaseStudyBySlug(slug),
+      providesTags: (result, error, slug) => [
+        { type: "CaseStudy", id: `slug:${slug}` },
+      ],
     }),
 
     incrementPostView: builder.mutation<void, string>({
       queryFn: async (postId) => {
         // --- MOCK FALLBACK ---
-        if (!supabase) return { data: undefined };
+        if (!rest) return { data: undefined };
         // ---------------------
 
-        const { error } = await supabase.rpc("increment_blog_post_view", {
+        const { error } = await rest.rpc("increment_blog_post_view", {
           post_id_to_increment: postId,
         });
         if (error) return { error };
@@ -173,42 +103,12 @@ export const publicApi = createApi({
     }),
 
     getPublishedLifeUpdates: builder.query<LifeUpdate[], void>({
-      queryFn: async () => {
-        if (!supabase) {
-          return { data: MOCK_LIFE_UPDATES };
-        }
-        const { data, error } = await supabase
-          .from("public_notes")
-          .select("*")
-          .eq("is_published", true)
-          .order("is_pinned", { ascending: false })
-          .order("created_at", { ascending: false });
-        if (error) return { error };
-        return { data };
-      },
+      queryFn: () => fetchPublishedLifeUpdates(),
       providesTags: ["LifeUpdates"],
     }),
 
     getSectionsByPath: builder.query<PortfolioSection[], string>({
-      queryFn: async (pagePath) => {
-        // --- MOCK FALLBACK ---
-        if (!supabase) {
-          return {
-            data: MOCK_SECTIONS.filter((s) => s.page_path === pagePath),
-          };
-        }
-        // ---------------------
-
-        const { data, error } = await supabase
-          .from("portfolio_sections")
-          .select("*, portfolio_items(*)")
-          .eq("page_path", pagePath)
-          .eq("is_visible", true)
-          .order("display_order")
-          .order("display_order", { foreignTable: "portfolio_items" });
-        if (error) return { error };
-        return { data };
-      },
+      queryFn: (pagePath) => fetchSectionsByPath(pagePath),
       providesTags: (result, error, path) => [{ type: "Portfolio", id: path }],
     }),
 
@@ -287,13 +187,10 @@ export const publicApi = createApi({
      * database. `contactFormSchema` is the courtesy copy that produces a
      * useful message before the round trip.
      */
-    submitContactForm: builder.mutation<
-      void,
-      { name: string; email: string; subject: string; message: string }
-    >({
+    submitContactForm: builder.mutation<void, ContactFormValues>({
       queryFn: async (formData) => {
-        if (supabase) {
-          const { error } = await supabase
+        if (rest) {
+          const { error } = await rest
             .from("contact_submissions")
             .insert(formData);
           if (error) return { error };
@@ -323,6 +220,11 @@ export const publicApi = createApi({
                   title: "New contact form submission",
                   color: 5814783,
                   fields: [
+                    {
+                      name: "About",
+                      value: contactTopicLabel(formData.topic) ?? "Not given",
+                      inline: true,
+                    },
                     { name: "Name", value: formData.name, inline: true },
                     { name: "Email", value: formData.email, inline: true },
                     { name: "Subject", value: formData.subject },
@@ -341,8 +243,17 @@ export const publicApi = createApi({
               error: { message: "The message could not be delivered." },
             };
           }
-        } catch {
-          return { error: { message: "The message could not be delivered." } };
+        } catch (error) {
+          // Keep fetch's own wording ("Failed to fetch"): it is how the form
+          // tells a dropped connection from a refusal (contact-errors.ts).
+          return {
+            error: {
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "The message could not be delivered.",
+            },
+          };
         }
 
         return { data: undefined };
@@ -351,8 +262,8 @@ export const publicApi = createApi({
 
     getLockdownStatus: builder.query<number, void>({
       queryFn: async () => {
-        if (!supabase) return { data: 0 }; // Mock: Always normal
-        const { data, error } = await supabase
+        if (!rest) return { data: 0 }; // Mock: Always normal
+        const { data, error } = await rest
           .from("security_settings")
           .select("lockdown_level")
           .single();
@@ -376,9 +287,9 @@ export const publicApi = createApi({
      */
     getRandomHighlight: builder.query<PublicHighlight | null, void>({
       queryFn: async () => {
-        if (!supabase) return { data: pickRandom(MOCK_HIGHLIGHTS) };
+        if (!rest) return { data: pickRandom(MOCK_HIGHLIGHTS) };
 
-        const { data, error } = await supabase.rpc(
+        const { data, error } = await rest.rpc(
           "get_random_public_highlight",
         );
         if (error) return { data: null };
@@ -397,6 +308,7 @@ export const {
   useGetNavLinksQuery,
   useGetPublishedBlogPostsQuery,
   useGetBlogPostBySlugQuery,
+  useGetCaseStudyBySlugQuery,
   useIncrementPostViewMutation,
   useSubmitContactFormMutation,
   useGetPublishedLifeUpdatesQuery,

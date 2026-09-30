@@ -150,11 +150,11 @@ export function ContactView({
                       {...(external
                         ? { target: "_blank", rel: "noopener noreferrer" }
                         : {})}
-                      className="group flex items-center gap-4 rounded-surface bg-card p-4 shadow-e1 transition-[box-shadow,transform] duration-200 ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0"
+                      className="group flex items-center gap-4 rounded-surface bg-card p-4 shadow-e1 transition-[box-shadow,transform] duration-base ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0"
                     >
                       <span
                         aria-hidden
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors duration-base group-hover:bg-primary group-hover:text-primary-foreground"
                       >
                         <Icon className="size-4" />
                       </span>
@@ -167,7 +167,7 @@ export function ContactView({
                         </span>
                       </span>
                       <ArrowUpRight
-                        className="size-4 shrink-0 text-muted-foreground transition-[transform,color] duration-200 ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none"
+                        className="size-4 shrink-0 text-muted-foreground transition-[transform,color] duration-base ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none"
                         aria-hidden
                       />
                     </a>

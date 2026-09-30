@@ -271,6 +271,7 @@ export const tasksApi = adminApi.injectEndpoints({
 
 export const {
   useGetTasksQuery,
+  useLazyGetTasksQuery,
   useAddTaskMutation,
   useUpdateTaskMutation,
   useDeleteTaskMutation,

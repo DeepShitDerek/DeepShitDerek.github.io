@@ -10,7 +10,7 @@ export default defineConfig({
     // tests (it registers against the global afterEach).
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "supabase/functions/**/*.test.ts"],
     /*
       Vitest defaults to 5s per test, which is generous for a unit test and
       tight for the integration ones: `settings-page.test.tsx` renders the whole

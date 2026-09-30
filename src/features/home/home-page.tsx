@@ -3,7 +3,9 @@
 import { Band } from "@/components/layout/band";
 import { DynamicPageContent } from "@/features/sections/dynamic-page-content";
 import { ContactCta } from "./contact-cta";
+import { FeaturedWork } from "./featured-work";
 import { Hero } from "./hero";
+import { LatestWriting } from "./latest-writing";
 
 /**
  * Home, as a band sequence: feature (identity) → content (CMS sections) →
@@ -13,13 +15,22 @@ import { Hero } from "./hero";
  * rendered inside one uniform container at one weight, which is why the page
  * read as an undifferentiated stack.
  */
-export function HomePage() {
+export function HomePage({
+  builtSlugs,
+}: {
+  /** Slugs prerendered at the last build, for Latest writing's links. */
+  builtSlugs?: readonly string[];
+} = {}) {
   return (
     <>
       <Hero />
+      {/* Work-led (V2-041): proof first, then the owner's own home sections,
+          then how they think, then the ask. */}
+      <FeaturedWork />
       <Band weight="content">
         <DynamicPageContent pagePath="/" />
       </Band>
+      <LatestWriting builtSlugs={builtSlugs} />
       <ContactCta />
     </>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlParam } from "@/hooks/use-url-param";
 import { useMemo, useState } from "react";
 import { Plus, Presentation } from "lucide-react";
 import { toast } from "sonner";
@@ -15,8 +16,9 @@ import {
   ManagerWrapper,
   PageHeader,
   LoadingState,
+  LoadError,
 } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { getErrorMessage } from "@/lib/utils";
 import { BoardCard } from "./board-card";
 import { BoardEditor } from "./board-editor";
@@ -24,10 +26,12 @@ import { BoardEditor } from "./board-editor";
 export default function WhiteboardPage() {
   const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState("");
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // The open board lives in the URL, "new" for one not yet saved (ADM-004).
+  const [boardParam, setBoardParam] = useUrlParam("board", "replace");
+  const editorOpen = boardParam !== null;
+  const editingId = boardParam === "new" ? null : boardParam;
 
-  const { data: boards = [], isLoading } = useGetWhiteboardsQuery();
+  const { data: boards = [], isLoading, error: loadError, refetch } = useGetWhiteboardsQuery();
   const [saveWhiteboard] = useSaveWhiteboardMutation();
   const [deleteWhiteboard] = useDeleteWhiteboardMutation();
 
@@ -43,13 +47,11 @@ export default function WhiteboardPage() {
   }, [boards, searchTerm]);
 
   const handleCreate = () => {
-    setEditingId(null);
-    setEditorOpen(true);
+    setBoardParam("new");
   };
 
   const handleOpen = (board: Whiteboard) => {
-    setEditingId(board.id);
-    setEditorOpen(true);
+    setBoardParam(board.id);
   };
 
   const handleDelete = async (board: Whiteboard) => {
@@ -91,6 +93,14 @@ export default function WhiteboardPage() {
       });
     }
   };
+
+  if (loadError && !boards.length) {
+    return (
+      <ManagerWrapper>
+        <LoadError what="your whiteboards" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
 
   if (isLoading && !boards.length) {
     return <LoadingState />;
@@ -148,7 +158,7 @@ export default function WhiteboardPage() {
         <BoardEditor
           boardId={editingId}
           open={editorOpen}
-          onClose={() => setEditorOpen(false)}
+          onClose={() => setBoardParam(null)}
         />
       )}
     </ManagerWrapper>

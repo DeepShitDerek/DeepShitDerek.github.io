@@ -32,7 +32,7 @@ function ChoiceTile({
       </FormControl>
       <FormLabel
         className={cn(
-          "flex h-full cursor-pointer flex-col gap-2 rounded-surface bg-card p-4 font-normal transition-shadow duration-200 ease-enter",
+          "flex h-full cursor-pointer flex-col gap-2 rounded-surface bg-card p-4 font-normal transition-shadow duration-base ease-enter",
           selected
             ? "shadow-e3 ring-2 ring-primary"
             : "shadow-e1 hover:shadow-e2",

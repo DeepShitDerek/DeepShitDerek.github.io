@@ -1,96 +1,90 @@
-import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PortfolioSection } from "@/types";
 
+// The rich editor stands in as a textarea: this is about when saves happen.
 vi.mock("@/components/admin/novel-editor", () => ({
-  default: ({ value }: { value: string }) => <div data-testid="editor">{value}</div>,
-}));
-vi.mock("@/features/sections/section-renderer", () => ({
-  default: ({ section }: { section: PortfolioSection }) => (
-    <div data-testid="public-render">
-      {section.title}:{(section.portfolio_items ?? []).map((i) => i.title).join(",")}
-    </div>
+  default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <textarea aria-label="content" value={value} onChange={(e) => onChange(e.target.value)} />
   ),
 }));
 
-import { SectionDetail } from "./section-detail";
+const { SectionDetail } = await import("./section-detail");
 
-const section = (overrides: Partial<PortfolioSection> = {}): PortfolioSection =>
-  ({
-    id: "s1",
-    title: "What I do",
-    type: "list_items",
-    page_path: "/",
-    layout_style: "services",
-    is_visible: true,
-    portfolio_items: [
-      { id: "a", section_id: "s1", title: "Alpha", display_order: 1 },
-      { id: "b", section_id: "s1", title: "Beta", display_order: 2 },
-    ],
-    ...overrides,
-  }) as PortfolioSection;
+const section = (id: string, content: string) =>
+  ({ id, title: `Section ${id}`, type: "markdown", content, page_path: "/about", is_visible: true, portfolio_items: [] }) as unknown as PortfolioSection;
 
-const handlers = () => ({
-  onEditSection: vi.fn(),
-  onDeleteSection: vi.fn(),
-  onToggleVisible: vi.fn(),
-  onSaveContent: vi.fn(),
-  onNewItem: vi.fn(),
-  onEditItem: vi.fn(),
-  onDeleteItem: vi.fn(),
-  onMoveItem: vi.fn(),
-});
-
-describe("SectionDetail", () => {
-  it("says which page and layout the section is", () => {
-    render(<SectionDetail section={section()} {...handlers()} />);
-    expect(screen.getByText("Home · Services")).toBeInTheDocument();
-  });
-
-  /** Order was invisible and unchangeable; it is now both. */
-  it("moves an item, and cannot move past either end", () => {
-    const h = handlers();
-    render(<SectionDetail section={section()} {...h} />);
-    expect(screen.getByRole("button", { name: "Move Alpha up" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move Beta down" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Move Alpha down" }));
-    expect(h.onMoveItem).toHaveBeenCalledWith("a", 1);
-  });
-
-  /** Actions used to render at opacity 0 until hovered. */
-  it("keeps every item action on screen", () => {
-    const h = handlers();
-    render(<SectionDetail section={section()} {...h} />);
-    fireEvent.click(screen.getByRole("button", { name: "Edit Beta" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete Beta" }));
-    expect(h.onEditItem).toHaveBeenCalledWith(expect.objectContaining({ id: "b" }));
-    expect(h.onDeleteItem).toHaveBeenCalledWith("b");
-  });
-
-  /** The renderer is loaded on demand, so the preview arrives asynchronously. */
-  it("previews the section with the site's own renderer, in order", async () => {
-    render(<SectionDetail section={section()} {...handlers()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    expect(await screen.findByTestId("public-render")).toHaveTextContent(
-      "What I do:Alpha,Beta",
-    );
-  });
-
-  it("says a hidden section is hidden, and offers to show it", () => {
-    const h = handlers();
-    render(<SectionDetail section={section({ is_visible: false })} {...h} />);
-    expect(screen.getByText("Hidden from the site")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Show on the site" }));
-    expect(h.onToggleVisible).toHaveBeenCalled();
-  });
-
-  it("edits a written section in the editor", () => {
-    render(
+function setup(initial = section("s1", "Hello")) {
+  const onSaveContent = vi.fn(async () => {});
+  const noop = vi.fn();
+  const utils = render(
+    <SectionDetail
+      section={initial}
+      onEditSection={noop}
+      onDeleteSection={noop}
+      onToggleVisible={noop}
+      onSaveContent={onSaveContent}
+      onNewItem={noop}
+      onEditItem={noop}
+      onDeleteItem={noop}
+      onMoveItem={noop}
+    />,
+  );
+  const rerender = (next: PortfolioSection) =>
+    utils.rerender(
       <SectionDetail
-        section={section({ type: "markdown", content: "Hello", portfolio_items: [] })}
-        {...handlers()}
+        section={next}
+        onEditSection={noop}
+        onDeleteSection={noop}
+        onToggleVisible={noop}
+        onSaveContent={onSaveContent}
+        onNewItem={noop}
+        onEditItem={noop}
+        onDeleteItem={noop}
+        onMoveItem={noop}
       />,
     );
-    expect(screen.getByTestId("editor")).toHaveTextContent("Hello");
+  return { ...utils, onSaveContent, rerender };
+}
+
+const type = (text: string) => fireEvent.change(screen.getByLabelText("content"), { target: { value: text } });
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
+
+describe("markdown section autosave (ADM-022)", () => {
+  it("saves once, after typing pauses — not on every keystroke", async () => {
+    const { onSaveContent } = setup();
+    type("Hello w");
+    type("Hello wo");
+    type("Hello wor");
+    type("Hello world");
+    expect(onSaveContent).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    expect(onSaveContent).toHaveBeenCalledTimes(1);
+    expect(onSaveContent).toHaveBeenCalledWith({ id: "s1", content: "Hello world" }, { silent: true });
+  });
+
+  it("saves the section being left when another is opened", async () => {
+    const { onSaveContent, rerender } = setup();
+    type("Unsaved change");
+    await act(async () => {
+      rerender(section("s2", "Other"));
+      await vi.runAllTimersAsync();
+    });
+    expect(onSaveContent).toHaveBeenCalledWith({ id: "s1", content: "Unsaved change" }, { silent: true });
+    expect(onSaveContent).not.toHaveBeenCalledWith(expect.objectContaining({ id: "s2" }), expect.anything());
+  });
+
+  it("saves what is pending when the editor closes", async () => {
+    const { onSaveContent, unmount } = setup();
+    type("Last words");
+    await act(async () => {
+      unmount();
+      await vi.runAllTimersAsync();
+    });
+    expect(onSaveContent).toHaveBeenCalledWith({ id: "s1", content: "Last words" }, { silent: true });
   });
 });

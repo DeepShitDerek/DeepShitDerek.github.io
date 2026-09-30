@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, Menu, ShieldCheck, X } from "lucide-react";
 import type { SiteContent } from "@/types";
 import {
   useGetNavLinksQuery,
   useGetSiteIdentityQuery,
 } from "@/store/api/publicApi";
-import { useSupabaseSession } from "@/hooks/use-auth-guard";
+import { usePublicSession } from "@/hooks/use-public-session";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EASE } from "@/components/layout/motion";
 import { cn } from "@/lib/cn";
+import { splitNav } from "./nav-links";
 
 /** Normalizes a route path for comparison (static export uses trailing slashes). */
 function normalizePath(path: string): string {
@@ -73,13 +74,14 @@ export default function SiteHeader({
     useGetSiteIdentityQuery();
   const identity = identityOverride ?? fetched;
   const { data: navLinks, isLoading: isNavLoading } = useGetNavLinksQuery();
-  const { session } = useSupabaseSession();
+  const { session } = usePublicSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const scrolled = useScrolled(8);
 
   const isLoading = (!identityOverride && isIdentityLoading) || isNavLoading;
   const logo = identity?.profile_data.logo;
-  const links = navLinks ?? [];
+  // The contact link is the call to action, not one more text link.
+  const { items: links, cta } = splitNav(navLinks ?? []);
 
   // Close the phone menu whenever navigation lands somewhere.
   useEffect(() => {
@@ -96,14 +98,14 @@ export default function SiteHeader({
   }, [menuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 px-3 pt-3 sm:px-4 sm:pt-4">
+    <header className="sticky top-0 z-overlay px-3 pt-3 sm:px-4 sm:pt-4">
       <div className="mx-auto max-w-content">
         <nav
           aria-label="Main"
           data-scrolled={scrolled || undefined}
           className={cn(
             "flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-1.5 backdrop-blur-xl backdrop-saturate-150",
-            "transition-[background-color,box-shadow] duration-300 ease-enter motion-reduce:transition-none",
+            "transition-[background-color,box-shadow] duration-slow ease-enter motion-reduce:transition-none",
             scrolled ? "bg-card/90 shadow-e2" : "bg-card/60 shadow-e1",
           )}
         >
@@ -124,7 +126,7 @@ export default function SiteHeader({
               <>
                 <span
                   aria-hidden
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-heading text-sm font-bold text-primary-foreground transition-transform duration-300 ease-enter group-hover:rotate-[-8deg] group-hover:scale-105 motion-reduce:transition-none"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-heading text-sm font-bold text-primary-foreground transition-transform duration-slow ease-enter group-hover:rotate-[-8deg] group-hover:scale-105 motion-reduce:transition-none"
                 >
                   {(logo.main || logo.highlight || "·").charAt(0).toUpperCase()}
                 </span>
@@ -153,10 +155,12 @@ export default function SiteHeader({
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "relative isolate block rounded-full px-4 py-2 text-sm font-medium",
-                        "transition-colors duration-200 ease-enter",
+                        "transition-colors duration-base ease-enter",
                         FOCUS,
+                        // Quiet on purpose: the call to action is the only
+                        // solid primary element in the bar.
                         active
-                          ? "text-primary-foreground"
+                          ? "text-foreground"
                           : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
                       )}
                     >
@@ -165,8 +169,12 @@ export default function SiteHeader({
                           layoutId="site-nav-active"
                           data-nav-active
                           aria-hidden
-                          className="absolute inset-0 -z-10 rounded-full bg-primary shadow-e1"
-                          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                          className="absolute inset-0 -z-10 rounded-full bg-secondary"
+                          transition={{
+                            type: "spring",
+                            stiffness: 420,
+                            damping: 34,
+                          }}
                         />
                       )}
                       {link.label}
@@ -175,12 +183,33 @@ export default function SiteHeader({
                 );
               })
             )}
+            {!isLoading && cta && (
+              <li className="ml-1">
+                <Link
+                  href={cta.href}
+                  aria-current={
+                    isActivePath(pathname, cta.href) ? "page" : undefined
+                  }
+                  className={cn(
+                    "group flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-e1",
+                    "transition-[box-shadow,background-color] duration-base ease-enter hover:bg-primary/90 hover:shadow-e2",
+                    FOCUS,
+                  )}
+                >
+                  {cta.label}
+                  <ArrowRight
+                    aria-hidden
+                    className="size-3.5 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  />
+                </Link>
+              </li>
+            )}
             {session && (
               <li className="ml-1">
                 <Link
                   href="/admin"
                   className={cn(
-                    "flex items-center gap-1.5 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors duration-200 hover:bg-secondary/70",
+                    "flex items-center gap-1.5 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors duration-base hover:bg-secondary/70",
                     FOCUS,
                   )}
                 >
@@ -198,7 +227,7 @@ export default function SiteHeader({
             aria-controls="site-menu"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             className={cn(
-              "relative ml-auto flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-200 hover:bg-secondary lg:hidden",
+              "relative ml-auto flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-base hover:bg-secondary lg:hidden",
               FOCUS,
             )}
           >
@@ -239,7 +268,11 @@ export default function SiteHeader({
                       key={link.href}
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.25, ease: EASE, delay: 0.03 * index }}
+                      transition={{
+                        duration: 0.25,
+                        ease: EASE,
+                        delay: 0.03 * index,
+                      }}
                     >
                       <Link
                         href={link.href}
@@ -248,7 +281,7 @@ export default function SiteHeader({
                           "flex items-center justify-between rounded-control px-4 py-3 text-base font-medium transition-colors",
                           FOCUS,
                           active
-                            ? "bg-primary text-primary-foreground"
+                            ? "bg-secondary text-foreground"
                             : "text-foreground hover:bg-secondary",
                         )}
                       >
@@ -256,13 +289,27 @@ export default function SiteHeader({
                         {active && (
                           <span
                             aria-hidden
-                            className="size-1.5 rounded-full bg-primary-foreground"
+                            className="size-1.5 rounded-full bg-primary"
                           />
                         )}
                       </Link>
                     </motion.li>
                   );
                 })}
+                {cta && (
+                  <li className="mt-1">
+                    <Link
+                      href={cta.href}
+                      className={cn(
+                        "flex items-center justify-center gap-2 rounded-control bg-primary px-4 py-3 text-base font-semibold text-primary-foreground",
+                        FOCUS,
+                      )}
+                    >
+                      {cta.label}
+                      <ArrowRight aria-hidden className="size-4" />
+                    </Link>
+                  </li>
+                )}
                 {session && (
                   <li>
                     <Link

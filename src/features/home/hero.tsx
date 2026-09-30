@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Pause, Play } from "lucide-react";
 import { useGetSiteIdentityQuery } from "@/store/api/publicApi";
 import type { SiteContent } from "@/types";
 import { Markdown } from "@/components/ui/markdown";
@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Band } from "@/components/layout/band";
 import { CountUp, EASE } from "@/components/layout/motion";
 import { isInternalUrl, safeImageUrl, safeLinkUrl } from "@/lib/safe-url";
+import { sizedImageUrl } from "@/lib/image-size";
 import { cn } from "@/lib/cn";
 import { StatusPanel } from "./status-panel";
 
@@ -44,7 +45,11 @@ function AnimatedName({ name }: { name: string }) {
               className="inline-block"
               initial={{ y: "105%" }}
               animate={{ y: 0 }}
-              transition={{ duration: 0.85, ease: EASE, delay: 0.1 + index * 0.08 }}
+              transition={{
+                duration: 0.85,
+                ease: EASE,
+                delay: 0.1 + index * 0.08,
+              }}
             >
               {word}
             </motion.span>
@@ -55,41 +60,74 @@ function AnimatedName({ name }: { name: string }) {
   );
 }
 
-/** Cycles through `title` parts separated by `|`; static when only one. */
+/**
+ * Cycles through `title` parts separated by `|`; static when only one.
+ *
+ * WCAG 2.2.2 (V2-060): auto-updating content needs a way to stop it. It goes
+ * round once and settles on the first part, never moves under reduced
+ * motion, and a small button pauses it or plays it again. Screen readers get
+ * every part once, in order, instead of whichever one is showing.
+ */
 function RotatingTitle({ title }: { title: string }) {
   const parts = title
     .split("|")
     .map((part) => part.trim())
     .filter(Boolean);
-  const [index, setIndex] = useState(0);
+  const [steps, setSteps] = useState(0);
+  const index = parts.length ? steps % parts.length : 0;
   const reduceMotion = useReducedMotion();
+  const [running, setRunning] = useState(false);
+
+  // Start once mounted (and not under reduced motion); the server render
+  // and the first paint show the first part, still.
+  useEffect(() => {
+    if (parts.length > 1 && !reduceMotion) setRunning(true);
+  }, [parts.length, reduceMotion]);
 
   useEffect(() => {
-    if (parts.length < 2) return;
-    const id = setInterval(
-      () => setIndex((i) => (i + 1) % parts.length),
-      ROTATE_MS,
-    );
+    if (!running || parts.length < 2) return;
+    const id = setInterval(() => setSteps((n) => n + 1), ROTATE_MS);
     return () => clearInterval(id);
-  }, [parts.length]);
+  }, [running, parts.length]);
+
+  // Back at the first part: a full cycle, so stop there.
+  useEffect(() => {
+    if (steps > 0 && parts.length > 1 && steps % parts.length === 0) setRunning(false);
+  }, [steps, parts.length]);
 
   if (parts.length === 0) return null;
+  if (parts.length === 1) return <span className="text-primary">{parts[0]}</span>;
 
   return (
-    <span className="relative inline-block text-primary">
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={parts[index]}
-          initial={{ opacity: 0, y: reduceMotion ? 0 : 14, filter: "blur(4px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: reduceMotion ? 0 : -14, filter: "blur(4px)" }}
-          transition={{ duration: 0.3, ease: EASE }}
-          className="inline-block"
-        >
-          {parts[index]}
-        </motion.span>
-      </AnimatePresence>
-    </span>
+    <>
+      <span className="sr-only">{parts.join(", ")}</span>
+      <span aria-hidden className="relative inline-block text-primary">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={parts[index]}
+            initial={{
+              opacity: 0,
+              y: reduceMotion ? 0 : 14,
+              filter: "blur(4px)",
+            }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: reduceMotion ? 0 : -14, filter: "blur(4px)" }}
+            transition={{ duration: 0.3, ease: EASE }}
+            className="inline-block"
+          >
+            {parts[index]}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+      <button
+        type="button"
+        onClick={() => setRunning((r) => !r)}
+        aria-label={running ? "Pause the changing title" : "Play the changing title"}
+        className="ml-1.5 inline-flex size-6 translate-y-[-0.1em] items-center justify-center rounded-full align-middle text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {running ? <Pause aria-hidden className="size-3" /> : <Play aria-hidden className="size-3" />}
+      </button>
+    </>
   );
 }
 
@@ -116,7 +154,9 @@ function SocialRow({
   const visible = links
     .filter((link) => link.is_visible !== false)
     .map((link) => ({ ...link, href: safeLinkUrl(link.url) }))
-    .filter((link): link is typeof link & { href: string } => Boolean(link.href));
+    .filter((link): link is typeof link & { href: string } =>
+      Boolean(link.href),
+    );
   if (visible.length === 0) return null;
 
   return (
@@ -138,7 +178,7 @@ function SocialRow({
               title={link.label}
               className={cn(
                 "flex size-10 items-center justify-center rounded-full bg-card text-muted-foreground shadow-e1",
-                "transition-[box-shadow,transform,color] duration-200 ease-enter",
+                "transition-[box-shadow,transform,color] duration-base ease-enter",
                 "hover:-translate-y-0.5 hover:text-primary hover:shadow-e2 motion-reduce:hover:translate-y-0",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               )}
@@ -153,23 +193,24 @@ function SocialRow({
 }
 
 /**
- * Two ways forward, in the order a buyer takes them: start the conversation,
- * or look at the evidence first.
+ * Two ways forward: start the conversation, or look at the evidence first.
+ * "Work with me", not "Start a project" — the same path serves a role, a
+ * project or anything else (V2-040), and it matches the header's CTA.
  */
 function Actions({ className }: { className?: string }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
       <Button asChild size="lg" className="group rounded-full px-7">
         <Link href="/contact">
-          Start a project
+          Work with me
           <ArrowRight
             aria-hidden
-            className="ml-2 size-4 transition-transform duration-200 ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
+            className="ml-2 size-4 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
           />
         </Link>
       </Button>
       <Button asChild size="lg" variant="outline" className="rounded-full px-7">
-        <Link href="/showcase">See case studies</Link>
+        <Link href="/work">See the work</Link>
       </Button>
     </div>
   );
@@ -188,12 +229,16 @@ function Byline({
   centered: boolean;
 }) {
   return (
-    <div className={cn("flex items-center gap-3", centered && "justify-center")}>
+    <div
+      className={cn("flex items-center gap-3", centered && "justify-center")}
+    >
       {picture && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={picture}
+          src={sizedImageUrl(picture, 40)}
           alt=""
+          width={40}
+          height={40}
           className="size-10 shrink-0 rounded-full object-cover shadow-e1"
         />
       )}

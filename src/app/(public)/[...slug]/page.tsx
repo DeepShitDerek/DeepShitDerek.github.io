@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
+import { socialMetadata } from "@/lib/og/metadata";
+import { ogPageImage } from "@/lib/og/pages";
+import { config as appConfig } from "@/lib/config";
 import { isSupabaseConfigured } from "@/lib/config";
-import { supabase } from "@/supabase/client";
+import { rest } from "@/lib/rest";
 import { MOCK_NAV_LINKS } from "@/lib/fallback-data";
 import { RESERVED_SEGMENTS } from "@/lib/constants";
 import { CmsPage } from "@/features/sections/cms-page";
+import { pagePreload } from "@/lib/public-preload-server";
+import { PublicPreload } from "@/store/public-preload";
 
 // Static export: only build-time params exist; anything else 404s.
 export const dynamicParams = false;
 
 async function getNavLinks(): Promise<{ label: string; href: string }[]> {
-  if (isSupabaseConfigured && supabase) {
-    const { data } = await supabase
+  if (isSupabaseConfigured && rest) {
+    const { data } = await rest
       .from("navigation_links")
       .select("label, href")
       .eq("is_visible", true);
@@ -47,15 +52,34 @@ async function pageTitle(slug: string[]): Promise<string> {
   return last.charAt(0).toUpperCase() + last.slice(1);
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string[] };
+export async function generateMetadata(props: {
+  params: Promise<{ slug: string[] }>;
 }): Promise<Metadata> {
-  return { title: await pageTitle(params.slug) };
+  const params = await props.params;
+  const title = await pageTitle(params.slug);
+  // CMS pages have no card of their own; the home card still says whose
+  // site it is, which beats a preview with no image at all.
+  return {
+    title,
+    ...socialMetadata({
+      title,
+      description: appConfig.site.description,
+      path: `/${params.slug.join("/")}/`,
+      image: ogPageImage("home"),
+    }),
+  };
 }
 
-export default async function Page({ params }: { params: { slug: string[] } }) {
-  const title = await pageTitle(params.slug);
-  return <CmsPage pagePath={`/${params.slug.join("/")}`} title={title} />;
+export default async function Page(props: { params: Promise<{ slug: string[] }> }) {
+  const params = await props.params;
+  const pagePath = `/${params.slug.join("/")}`;
+  const [title, data] = await Promise.all([
+    pageTitle(params.slug),
+    pagePreload({ sections: [pagePath] }),
+  ]);
+  return (
+    <PublicPreload data={data}>
+      <CmsPage pagePath={pagePath} title={title} />
+    </PublicPreload>
+  );
 }

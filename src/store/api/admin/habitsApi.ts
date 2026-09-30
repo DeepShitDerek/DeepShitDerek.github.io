@@ -1,34 +1,59 @@
 import { supabase } from "@/supabase/client";
-import type { Habit } from "@/types";
-import { HABIT_LOGS_LOOKBACK_DAYS } from "@/lib/constants";
+import type { Habit, HabitLog } from "@/types";
 import { adminApi } from "./baseApi";
 import { NO_DB_ERROR, saveQueryFn } from "./query-helpers";
-import { toLocalISODate } from "@/lib/date-utils";
+
+/** PostgREST's default row cap; a shorter page means the last one. */
+const LOG_PAGE = 1000;
 
 export const habitsApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getHabits: builder.query<Habit[], { includeArchived?: boolean } | void>({
       queryFn: async (args) => {
         if (!supabase) return { error: NO_DB_ERROR };
-        const lookbackDate = new Date();
-        lookbackDate.setDate(lookbackDate.getDate() - HABIT_LOGS_LOOKBACK_DAYS);
-        // A DATE column compared against a full timestamp; the date part is
-        // what matters, so send only that.
-        const since = toLocalISODate(lookbackDate);
-
         let query = supabase
           .from("habits")
-          .select(`*, habit_logs(id, habit_id, completed_date, value, note)`)
-          .gte("habit_logs.completed_date", since)
+          .select("*")
           .order("display_order", { ascending: true })
           .order("created_at", { ascending: true });
 
         // Archived habits keep their history and are simply out of the way.
         if (!args?.includeArchived) query = query.is("archived_at", null);
 
-        const { data, error } = await query;
+        const { data: habits, error } = await query;
         if (error) return { error };
-        return { data };
+        if (!habits?.length) return { data: [] };
+
+        /*
+          The whole history, not the last 30 days (ADM-018). Streaks walk back
+          until a missed day, "best" is the longest run on record, the delete
+          warning counts every recorded day and the heatmap spans the year: a
+          30-day window capped all four without saying so. Fetched a page at a
+          time, because PostgREST stops at 1,000 rows without an error.
+        */
+        const logs: HabitLog[] = [];
+        const ids = habits.map((habit) => habit.id);
+        for (let from = 0; ; from += LOG_PAGE) {
+          const { data: page, error: logError } = await supabase
+            .from("habit_logs")
+            .select("id, habit_id, completed_date, value, note")
+            .in("habit_id", ids)
+            .order("completed_date", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, from + LOG_PAGE - 1);
+          if (logError) return { error: logError };
+          logs.push(...((page ?? []) as HabitLog[]));
+          if (!page || page.length < LOG_PAGE) break;
+        }
+        const byHabit = new Map<string, HabitLog[]>();
+        for (const log of logs) {
+          const list = byHabit.get(log.habit_id) ?? [];
+          list.push(log);
+          byHabit.set(log.habit_id, list);
+        }
+        return {
+          data: habits.map((habit) => ({ ...habit, habit_logs: byHabit.get(habit.id) ?? [] })) as Habit[],
+        };
       },
       providesTags: ["Habits"],
     }),
@@ -114,6 +139,8 @@ export const habitsApi = adminApi.injectEndpoints({
           patchResult.undo();
         }
       },
+      // The habits list patches itself above; the dashboard's copy refetches (ADM-012).
+      invalidatesTags: ["Dashboard"],
     }),
     updateHabitOrder: builder.mutation<null, string[]>({
       queryFn: async (habitIds) => {
@@ -142,7 +169,7 @@ export const habitsApi = adminApi.injectEndpoints({
         if (error) return { error };
         return { data: null };
       },
-      invalidatesTags: ["Analytics"],
+      invalidatesTags: ["Analytics", "Dashboard"],
     }),
   }),
 });

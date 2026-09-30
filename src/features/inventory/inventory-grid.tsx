@@ -4,7 +4,8 @@ import { Box, MapPin } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { cn } from "@/lib/cn";
 import { getWarrantyStatus } from "./warranty";
-import { currentValue, formatValue } from "./item-value";
+import { currentValue, formatValue, itemCurrency } from "./item-value";
+import type { ArchiveReason } from "./item-actions";
 import { daysUntilExpiry, warrantyBucket } from "./inventory-filters";
 import { ItemActions } from "./item-actions";
 
@@ -12,7 +13,9 @@ interface InventoryGridProps {
   items: InventoryItem[];
   today: string;
   onEdit: (item: InventoryItem) => void;
-  onArchive: (item: InventoryItem) => void;
+  onArchive: (item: InventoryItem, reason?: ArchiveReason) => void;
+  /** Money base currency: what an item with no currency of its own is in. */
+  baseCurrency: string;
   onDelete: (item: InventoryItem) => void;
 }
 
@@ -24,6 +27,7 @@ interface InventoryGridProps {
 export function InventoryGrid({
   items,
   today,
+  baseCurrency,
   onEdit,
   onArchive,
   onDelete,
@@ -40,7 +44,7 @@ export function InventoryGrid({
           <article
             key={item.id}
             className={cn(
-              "group relative flex flex-col overflow-hidden rounded-surface bg-card shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2 focus-within:shadow-e2",
+              "group relative flex flex-col overflow-hidden rounded-surface bg-card shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 focus-within:shadow-e2",
               item.archived_at && "opacity-70",
             )}
           >
@@ -89,7 +93,7 @@ export function InventoryGrid({
 
               <div className="mt-auto flex items-center justify-between gap-2 pt-1.5">
                 <span className="text-sm font-medium tabular-nums">
-                  {formatValue(currentValue(item) * quantity)}
+                  {formatValue(currentValue(item) * quantity, itemCurrency(item, baseCurrency))}
                 </span>
 
                 {/*
@@ -116,7 +120,7 @@ export function InventoryGrid({
             <div className="absolute right-2 top-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
               <ItemActions
                 onEdit={() => onEdit(item)}
-                onArchive={() => onArchive(item)}
+                onArchive={(reason) => onArchive(item, reason)}
                 onDelete={() => onDelete(item)}
                 isArchived={!!item.archived_at}
                 triggerClassName="bg-background/85 backdrop-blur-sm rounded-full size-7"

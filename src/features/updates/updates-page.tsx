@@ -8,6 +8,7 @@ import {
 } from "@/store/api/publicApi";
 import { LIFE_UPDATE_CATEGORY_OPTIONS } from "@/lib/constants";
 import { matchesSearch, monthLabel } from "@/lib/life-update";
+import { useDisplayTimeZone } from "@/hooks/use-hydrated";
 import type { LifeUpdateCategory } from "@/types";
 import { Band } from "@/components/layout/band";
 import { PageHeader } from "@/components/layout/page-header";
@@ -33,6 +34,7 @@ export function UpdatesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState<LifeUpdateCategory | "all">("all");
   const [tag, setTag] = useState<string | null>(null);
+  const timeZone = useDisplayTimeZone();
 
   const layout = identity?.profile_data.updates_layout ?? "scrapbook";
   const all = useMemo(() => updates ?? [], [updates]);
@@ -184,12 +186,14 @@ export function UpdatesPage() {
                 wondering whether the filter cut the list short.
               */}
               <FeedEnd
-                label={filtering ? "That's every match" : "You're all caught up"}
+                label={
+                  filtering ? "That's every match" : "You're all caught up"
+                }
                 detail={
                   filtering
                     ? `${feed.length} of ${all.length} updates`
                     : oldest
-                      ? `${all.length} ${all.length === 1 ? "update" : "updates"} since ${monthLabel(oldest)}`
+                      ? `${all.length} ${all.length === 1 ? "update" : "updates"} since ${monthLabel(oldest, timeZone)}`
                       : undefined
                 }
               />

@@ -1,23 +1,14 @@
 import type { Metadata } from "next";
-import { siteContent } from "@/lib/site-content";
-import { Band } from "@/components/layout/band";
-import { PageHeader } from "@/components/layout/page-header";
-import { DynamicPageContent } from "@/features/sections/dynamic-page-content";
+import { config as appConfig } from "@/lib/config";
+import { MovedPage } from "@/components/layout/moved-page";
 
+/** Merged into /work (V2-040a). Kept so old links and search results land. */
 export const metadata: Metadata = {
-  title: siteContent.pages.showcase.title,
-  description: siteContent.pages.showcase.description,
+  title: "Moved to Work",
+  robots: { index: false, follow: true },
+  alternates: { canonical: `${appConfig.site.url}/work/` },
 };
 
 export default function Page() {
-  return (
-    <Band weight="content">
-      <PageHeader
-        kicker="Selected work"
-        title={siteContent.pages.showcase.heading}
-        subheading={siteContent.pages.showcase.subheading}
-      />
-      <DynamicPageContent pagePath="/showcase" />
-    </Band>
-  );
+  return <MovedPage to="/work/" label="Work" />;
 }

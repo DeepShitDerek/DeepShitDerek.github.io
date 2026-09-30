@@ -83,7 +83,7 @@ export function isPublicHidden(level: number): boolean {
  * Are admin writes meant to be refused?
  *
  * "Meant to" is deliberate: this is what the level *claims*, and the claim is
- * only true once `db/migrations/006-lockdown-enforcement.sql` has been applied.
+ * only true on a database running the current `db/schema.sql` (V2-016).
  * The UI pairs it with `enforcement` so the difference is visible.
  */
 export function writesBlocked(level: number): boolean {

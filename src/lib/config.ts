@@ -14,7 +14,6 @@ export interface AppConfig {
     title: string;
     description: string;
     url: string;
-    defaultOgImage: string;
     author: string;
     twitterHandle?: string;
   };
@@ -43,7 +42,6 @@ export const config: AppConfig = {
     description:
       process.env.NEXT_PUBLIC_SITE_DESCRIPTION || portfolioConfig.description,
     url: process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL,
-    defaultOgImage: `${process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL}/default-og-image.png`,
     author: portfolioConfig.name,
   },
   supabase: {

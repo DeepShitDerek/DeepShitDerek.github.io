@@ -170,7 +170,7 @@ export function ThemeSection({ form }: { form: SettingsForm }) {
                         aria-checked={active}
                         onClick={() => field.onChange(preset.value)}
                         className={cn(
-                          "group overflow-hidden rounded-surface bg-card text-left transition-shadow duration-200 ease-enter",
+                          "group overflow-hidden rounded-surface bg-card text-left transition-shadow duration-base ease-enter",
                           active
                             ? "shadow-e3 ring-2 ring-primary"
                             : "shadow-e1 hover:shadow-e2",

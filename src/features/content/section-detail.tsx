@@ -188,42 +188,67 @@ export function SectionDetail({
 
   const savedRef = useRef(section?.content ?? "");
   const sectionIdRef = useRef(section?.id);
+  // The latest text, for saves that run outside a render (ADM-022).
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  // Saves run one after another, so an older response can never land last.
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
+
+  /**
+   * Save what is pending for the section open *now*. Reads refs, so it is
+   * stable: the autosave timer, a section switch and leaving the page all
+   * call the same function without re-subscribing on every keystroke.
+   */
+  const flush = useCallback(() => {
+    const id = sectionIdRef.current;
+    const pending = contentRef.current;
+    if (!id || pending === savedRef.current) return queueRef.current;
+    queueRef.current = queueRef.current.then(async () => {
+      setSaveState("saving");
+      try {
+        await saveRef.current({ id, content: pending }, { silent: true });
+        // Only if this is still the section on screen; a save for the one
+        // just left must not overwrite the new section's saved text.
+        if (sectionIdRef.current === id) {
+          savedRef.current = pending;
+          setSaveState(contentRef.current === pending ? "saved" : "dirty");
+        }
+      } catch {
+        setSaveState("error");
+      }
+    });
+    return queueRef.current;
+  }, []);
 
   useEffect(() => {
     if (section?.id === sectionIdRef.current) return;
+    // Switching sections: save the one being left first. `flush` reads the
+    // refs, which still hold its id and text.
+    void flush();
     sectionIdRef.current = section?.id;
     setContent(section?.content ?? "");
+    contentRef.current = section?.content ?? "";
     savedRef.current = section?.content ?? "";
     setSaveState("idle");
-  }, [section?.id, section?.content]);
+  }, [section?.id, section?.content, flush]);
 
-  const flush = useCallback(async () => {
-    const id = sectionIdRef.current;
-    if (!id) return;
-    const pending = content;
-    if (pending === savedRef.current) return;
-    setSaveState("saving");
-    try {
-      await saveRef.current({ id, content: pending }, { silent: true });
-      savedRef.current = pending;
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    }
-  }, [content]);
-
+  // Save once typing pauses.
   useEffect(() => {
     if (!section || section.type !== "markdown") return;
     if (content === savedRef.current) return;
     setSaveState("dirty");
-    const handle = setTimeout(flush, AUTOSAVE_DELAY);
+    const handle = setTimeout(() => void flush(), AUTOSAVE_DELAY);
     return () => clearTimeout(handle);
   }, [content, flush, section]);
 
-  // Never lose a pending edit — on a closed tab, or on switching sections.
+  /**
+   * Never lose a pending edit: ask before a tab closes, and save on leaving.
+   * Registered once. It used to depend on `content`, so its cleanup — a save —
+   * ran on every keystroke and the debounce above never had a chance.
+   */
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      if (content !== savedRef.current) {
+      if (contentRef.current !== savedRef.current) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -233,7 +258,7 @@ export function SectionDetail({
       window.removeEventListener("beforeunload", warn);
       void flush();
     };
-  }, [content, flush]);
+  }, [flush]);
 
   useEffect(() => {
     if (saveState !== "saved") return;

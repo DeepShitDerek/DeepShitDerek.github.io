@@ -171,7 +171,7 @@ export function BlockHandle({
   return (
     <div
       data-block-handle
-      className="absolute z-10 flex h-6 items-center justify-end gap-0.5 pr-1"
+      className="absolute z-raised flex h-6 items-center justify-end gap-0.5 pr-1"
       style={{ top: block.top, left: "-3rem", width: "3rem" }}
     >
       <button

@@ -1,5 +1,5 @@
 import type { InventoryItem } from "@/types";
-import { currentValue, purchasePrice } from "./item-value";
+import { currentValue, itemCurrency, purchasePrice } from "./item-value";
 
 /**
  * Filtering, sorting and totals for the inventory.
@@ -170,29 +170,50 @@ export function linePaid(item: InventoryItem): number {
   return purchasePrice(item) * Math.max(1, item.quantity ?? 1);
 }
 
-export interface InventoryTotals {
-  /** Distinct rows. */
-  items: number;
-  /** Physical things, counting quantity. */
-  units: number;
+export interface CurrencyTotals {
+  currency: string;
   paid: number;
   worth: number;
   /** Never negative: an item that gained value is not negative depreciation. */
   depreciation: number;
 }
 
-export function totals(items: InventoryItem[]): InventoryTotals {
-  const paid = items.reduce((sum, item) => sum + linePaid(item), 0);
-  const worth = items.reduce((sum, item) => sum + lineValue(item), 0);
+export interface InventoryTotals {
+  /** Distinct rows. */
+  items: number;
+  /** Physical things, counting quantity. */
+  units: number;
+  /**
+   * Money per currency, base currency first, then by worth (ADM-024). Rupees
+   * and dollars used to be added together as though they were one currency.
+   * They are kept apart rather than converted: an inventory's worth is a
+   * rough figure, and a conversion at today's rate would be a precise-looking
+   * wrong one for things bought years ago.
+   */
+  byCurrency: CurrencyTotals[];
+}
+
+export function totals(items: InventoryItem[], baseCurrency: string): InventoryTotals {
+  const groups = new Map<string, CurrencyTotals>();
+  for (const item of items) {
+    const currency = itemCurrency(item, baseCurrency);
+    const group = groups.get(currency) ?? { currency, paid: 0, worth: 0, depreciation: 0 };
+    group.paid += linePaid(item);
+    group.worth += lineValue(item);
+    groups.set(currency, group);
+  }
+  const byCurrency = [...groups.values()]
+    .map((g) => ({ ...g, depreciation: Math.max(0, g.paid - g.worth) }))
+    .sort((a, b) =>
+      a.currency === baseCurrency ? -1 : b.currency === baseCurrency ? 1 : b.worth - a.worth,
+    );
   return {
     items: items.length,
     units: items.reduce(
       (sum, item) => sum + Math.max(1, item.quantity ?? 1),
       0,
     ),
-    paid,
-    worth,
-    depreciation: Math.max(0, paid - worth),
+    byCurrency,
   };
 }
 

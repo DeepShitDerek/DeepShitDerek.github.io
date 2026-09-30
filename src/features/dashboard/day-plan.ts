@@ -277,14 +277,15 @@ export function dayPulse(data: DashboardData, now = new Date()): Pulse {
     if (isSatisfiedOn(habit, indexLogs(habit), today)) habitsDone += 1;
   }
 
-  // Tasks: the query returns only what is still open, so anything it returns
-  // is outstanding by definition. Overdue counts against the day too — it is
-  // work that was owed before it.
-  const tasksOutstanding = data.tasksDueToday.length + data.overdueTasks.length;
+  // Tasks: today's include the finished ones, so ticking one off moves the
+  // ring (ADM-013). Overdue counts against the day too — it is work that was
+  // owed before it — and leaves the list once done.
+  const tasksDone = data.tasksDueToday.filter((task) => task.status === "done").length;
+  const tasksTotal = data.tasksDueToday.length + data.overdueTasks.length;
 
   const segments = [
     { label: "Habits", done: habitsDone, total: habitsDue },
-    { label: "Tasks", done: 0, total: tasksOutstanding },
+    { label: "Tasks", done: tasksDone, total: tasksTotal },
   ].filter((segment) => segment.total > 0);
 
   const total = segments.reduce((sum, segment) => sum + segment.total, 0);

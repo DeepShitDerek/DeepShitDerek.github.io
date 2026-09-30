@@ -3,7 +3,8 @@
 import type { InventoryItem } from "@/types";
 import { cn } from "@/lib/cn";
 import { getWarrantyStatus } from "./warranty";
-import { currentValue, formatValue } from "./item-value";
+import { currentValue, formatValue, itemCurrency } from "./item-value";
+import type { ArchiveReason } from "./item-actions";
 import { daysUntilExpiry, warrantyBucket } from "./inventory-filters";
 import { ItemActions } from "./item-actions";
 
@@ -11,7 +12,9 @@ interface InventoryTableProps {
   items: InventoryItem[];
   today: string;
   onEdit: (item: InventoryItem) => void;
-  onArchive: (item: InventoryItem) => void;
+  onArchive: (item: InventoryItem, reason?: ArchiveReason) => void;
+  /** Money base currency: what an item with no currency of its own is in. */
+  baseCurrency: string;
   onDelete: (item: InventoryItem) => void;
 }
 
@@ -27,6 +30,7 @@ interface InventoryTableProps {
 export function InventoryTable({
   items,
   today,
+  baseCurrency,
   onEdit,
   onArchive,
   onDelete,
@@ -95,7 +99,7 @@ export function InventoryTable({
                   {quantity}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums">
-                  {formatValue(currentValue(item) * quantity)}
+                  {formatValue(currentValue(item) * quantity, itemCurrency(item, baseCurrency))}
                 </td>
                 <td className="px-3 py-2">
                   <span
@@ -115,7 +119,7 @@ export function InventoryTable({
                 <td className="px-3 py-2 text-right">
                   <ItemActions
                     onEdit={() => onEdit(item)}
-                    onArchive={() => onArchive(item)}
+                    onArchive={(reason) => onArchive(item, reason)}
                     onDelete={() => onDelete(item)}
                     isArchived={!!item.archived_at}
                   />

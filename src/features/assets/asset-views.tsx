@@ -154,7 +154,7 @@ export function AssetGrid({
           }}
         >
           {isBulkSelectMode && (
-            <div className="absolute left-2 top-2 z-10">
+            <div className="absolute left-2 top-2 z-raised">
               <Checkbox
                 checked={bulkSelectedIds.has(asset.id)}
                 className="border-primary bg-background/80 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
@@ -179,7 +179,7 @@ export function AssetGrid({
           </div>
 
           {!isBulkSelectMode && (
-            <div className="absolute right-1.5 top-1.5 z-20 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <div className="absolute right-1.5 top-1.5 z-sticky flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <Button
                 variant="secondary"
                 size="icon"
@@ -211,7 +211,7 @@ export function AssetGrid({
             // Announced, not just drawn: this marker is the only warning that
             // deleting or moving the asset will break a published page.
             <div
-              className="absolute left-1.5 top-1.5 z-10 rounded-full bg-primary/90 p-1 shadow-e1"
+              className="absolute left-1.5 top-1.5 z-raised rounded-full bg-primary/90 p-1 shadow-e1"
               title={`In use in ${asset.used_in.length} place(s)`}
             >
               <LinkIcon

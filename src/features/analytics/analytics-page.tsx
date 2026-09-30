@@ -8,7 +8,7 @@ import {
   usePruneSiteVisitsMutation,
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   Sheet,
   SheetContent,
@@ -56,7 +56,7 @@ export default function AnalyticsPage() {
   const [days, setDays] = useState(30);
   const [withBots, setWithBots] = useState(false);
 
-  const { data, isLoading, isFetching, error } = useGetVisitorAnalyticsQuery({
+  const { data, isLoading, isFetching, error, refetch } = useGetVisitorAnalyticsQuery({
     days,
     withBots,
   });
@@ -110,19 +110,27 @@ export default function AnalyticsPage() {
   }
 
   /**
-   * A database that has not run migration 008 has no `get_visitor_analytics`,
-   * and the RPC fails. Saying so beats an empty dashboard that looks like a
-   * site nobody visits.
+   * The real error, and a way to retry (ADM-023). Every failure — a dropped
+   * connection, an expired session — used to read "not set up yet" and point
+   * at a migration file that no longer exists; setup is db/schema.sql.
    */
   if (error || !data) {
     return (
       <ManagerWrapper>
         <PageHeader title="Analytics" description="Visitors to your site." />
-        <EmptyState
-          icon={Info}
-          title="Analytics is not set up yet"
-          description="Run db/migrations/008-visitor-analytics.sql in the Supabase SQL editor. Until then there is nowhere to record visits and nothing to read."
-        />
+        <div role="alert" className="rounded-surface border border-destructive/40 bg-destructive/5 p-5 text-sm">
+          <p className="font-medium text-destructive">Analytics couldn&apos;t be loaded.</p>
+          <p className="mt-1 text-muted-foreground">
+            {error ? getErrorMessage(error) : "No data came back."}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            If this is the first time, the database may not have the analytics
+            functions yet — re-run db/schema.sql in the Supabase SQL editor.
+          </p>
+          <Button variant="outline" className="mt-3" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
       </ManagerWrapper>
     );
   }
@@ -190,7 +198,7 @@ export default function AnalyticsPage() {
                     aria-selected={active}
                     onClick={() => setDays(option.days)}
                     className={cn(
-                      "rounded-control px-2.5 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-200 ease-enter",
+                      "rounded-control px-2.5 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-base ease-enter",
                       active
                         ? "bg-card text-foreground shadow-e2"
                         : "text-muted-foreground hover:text-foreground",
@@ -283,7 +291,7 @@ export default function AnalyticsPage() {
                 Postgres, so no <code>visitor_hash</code>{" "}
                 could be derived. Page views are unaffected. This usually means
                 the <code>x-forwarded-for</code> header is
-                absent — check that migration 008 ran.
+                absent — check that db/schema.sql has been run.
               </span>
             </p>
           )}

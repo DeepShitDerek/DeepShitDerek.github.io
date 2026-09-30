@@ -132,6 +132,24 @@ function syncDarkClass(): void {
 }
 
 /**
+ * Keep the `dark` class in step with whatever sets the theme (V2-060).
+ *
+ * `applyTheme` syncs it, but next-themes applies a visitor's saved choice
+ * (and the command palette's light/dark switch) on its own, without calling
+ * it — so on those paths every `dark:` variant was dead again and dark themes
+ * showed light-theme greens and ambers at 3:1. Watching the <html> class and
+ * style (custom themes set variables inline) covers every path. Toggling
+ * `dark` to the state it already has changes nothing, so this cannot loop.
+ * Returns the unsubscribe.
+ */
+export function watchDarkClass(): () => void {
+  syncDarkClass();
+  const observer = new MutationObserver(() => syncDarkClass());
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+  return () => observer.disconnect();
+}
+
+/**
  * Tint the browser's own chrome — the mobile address bar, the task switcher —
  * with the active theme's ground.
  *
@@ -143,7 +161,9 @@ function syncDarkClass(): void {
 function syncThemeColorMeta(background: string): void {
   const value = background.trim();
   if (!value) return;
-  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  let meta = document.querySelector<HTMLMetaElement>(
+    'meta[name="theme-color"]',
+  );
   if (!meta) {
     meta = document.createElement("meta");
     meta.name = "theme-color";

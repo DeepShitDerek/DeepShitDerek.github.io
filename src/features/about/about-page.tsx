@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DynamicPageContent } from "@/features/sections/dynamic-page-content";
 import { Reveal, Stagger, StaggerItem } from "@/components/layout/motion";
 import { safeImageUrl } from "@/lib/safe-url";
+import { sizedImageUrl } from "@/lib/image-size";
 import type { SiteContent } from "@/types";
 
 export function AboutPage() {
@@ -90,7 +91,8 @@ export function AboutView({ identity }: { identity: SiteContent }) {
           <figure className="flex items-center gap-4 sm:block sm:overflow-hidden sm:rounded-surface sm:bg-card sm:shadow-e2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={picture as string}
+              // Never wider than 14rem (224px) in its column.
+              src={sizedImageUrl(picture as string, 224)}
               alt={profile_data.name}
               className="size-20 shrink-0 rounded-full object-cover shadow-e1 sm:aspect-[4/5] sm:size-auto sm:w-full sm:rounded-none sm:shadow-none"
             />

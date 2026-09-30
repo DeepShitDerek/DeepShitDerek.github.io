@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Eye,
   EyeOff,
   GripVertical,
@@ -164,10 +165,13 @@ export function ContentTree({
                     No sections yet
                   </li>
                 ) : (
-                  page.sections.map((section) => (
+                  page.sections.map((section, index) => (
                     <SectionTreeRow
                       key={section.id}
                       section={section}
+                      // Moving without dragging (WCAG 2.5.7, V2-060).
+                      onMoveUp={index > 0 ? () => onReorder(section.id, page.sections[index - 1].id) : undefined}
+                      onMoveDown={index < page.sections.length - 1 ? () => onReorder(section.id, page.sections[index + 1].id) : undefined}
                       selected={section.id === selectedSectionId}
                       isDragging={draggedId === section.id}
                       isDropTarget={dropTarget === section.id}
@@ -205,8 +209,12 @@ function SectionTreeRow({
   onDragEnd,
   onDragOver,
   onDrop,
+  onMoveUp,
+  onMoveDown,
 }: {
   section: PortfolioSection;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   selected: boolean;
   isDragging: boolean;
   isDropTarget: boolean;
@@ -263,6 +271,23 @@ function SectionTreeRow({
           />
         )}
       </button>
+      <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+        {[
+          { label: "Move up", onClick: onMoveUp, Icon: ChevronUp },
+          { label: "Move down", onClick: onMoveDown, Icon: ChevronDown },
+        ].map(({ label, onClick, Icon }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={onClick}
+            disabled={!onClick}
+            aria-label={`${label}: ${section.title}`}
+            className="inline-flex size-6 items-center justify-center rounded-control text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:invisible"
+          >
+            <Icon className="size-3.5" aria-hidden />
+          </button>
+        ))}
+      </span>
     </li>
   );
 }

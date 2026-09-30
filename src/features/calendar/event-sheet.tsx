@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useChoice, useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { FormSheet } from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
 import { describeRRule } from "./recurrence";
@@ -66,6 +66,7 @@ export function EventSheet({
   const [deleteException] = useDeleteEventExceptionMutation();
   const [saveException] = useSaveEventExceptionMutation();
   const confirm = useConfirm();
+  const choose = useChoice();
 
   const open = entry !== null || draftStart !== null;
   const editing = entry?.kind === "event" ? entry : null;
@@ -162,13 +163,15 @@ export function EventSheet({
 
       // A single occurrence of a series: ask what "this" means before writing.
       if (editing.rrule && editing.occurrenceStart) {
-        const wholeSeries = await confirm({
+        const choice = await choose({
           title: "Change the whole series?",
           description:
             "This event repeats. Saving the series applies your changes to every occurrence; saving just this one leaves the rest alone.",
           confirmText: "Whole series",
-          cancelText: "Just this one",
+          alternativeText: "Just this one",
         });
+        if (!choice) return;
+        const wholeSeries = choice === "confirm";
 
         if (wholeSeries) {
           await updateEvent({
@@ -208,14 +211,16 @@ export function EventSheet({
     // Deleting one occurrence of a series is a cancellation, not a delete —
     // removing the row would take every other Thursday with it.
     if (editing.rrule && editing.occurrenceStart) {
-      const wholeSeries = await confirm({
+      const choice = await choose({
         title: "Delete the whole series?",
         description:
           "This event repeats. Deleting the series removes every occurrence; deleting just this one leaves the rest in place.",
         confirmText: "Whole series",
-        cancelText: "Just this one",
+        alternativeText: "Just this one",
         variant: "destructive",
       });
+      if (!choice) return;
+      const wholeSeries = choice === "confirm";
 
       try {
         if (wholeSeries) {

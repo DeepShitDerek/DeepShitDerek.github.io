@@ -60,7 +60,7 @@ function Calendar({
           "[&:has([aria-selected].day-range-end)]:bg-accent",
           // Outside days in range
           "[&:has([aria-selected].day-outside)]:bg-accent/50",
-          "focus-within:relative focus-within:z-20",
+          "focus-within:relative focus-within:z-sticky",
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),

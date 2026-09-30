@@ -149,7 +149,7 @@ function Node({
       data-node={branch ? "branch" : "trunk"}
       data-ongoing={ongoing || undefined}
       className={cn(
-        "relative z-10 block shrink-0 rounded-full border-2 border-primary bg-card",
+        "relative z-raised block shrink-0 rounded-full border-2 border-primary bg-card",
         branch
           ? "mt-1.5 size-2.5 md:mt-[1.85rem]"
           : "mt-1 size-3.5 md:mt-7",
@@ -303,7 +303,7 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
                   className={cn(
                     "group rounded-surface bg-card p-5 shadow-e1 sm:p-6",
                     linked &&
-                      "transition-shadow duration-200 ease-enter hover:shadow-e2",
+                      "transition-shadow duration-base ease-enter hover:shadow-e2",
                   )}
                 >
                   <div className="flex items-start gap-4">
@@ -338,7 +338,7 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
                     {linked && (
                       <ArrowUpRight
                         aria-hidden
-                        className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+                        className="size-4 shrink-0 text-muted-foreground transition-transform duration-base ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
                       />
                     )}
                   </div>

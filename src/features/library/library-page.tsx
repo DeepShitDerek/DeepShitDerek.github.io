@@ -31,13 +31,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   FormSheet,
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
 import { safeLinkUrl } from "@/lib/safe-url";
@@ -114,10 +115,18 @@ function IconAction({
 export default function LibraryPage() {
   const confirm = useConfirm();
 
-  const { data: sources = [], isLoading: loadingSources } =
-    useGetLibrarySourcesQuery();
-  const { data: highlights = [], isLoading: loadingHighlights } =
-    useGetLibraryHighlightsQuery();
+  const {
+    data: sources = [],
+    isLoading: loadingSources,
+    error: sourcesError,
+    refetch: refetchSources,
+  } = useGetLibrarySourcesQuery();
+  const {
+    data: highlights = [],
+    isLoading: loadingHighlights,
+    error: highlightsError,
+    refetch: refetchHighlights,
+  } = useGetLibraryHighlightsQuery();
   const [saveHighlight] = useSaveLibraryHighlightMutation();
   const [deleteHighlight] = useDeleteLibraryHighlightMutation();
   const [saveSource] = useSaveLibrarySourceMutation();
@@ -238,6 +247,22 @@ export default function LibraryPage() {
       });
     }
   };
+
+  const loadError = sourcesError ?? highlightsError;
+  if (loadError && !sources.length && !highlights.length) {
+    return (
+      <ManagerWrapper>
+        <LoadError
+          what="your library"
+          error={loadError}
+          onRetry={() => {
+            void refetchSources();
+            void refetchHighlights();
+          }}
+        />
+      </ManagerWrapper>
+    );
+  }
 
   if ((loadingSources || loadingHighlights) && !sources.length && !highlights.length) {
     return (

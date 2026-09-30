@@ -11,13 +11,14 @@ import {
   useGetLearningDataQuery,
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/providers/ConfirmDialogProvider";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   FormSheet,
   LoadingState,
   ManagerWrapper,
   PageHeader,
+  LoadError,
 } from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
 import { ModuleCard } from "./module-card";
@@ -45,7 +46,7 @@ export default function LearningPage() {
   const [isReviewing, setIsReviewing] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
 
-  const { data, isLoading } = useGetLearningDataQuery();
+  const { data, isLoading, error: loadError, refetch } = useGetLearningDataQuery();
   const [deleteSubject] = useDeleteSubjectMutation();
   const [deleteTopic] = useDeleteTopicMutation();
   const [archiveTopic] = useArchiveTopicMutation();
@@ -112,6 +113,14 @@ export default function LearningPage() {
     }
   };
 
+  if (loadError && !data) {
+    return (
+      <ManagerWrapper>
+        <LoadError what="your learning" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
+
   if (isLoading) {
     return (
       <ManagerWrapper>
@@ -163,7 +172,7 @@ export default function LearningPage() {
             className="w-full sm:w-auto"
           >
             <Layers className="mr-2 size-4" aria-hidden />
-            {showLibrary ? "Hide library" : "Library"}
+            {showLibrary ? "Hide modules" : "Modules"}
           </Button>
         }
       />

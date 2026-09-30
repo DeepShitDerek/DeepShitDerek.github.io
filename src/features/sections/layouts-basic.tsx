@@ -51,7 +51,7 @@ export function DefaultListLayout({ items }: LayoutProps) {
               className={cn(
                 "-mx-3 rounded-surface px-3 py-5",
                 linked &&
-                  "transition-colors duration-200 ease-enter hover:bg-muted/50",
+                  "transition-colors duration-base ease-enter hover:bg-muted/50",
               )}
             >
               <div className="flex flex-col gap-x-6 gap-y-1 sm:flex-row sm:items-start sm:justify-between">
@@ -219,7 +219,7 @@ export function CompactCardsLayout({ items }: LayoutProps) {
               "flex max-w-full items-center gap-2 rounded-full bg-card py-2 pl-4 pr-2 shadow-e1",
               !item.subtitle?.trim() && "pr-4",
               isLinkable(item.link_url) &&
-                "transition-shadow duration-200 ease-enter hover:shadow-e2",
+                "transition-shadow duration-base ease-enter hover:shadow-e2",
             )}
           >
             <span className="truncate text-sm font-medium transition-colors group-hover/link:text-primary">
@@ -399,7 +399,7 @@ export function FeatureAlternatingLayout({ items }: LayoutProps) {
                   View project
                   <ArrowRight
                     aria-hidden
-                    className="size-4 transition-transform duration-200 ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
+                    className="size-4 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
                   />
                 </TextLink>
               )}

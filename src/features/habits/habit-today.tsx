@@ -66,7 +66,7 @@ function ProgressRing({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - ratio)}
-          className="transition-[stroke-dashoffset] duration-300 ease-enter motion-reduce:transition-none"
+          className="transition-[stroke-dashoffset] duration-slow ease-enter motion-reduce:transition-none"
         />
       </svg>
       {children}
@@ -99,7 +99,7 @@ function HabitTodayRow({
   return (
     <li
       className={cn(
-        "flex items-center gap-3 rounded-surface bg-card p-3 shadow-e1 transition-shadow duration-200 ease-enter hover:shadow-e2",
+        "flex items-center gap-3 rounded-surface bg-card p-3 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2",
         progress.satisfied && !isQuit && "opacity-70",
       )}
     >

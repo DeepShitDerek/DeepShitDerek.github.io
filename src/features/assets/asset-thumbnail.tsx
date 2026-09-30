@@ -15,7 +15,7 @@ export function AssetThumbnail({ asset }: AssetThumbnailProps) {
       <img
         src={getStorageUrl(asset.file_path)}
         alt={asset.alt_text || asset.file_name}
-        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        className="h-full w-full object-cover transition-transform duration-slow group-hover:scale-105"
         loading="lazy"
       />
     );

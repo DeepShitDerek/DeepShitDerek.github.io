@@ -76,7 +76,7 @@ export function TaskTimelineView({
             {marker !== null && (
               <div
                 aria-hidden
-                className="pointer-events-none absolute inset-y-0 z-10 w-px bg-primary"
+                className="pointer-events-none absolute inset-y-0 z-raised w-px bg-primary"
                 style={{ left: `${marker}%` }}
               />
             )}

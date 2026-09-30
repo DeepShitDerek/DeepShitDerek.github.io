@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PostPage } from "@/features/blog/post-page";
+import { PostPageFromQuery } from "@/features/blog/post-page";
 
 export const metadata: Metadata = {
   title: "Post",
@@ -11,7 +11,7 @@ export default function Page() {
   // a Suspense boundary.
   return (
     <Suspense>
-      <PostPage />
+      <PostPageFromQuery />
     </Suspense>
   );
 }

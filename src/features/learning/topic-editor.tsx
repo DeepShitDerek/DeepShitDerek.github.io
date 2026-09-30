@@ -61,7 +61,7 @@ const StatusPipeline = ({
         key={step.value}
         onClick={() => onChange(step.value)}
         className={cn(
-          "relative rounded-md px-3 py-1 text-[10px] font-semibold transition-all duration-200 sm:text-xs",
+          "relative rounded-md px-3 py-1 text-[10px] font-semibold transition-all duration-base sm:text-xs",
           current === step.value
             ? "bg-background text-foreground shadow-e1 ring-1 ring-border/50"
             : "text-muted-foreground hover:bg-background/40 hover:text-foreground/80",
@@ -117,7 +117,7 @@ const ResourceCard = ({
 }) => {
   const { type, title } = parseResource(resource.name);
   return (
-    <div className="group relative flex items-start gap-3 rounded-surface bg-card shadow-e1 p-3 transition-shadow duration-200 ease-enter hover:bg-card hover:shadow-e1">
+    <div className="group relative flex items-start gap-3 rounded-surface bg-card shadow-e1 p-3 transition-shadow duration-base ease-enter hover:bg-card hover:shadow-e1">
       <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-control bg-secondary">
         {getResourceIcon(type)}
       </div>
@@ -336,7 +336,7 @@ export function TopicEditor({
       {/* Fixed header */}
       <header
         className={cn(
-          "z-20 flex shrink-0 flex-col justify-between gap-4 border-b bg-background/80 px-4 py-3 backdrop-blur-md md:flex-row md:items-center",
+          "z-sticky flex shrink-0 flex-col justify-between gap-4 border-b bg-background/80 px-4 py-3 backdrop-blur-md md:flex-row md:items-center",
           !isMobile && "rounded-t-xl",
         )}
       >

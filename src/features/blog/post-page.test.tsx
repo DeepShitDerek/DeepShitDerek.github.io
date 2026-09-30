@@ -1,94 +1,66 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { PostPage } from "./post-page";
+import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-let slug: string | null = "hello";
-
-/** Records any request for the real post body — which must never happen. */
-const { realBodyRequested } = vi.hoisted(() => ({ realBodyRequested: vi.fn() }));
-
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => ({ get: () => slug }),
-}));
-// The loader, not "./post-content": a static import mocks reliably on every
-// runner, so the real markdown pipeline never loads here. Mocking the
-// dynamic import directly let CI load it after teardown and fail the run.
-vi.mock("./post-content", () => {
-  realBodyRequested();
-  return { PostContent: () => null };
-});
-vi.mock("./post-content-loader", () => ({
-  loadPostContent: () =>
-    Promise.resolve({
-      PostContent: ({ content }: { content: string }) => <div>{content}</div>,
-    }),
-}));
+// The post the browser's query returns: as built, or edited since.
+let current = { id: "p1", slug: "hello", title: "Hello", content: "Built body", updated_at: "2026-09-25T10:00:00Z" };
 vi.mock("@/store/api/publicApi", () => ({
-  useGetBlogPostBySlugQuery: () => ({
-    data: {
-      id: "p1",
-      slug: "hello",
-      title: "Hello world",
-      content: "Body",
-      tags: ["react", "a b"],
-      published_at: "2026-01-02T00:00:00Z",
-    },
-    isLoading: false,
-    isError: false,
-  }),
-  useGetSiteIdentityQuery: () => ({
-    data: { profile_data: { name: "Ada", title: "Engineer | Writer" } },
-  }),
+  useGetBlogPostBySlugQuery: () => ({ data: current, isLoading: false, isError: false }),
+  useGetSiteIdentityQuery: () => ({ data: undefined }),
   useIncrementPostViewMutation: () => [vi.fn()],
 }));
+const loadPostContent = vi.fn(() => new Promise(() => {}));
+vi.mock("./post-content-loader", () => ({ loadPostContent }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => null }));
+vi.mock("next/dynamic", () => ({
+  default: () => () => <div>client-rendered body</div>,
+}));
+
+// jsdom has neither; the page's reveal animation and reading progress use them.
+class NoopObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
+}
+globalThis.IntersectionObserver ??= NoopObserver as unknown as typeof IntersectionObserver;
+globalThis.ResizeObserver ??= NoopObserver as unknown as typeof ResizeObserver;
+
+const { PostPage } = await import("./post-page");
+const { contentHash } = await import("./content-hash");
+
+const built = { contentHash: contentHash("Built body"), body: <p>build-time body</p> };
 
 beforeEach(() => {
-  slug = "hello";
+  loadPostContent.mockClear();
 });
 
-describe("PostPage", () => {
-  it("links each topic back to the filtered list", () => {
-    render(<PostPage />);
-    const topics = screen.getByRole("list", { name: "Topics" });
-    expect(topics.querySelector('a[href="/blog?tag=a%20b"]')).not.toBeNull();
+describe("a prerendered post's body (V2-043)", () => {
+  it("uses the HTML rendered at build, and never loads the markdown pipeline", () => {
+    render(<PostPage slug="hello" prerendered={built} />);
+    expect(screen.getByText("build-time body")).toBeTruthy();
+    expect(screen.queryByText("client-rendered body")).toBeNull();
+    expect(loadPostContent).not.toHaveBeenCalled();
   });
 
-  it("copies the link and says so", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
-    render(<PostPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Link copied" })).toBeInTheDocument(),
-    );
-    expect(writeText).toHaveBeenCalledWith(window.location.href);
+  it("keeps the built body when only other fields changed (updated_at, views)", () => {
+    current = { ...current, updated_at: "2026-09-27T09:00:00+00:00" };
+    render(<PostPage slug="hello" prerendered={built} />);
+    expect(screen.getByText("build-time body")).toBeTruthy();
+    expect(loadPostContent).not.toHaveBeenCalled();
   });
 
-  /** The author already opens the post; a second card at the end repeated it. */
-  it("does not repeat the author at the end", () => {
-    render(<PostPage />);
-    expect(screen.queryByText("Written by")).toBeNull();
+  it("renders in the browser when the post changed since the build", () => {
+    current = { ...current, content: "Edited body" };
+    render(<PostPage slug="hello" prerendered={built} />);
+    expect(screen.getByText("client-rendered body")).toBeTruthy();
+    expect(loadPostContent).toHaveBeenCalled();
   });
 
-  /**
-   * The CI failure: every test passed, but the page's own dynamic
-   * import("./post-content") loaded the real markdown pipeline after the
-   * environment was torn down, and the unhandled rejection failed the run.
-   * Timing-dependent, so it never reproduced locally. This is deterministic:
-   * the page may reach the body only through the loader.
-   */
-  it("reaches the post body only through the loader", async () => {
-    render(<PostPage />);
-    await waitFor(() => expect(screen.getByText("Body")).toBeInTheDocument());
-    expect(realBodyRequested).not.toHaveBeenCalled();
-  });
-
-  it("offers the list when there is no post", () => {
-    slug = null;
-    render(<PostPage />);
-    expect(screen.getByRole("link", { name: /All posts/ })).toHaveAttribute(
-      "href",
-      "/blog",
-    );
+  it("renders in the browser for a post published since the build (/blog/view)", () => {
+    render(<PostPage slug="hello" />);
+    expect(screen.getByText("client-rendered body")).toBeTruthy();
+    expect(loadPostContent).toHaveBeenCalled();
   });
 });

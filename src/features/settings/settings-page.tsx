@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { type ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,7 +28,7 @@ import {
 import { normalizeSiteContent } from "@/lib/site-identity";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
-import { ManagerWrapper } from "@/components/admin/shared";
+import { LoadError, ManagerWrapper } from "@/components/admin/shared";
 import { SettingsSkeleton } from "./settings-skeleton";
 import { SettingsNav } from "./settings-nav";
 import { SettingsPreviewLazy } from "./settings-preview-lazy";
@@ -78,7 +79,7 @@ import type { SettingsForm } from "./settings-controls";
 
 const SECTION_BY_GROUP: Record<
   string,
-  (props: { form: SettingsForm }) => JSX.Element
+  (props: { form: SettingsForm }) => ReactElement
 > = {
   brand: BrandSection,
   hero: HeroSection,
@@ -93,7 +94,7 @@ const SECTION_BY_GROUP: Record<
 };
 
 export default function SettingsPage() {
-  const { data: settingsData, isLoading } = useGetSiteSettingsQuery();
+  const { data: settingsData, isLoading, error: loadError, refetch } = useGetSiteSettingsQuery();
   const [updateSiteSettings, { isLoading: isSaving }] =
     useUpdateSiteSettingsMutation();
 
@@ -164,6 +165,7 @@ export default function SettingsPage() {
   // otherwise navigating away from an edited group hides the only control that
   // would save it.
   const anyDirty = dirtyIds.size > 0;
+  useUnsavedGuard(anyDirty);
 
   /**
    * Save one or more groups in a single write.
@@ -289,6 +291,14 @@ export default function SettingsPage() {
     [revertGroups, dirtyGroups],
   );
 
+  // Without this a failed read left the skeleton up for good (V2-051).
+  if (loadError && !settingsData) {
+    return (
+      <ManagerWrapper>
+        <LoadError what="your settings" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
   if (isLoading || !serverState) return <SettingsSkeleton />;
 
   const Section = SECTION_BY_GROUP[group.id];
@@ -384,7 +394,7 @@ export default function SettingsPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 72, opacity: 0 }}
             transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-50 bg-card/95 shadow-e3 backdrop-blur"
+            className="fixed inset-x-0 bottom-0 z-overlay bg-card/95 shadow-e3 backdrop-blur"
           >
             <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
               <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
@@ -466,8 +476,8 @@ function GroupHeader({
   dirty: boolean;
   saving: boolean;
   onRevert: () => void;
-  mobileNav: JSX.Element;
-  previewPane: JSX.Element | null;
+  mobileNav: ReactElement;
+  previewPane: ReactElement | null;
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
