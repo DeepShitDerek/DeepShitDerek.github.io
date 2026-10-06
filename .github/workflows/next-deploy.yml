@@ -1,10 +1,5 @@
 name: Deploy Next.js site to Pages
 
-# This file has to live in .github/workflows at the repository root: GitHub
-# reads workflows from nowhere else. The app itself is in v1/, so every run
-# step below works there (`defaults.run.working-directory`), and the steps
-# that are actions rather than commands are given v1/ paths explicitly.
-
 on:
   push:
     branches: ["main"]
@@ -27,7 +22,7 @@ concurrency:
 
 defaults:
   run:
-    working-directory: v1
+    working-directory: .
 
 jobs:
   build:
@@ -43,26 +38,27 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: v1/package-lock.json
+          cache-dependency-path: package-lock.json
 
       # Reads the Pages settings and writes the site's base path into the Next
       # config (empty for a custom domain or a user site, "/<repo>" for a
       # project site). Only on the runs that deploy.
       - name: Setup Pages
+        id: pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v6
         with:
           static_site_generator: next
-          generator_config_file: v1/next.config.js
+          generator_config_file: next.config.js
 
       - name: Restore cache
         uses: actions/cache@v5
         with:
           path: |
-            v1/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('v1/package-lock.json') }}-${{ hashFiles('v1/src/**/*.ts', 'v1/src/**/*.tsx') }}
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**/*.ts', 'src/**/*.tsx') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('v1/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
       - name: Install dependencies
         run: npm ci
@@ -127,11 +123,18 @@ jobs:
       - name: Check prerendered content
         run: node scripts/check-prerender.mjs
 
+      # BASE_PATH: a project site (https://<user>.github.io/<repo>/) is built
+      # with that prefix on every asset; these checks take it off again to
+      # find the files. Empty for a custom domain or a user site.
       - name: Check hydration
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: node scripts/check-hydration.mjs
 
       # Gzipped JS per public page against bundle-budget.json (a ratchet).
       - name: Check bundle budget
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: node scripts/check-bundle-budget.mjs
 
       # Lighthouse, mobile, 3 runs per page, against lighthouse-budget.json
@@ -143,6 +146,7 @@ jobs:
         continue-on-error: true
         env:
           REPORT: lighthouse-report.json
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: node scripts/check-lighthouse.mjs
 
       - name: Keep the Lighthouse report
@@ -150,14 +154,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-report
-          path: v1/lighthouse-report.json
+          path: lighthouse-report.json
           if-no-files-found: ignore
 
       - name: Upload artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
-          path: v1/out
+          path: out
 
   # The browser checks that need the dev harness (V2-064): accessibility on
   # every screen (V2-060), the money module end to end (V2-080), the Maps
@@ -177,7 +181,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: v1/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
