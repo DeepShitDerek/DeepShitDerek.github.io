@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { stripBasePath } from "./lib/base-path.mjs";
 
 /**
  * JavaScript budget for the public pages (V2-061, started early).
@@ -81,7 +82,9 @@ for (const [route, html] of Object.entries(ROUTES)) {
       .map((tag) => /\ssrc="([^"]+\.js[^"]*)"/.exec(tag)?.[1])
       .filter((src) => src !== undefined)
       // Same-origin files only; the path is the file under out/.
-      .filter((src) => src.startsWith("/")),
+      .filter((src) => src.startsWith("/"))
+      // A project-site build prefixes every asset with its base path.
+      .map((src) => stripBasePath(src)),
   );
   sizes[route] = Math.round([...scripts].reduce((sum, src) => sum + gzipKb(src), 0) * 10) / 10;
 }

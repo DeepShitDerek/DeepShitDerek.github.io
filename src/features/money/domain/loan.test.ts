@@ -81,18 +81,62 @@ describe("amortization", () => {
     expect(result.totalPaidMinor).toBe(result.totalInterestMinor + 50_000_000);
   });
 
-  it("holds its invariants over many random loans", () => {
-    for (let i = 0; i < 300; i += 1) {
-      const balance = 1 + Math.floor(Math.random() * 1e8);
-      const rate = Math.random() * 25;
-      const months = 1 + Math.floor(Math.random() * 360);
-      const payment = levelPayment(balance, periodicRate(rate, "monthly", 12), months);
-      const result = amortize({ ...base, balanceMinor: balance, annualRate: rate, compounding: "monthly", paymentMinor: payment });
-      expect(result.neverEnds).toBe(false);
-      expect(result.rows.reduce((t, r) => t + r.principalMinor + r.extraMinor, 0)).toBe(balance);
-      expect(result.rows.at(-1)?.balanceMinor).toBe(0);
-      expect(result.rows.length).toBeLessThanOrEqual(months + 1);
+  /**
+   * What must hold for any loan paid at its own level payment.
+   *
+   * The payment is rounded to a whole cent, so each period can fall up to
+   * half a cent short, and that shortfall compounds. On an ordinary loan it
+   * is nothing; on a very small one, or a long one at a high rate, it adds
+   * periods, and a payment that rounds down to the interest never repays at
+   * all. The schedule's length is therefore bounded by the shortfall's
+   * future value, not by a flat "months + 1".
+   */
+  function expectInvariants(balance: number, rate: number, months: number) {
+    const i = periodicRate(rate, "monthly", 12);
+    const payment = levelPayment(balance, i, months);
+    const result = amortize({ ...base, balanceMinor: balance, annualRate: rate, compounding: "monthly", paymentMinor: payment });
+    const label = `balance ${balance}, rate ${rate}, months ${months}, payment ${payment}`;
+    if (result.neverEnds) {
+      // Only when the rounded payment does not clear the first period's interest.
+      expect(payment, label).toBeLessThanOrEqual(Math.ceil(balance * i) + 1);
+      return;
     }
+    expect(result.rows.reduce((t, r) => t + r.principalMinor + r.extraMinor, 0), label).toBe(balance);
+    expect(result.rows.at(-1)?.balanceMinor, label).toBe(0);
+    const shortfall = i === 0 ? 0.5 * months : (0.5 * (Math.pow(1 + i, months) - 1)) / i;
+    expect(result.rows.length, label).toBeLessThanOrEqual(months + 1 + Math.ceil((shortfall / payment) * 1.5));
+  }
+
+  it("holds its invariants over many loans", () => {
+    // Seeded (mulberry32), not Math.random: the same 2,000 loans every run, so
+    // a failure here is a regression and never the luck of the draw.
+    let seed = 0x5eed1234;
+    const random = () => {
+      seed = (seed + 0x6d2b79f5) >>> 0;
+      let t = seed;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    for (let n = 0; n < 2000; n += 1) {
+      expectInvariants(1 + Math.floor(random() * 1e8), random() * 25, 1 + Math.floor(random() * 360));
+    }
+  });
+
+  it("holds its invariants for loans small enough that cent rounding matters", () => {
+    // Each of these failed the old flat bound when Math.random happened on it.
+    expectInvariants(28621, 9.41328124966329, 218);
+    expectInvariants(335, 12.074093850013307, 35);
+    expectInvariants(2811, 14.334498922946034, 248);
+    expectInvariants(1413954, 24.106787272836662, 359);
+  });
+
+  it("reports a loan whose rounded payment only covers the interest as never ending", () => {
+    // $7.60 at 17.49% over 263 months: the level payment rounds to 11 cents,
+    // and the first month's interest is 11 cents.
+    const payment = levelPayment(760, periodicRate(17.4888881738231, "monthly", 12), 263);
+    const result = amortize({ ...base, balanceMinor: 760, annualRate: 17.4888881738231, compounding: "monthly", paymentMinor: payment });
+    expect(result.neverEnds).toBe(true);
   });
 
   it("finishes years early when paid accelerated bi-weekly", () => {

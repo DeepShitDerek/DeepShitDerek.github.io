@@ -6,6 +6,7 @@ import { gzipSync } from "node:zlib";
 import lighthouse from "lighthouse";
 import { launch } from "chrome-launcher";
 import { TRACKING_URL_PATTERNS } from "./lib/no-tracking.mjs";
+import { stripBasePath } from "./lib/base-path.mjs";
 
 /**
  * Lighthouse on the public pages, against lighthouse-budget.json (V2-061).
@@ -44,7 +45,7 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", "
 const COMPRESS = new Set([".html", ".js", ".css", ".json", ".txt", ".svg"]);
 const gz = new Map();
 const server = createServer((req, res) => {
-  let file = path.join(OUT, decodeURIComponent(new URL(req.url, "http://x").pathname));
+  let file = path.join(OUT, decodeURIComponent(stripBasePath(new URL(req.url, "http://x").pathname)));
   if (existsSync(file) && statSync(file).isDirectory()) file = path.join(file, "index.html");
   let status = 200;
   if (!existsSync(file)) {

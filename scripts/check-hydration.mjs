@@ -11,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { blockTracking } from "./lib/no-tracking.mjs";
+import { stripBasePath } from "./lib/base-path.mjs";
 
 /**
  * Hydration check for the prerendered public pages (V2-025).
@@ -77,7 +78,7 @@ const TYPES = {
 function serve() {
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
-    let file = path.join(out, decodeURIComponent(url.pathname));
+    let file = path.join(out, decodeURIComponent(stripBasePath(url.pathname)));
     if (!file.startsWith(out)) {
       res.writeHead(403).end();
       return;

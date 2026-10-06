@@ -25,6 +25,26 @@ const KNOWN = {
   chevrotain: { why: "Via langium.", until: "Excalidraw major upgrade" },
   "@chevrotain/cst-dts-gen": { why: "Via chevrotain.", until: "Excalidraw major upgrade" },
   "@chevrotain/gast": { why: "Via chevrotain.", until: "Excalidraw major upgrade" },
+  mermaid: {
+    why: "Via mermaid-to-excalidraw, admin-only whiteboards; carries katex below. Renders the owner's own diagrams.",
+    until: "Excalidraw major upgrade",
+  },
+  katex: {
+    why: "Via mermaid (GHSA-238p-pmpm-9mq7, fixed in 0.18.2; mermaid pins 0.16). Needs an existing prototype pollution to matter, and only ever typesets the owner's own diagram text.",
+    until: "Excalidraw major upgrade",
+  },
+  sass: {
+    why: "A dependency of the @excalidraw/excalidraw package itself, never run: the site ships Excalidraw's compiled CSS. Carries chokidar below.",
+    until: "Excalidraw major upgrade",
+  },
+  chokidar: {
+    why: "File watching for sass and Tailwind, at development and build time only. Carries braces below.",
+    until: "A braces release that fixes GHSA-vfj7-8cjw-p6xm",
+  },
+  braces: {
+    why: "GHSA-vfj7-8cjw-p6xm (stack exhaustion on deeply nested patterns) has no fixed release. Only expands the project's own glob patterns at build time (Tailwind content globs, via micromatch and chokidar); no visitor or network input reaches it, and nothing of it ships in the static site.",
+    until: "A braces release that fixes GHSA-vfj7-8cjw-p6xm",
+  },
   "lodash-es": {
     why: "Via chevrotain; `_.template` is never given untrusted input (the parser uses its own data only).",
     until: "Excalidraw major upgrade",
