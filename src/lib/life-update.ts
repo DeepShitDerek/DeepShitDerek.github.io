@@ -15,11 +15,10 @@ import type { LifeUpdate } from "@/types";
 export type CategoryOption = {
   value: string;
   label: string;
-  emoji: string;
 };
 
 /**
- * The category's label and emoji. `category` is nullable, and a database
+ * The category's label (its icon is `CategoryIcon`). `category` is nullable, and a database
  * provisioned before its CHECK constraint can hold anything, so an unknown
  * value falls back to Thought rather than rendering blank.
  */

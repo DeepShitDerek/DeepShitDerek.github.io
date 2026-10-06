@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Loader2, PenLine, Save, X } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeft, Loader2, PenLine } from "lucide-react";
 import { skipToken } from "@reduxjs/toolkit/query";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { Whiteboard } from "@/types";
@@ -13,9 +12,11 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
-import { getErrorMessage } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
+import { SaveStatus, type SaveState } from "@/components/admin/shared";
+import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { OWNS_SHORTCUTS_ATTR } from "@/lib/editor-shortcuts";
+import { getErrorMessage } from "@/lib/utils";
 import ExcalidrawCanvasLazy from "./excalidraw-canvas-lazy";
 import { usePenInput } from "./use-pen-input";
 import { describeSaveState, shouldAutosave } from "./pen-input";
@@ -31,77 +32,94 @@ import {
 interface BoardEditorProps {
   /** Board to open, or null for a blank one. */
   boardId: string | null;
-  open: boolean;
   onClose: () => void;
+  /** A blank board got its id on its first save; the page puts it in the URL. */
+  onCreated?: (id: string) => void;
 }
 
+const AUTOSAVE_IDLE_MS = 2500;
+
 /**
- * Full-screen board editor. The canvas is a separate keyed child so it mounts
- * once the scene has arrived — Excalidraw reads `initialData` a single time,
- * so mounting it against a not-yet-loaded board would leave it permanently
- * showing an empty scene.
+ * Full-screen board editor (P-editor-chrome, 03-workspace-ui.md §2.21).
  *
- * This is a hand-rolled panel rather than the shared `Dialog`, and it has to
- * stay that way: Excalidraw appends its menus, export dialog, and color pickers
- * to `document.body`, outside any React tree we control. A Radix modal dialog
- * sets `pointer-events: none` on the body and `aria-hidden` on everything
- * outside its own layer, so those popups render at their z-index of 1000 and
- * then silently swallow every click. A plain portal leaves them alone.
+ * One header that belongs to us: back · title · save status · (pen). The
+ * board's buttons used to sit inside Excalidraw's own top-right slot, which
+ * the library gives to its sidebar when the sidebar is docked (on a tablet,
+ * Close and Save vanished while the library panel was open) and which on a
+ * phone shares a row with the tool bar (the tools and the Save button were
+ * both cut off at the edges).
+ *
+ * There is no Save button. Autosave runs a moment after the canvas goes
+ * still, ⌘S saves at once, and leaving saves first; the only prompt is when
+ * that save fails.
+ *
+ * This is a hand-rolled portal rather than the shared `Dialog`, and has to
+ * stay one: Excalidraw appends menus and pickers to `document.body`, and a
+ * Radix modal would set `pointer-events: none` on everything outside itself.
  */
-export function BoardEditor({ boardId, open, onClose }: BoardEditorProps) {
-  const { data: board, isLoading } = useGetWhiteboardQuery(
-    boardId ?? skipToken,
-  );
-  const isReady = !boardId || (!isLoading && !!board);
+export function BoardEditor({ boardId, onClose, onCreated }: BoardEditorProps) {
+  // The board this editor was opened on. When a blank board gets an id the
+  // URL changes, but this must not: refetching would unmount the canvas
+  // mid-drawing and drop its undo history.
+  const [openedId] = useState(boardId);
+  const {
+    data: board,
+    isLoading,
+    isError,
+    error,
+  } = useGetWhiteboardQuery(openedId ?? skipToken);
+  const isReady = !openedId || (!isLoading && !!board);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Focus the panel, not a control inside it: the gallery card that opened the
-  // editor is now behind an opaque overlay, and focusing the title input would
-  // swallow the canvas keyboard shortcuts before the user has drawn anything.
+  // Focus the panel, not the title: a focused input would swallow the
+  // canvas shortcuts before anything was drawn.
   useEffect(() => {
-    if (open) panelRef.current?.focus();
-  }, [open]);
+    panelRef.current?.focus();
+  }, []);
 
-  // The panel covers the viewport; letting the shell behind it scroll would
-  // only move content the user cannot see.
+  // The shell behind is covered; letting it scroll moves nothing visible.
   useEffect(() => {
-    if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previous;
     };
-  }, [open]);
+  }, []);
 
-  if (!open || typeof document === "undefined") return null;
+  if (typeof document === "undefined") return null;
 
   return createPortal(
     <div
       ref={panelRef}
       role="dialog"
       aria-modal="true"
-      aria-label={boardId ? "Edit whiteboard" : "New whiteboard"}
+      aria-label={openedId ? "Edit whiteboard" : "New whiteboard"}
       tabIndex={-1}
-      /*
-       * A drawing surface has to own every gesture on it. Without these the
-       * browser gets there first: a two-finger drag zooms the page rather than
-       * panning the canvas, a long press raises the selection callout mid-
-       * stroke, and a downward swipe at the top pulls to refresh — losing the
-       * board. `pb-[env(safe-area-inset-bottom)]` keeps the toolbar clear of
-       * the home indicator on a tablet in portrait.
-       */
-      style={{ touchAction: "none", overscrollBehavior: "none" }}
-      className="fixed inset-0 z-overlay flex select-none flex-col bg-background outline-none [-webkit-touch-callout:none]"
+      {...{ [OWNS_SHORTCUTS_ATTR]: "" }}
+      className="fixed inset-0 z-overlay flex flex-col bg-background outline-none"
     >
-      {isReady ? (
+      {isError ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="font-medium">This board couldn&apos;t be opened.</p>
+          <p className="text-sm text-muted-foreground">
+            {getErrorMessage(error)}
+          </p>
+          <Button variant="outline" onClick={onClose}>
+            <ArrowLeft className="mr-2 size-4" aria-hidden /> Back to boards
+          </Button>
+        </div>
+      ) : isReady ? (
         <BoardSurface
-          key={boardId ?? "new"}
-          board={boardId ? (board ?? null) : null}
+          board={openedId ? (board ?? null) : null}
           onClose={onClose}
+          onCreated={onCreated}
         />
       ) : (
         <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+          <Loader2
+            className="size-8 animate-spin text-muted-foreground"
+            aria-label="Opening the board"
+          />
         </div>
       )}
     </div>,
@@ -112,30 +130,41 @@ export function BoardEditor({ boardId, open, onClose }: BoardEditorProps) {
 function BoardSurface({
   board,
   onClose,
+  onCreated,
 }: {
   board: Whiteboard | null;
   onClose: () => void;
+  onCreated?: (id: string) => void;
 }) {
   const confirm = useConfirm();
   const theme = useExcalidrawTheme();
   const [title, setTitle] = useState(board?.title ?? "");
   const [isDirty, setIsDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [saveWhiteboard, { isLoading: isSaving }] = useSaveWhiteboardMutation();
+  // Re-render the "Saved 2 minutes ago" line now and then.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const pen = usePenInput();
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
-  // A board created by autosave has an id the prop does not know about yet.
+  // A blank board gets its id on its first save.
   const savedIdRef = useRef<string | null>(board?.id ?? null);
   const lastChangeAt = useRef(0);
-  // What the board looked like when it was opened. Compared against, never
+  // What the board was when opened or last saved. Compared against, never
   // rendered from.
   const baselineScene = useRef(sceneFingerprint(board?.elements ?? null));
   const baselineTitle = useRef(board?.title ?? "");
-  // Set on the first real gesture over the canvas. Excalidraw's own load-time
-  // onChange arrives before any of these.
+  // Set on the first real gesture. Excalidraw's own load-time onChange
+  // arrives before any of these and must not count as an edit.
   const hasInteracted = useRef(false);
-  // Read by the autosave interval, which must not re-arm on every keystroke.
+  const titleRef = useRef(title);
+  titleRef.current = title;
   const stateRef = useRef({ isDirty: false, isSaving: false });
   stateRef.current = { isDirty, isSaving };
 
@@ -144,138 +173,92 @@ function BoardSurface({
   }, []);
 
   /**
-   * Dirty is a comparison, not an event.
-   *
-   * Excalidraw fires `onChange` for pointer moves, selection and its own
-   * initial load, and the previous handler treated every one of them as an
-   * edit. So simply *opening* a board marked it dirty and Close asked whether
-   * to discard changes that did not exist — the reported bug.
-   *
-   * Two conditions now, and both are needed:
-   *
-   *  - **The reader has touched the canvas.** This alone fixes the report,
-   *    and it holds even if the library renumbers element versions while
-   *    loading, which no fingerprint could tell apart from an edit.
-   *  - **The drawing actually differs from what was opened.** This catches the
-   *    other half: selecting a shape, panning or zooming is interaction that
-   *    changes nothing, and should not cost a prompt on the way out.
-   *
-   * The failure mode is deliberately one-sided. A missed change never prompts
-   * where it should; it does not lose work, because autosave runs on the same
-   * flag and Save is always available.
+   * Dirty is a comparison, not an event: Excalidraw fires onChange for
+   * pointer moves, selection and its own load. Dirty means the reader has
+   * touched the canvas *and* the drawing differs from the baseline.
    */
   const handleChange = useCallback((elements: readonly unknown[]) => {
     lastChangeAt.current = Date.now();
-    const fingerprint = sceneFingerprint(elements);
-    setIsDirty(hasInteracted.current && fingerprint !== baselineScene.current);
+    const sceneChanged =
+      hasInteracted.current &&
+      sceneFingerprint(elements) !== baselineScene.current;
+    setIsDirty(sceneChanged || titleRef.current !== baselineTitle.current);
   }, []);
 
-  /**
-   * The title is state the canvas knows nothing about, so its own change has
-   * to say so.
-   *
-   * This was missing entirely, and the consequence was worse than a spurious
-   * prompt: renaming a board and pressing Close discarded the rename in
-   * silence. Autosave only runs while dirty, and Close only asks while dirty,
-   * so a rename on its own was written nowhere and warned about never.
-   */
   const handleTitleChange = useCallback((next: string) => {
     setTitle(next);
-    setIsDirty(next !== baselineTitle.current);
+    lastChangeAt.current = Date.now();
+    const api = apiRef.current;
+    const sceneChanged =
+      !!api &&
+      hasInteracted.current &&
+      sceneFingerprint(api.getSceneElements()) !== baselineScene.current;
+    setIsDirty(sceneChanged || next !== baselineTitle.current);
   }, []);
 
-  const persist = useCallback(
-    async (options: { silent?: boolean } = {}) => {
-      const api = apiRef.current;
-      if (!api) return false;
+  const persist = useCallback(async (): Promise<boolean> => {
+    const api = apiRef.current;
+    if (!api) return false;
 
-      // Already in the loaded chunk — the canvas above it pulled the package in.
-      const { serializeAsJSON, exportToSvg } = await import(
-        "@excalidraw/excalidraw"
-      );
+    // Already loaded: the canvas above pulled the package in.
+    const { serializeAsJSON, exportToSvg } = await import(
+      "@excalidraw/excalidraw"
+    );
+    const elements = api.getSceneElements();
+    const appState = api.getAppState();
+    const files = api.getFiles();
+    const scene = sceneFromJson(
+      serializeAsJSON(elements, appState, files, "local"),
+    );
 
-      const elements = api.getSceneElements();
-      const appState = api.getAppState();
-      const files = api.getFiles();
-
-      const scene = sceneFromJson(
-        serializeAsJSON(elements, appState, files, "local"),
-      );
-
-      let preview: string | null = null;
-      if (!isEmptyScene(scene)) {
-        try {
-          const svg = await exportToSvg({
-            elements,
-            appState: { ...appState, exportBackground: true },
-            files,
-            exportPadding: 16,
-          });
-          const markup = svg.outerHTML;
-          preview = withinPreviewBudget(markup) ? markup : null;
-        } catch {
-          // A missing thumbnail is cosmetic; never fail the save over it.
-          preview = null;
-        }
-      }
-
+    let preview: string | null = null;
+    if (!isEmptyScene(scene)) {
       try {
-        const saved = await saveWhiteboard({
-          ...(savedIdRef.current ? { id: savedIdRef.current } : {}),
-          title: title.trim() || null,
-          ...scene,
-          preview,
-        }).unwrap();
-
-        // A new board becomes an existing one on its first autosave; without
-        // this every later save would insert another row.
-        if (!savedIdRef.current && saved?.id) savedIdRef.current = saved.id;
-
-        // The saved state is the new baseline. Without this the next
-        // pointer move would compare against what was *opened* and mark the
-        // board dirty again the instant after it was written.
-        baselineScene.current = sceneFingerprint(api.getSceneElements());
-        baselineTitle.current = title;
-        setIsDirty(false);
-        setSavedAt(Date.now());
-        if (!options.silent) toast.success("Whiteboard saved.");
-        return true;
-      } catch (err: unknown) {
-        // An autosave that failed says so quietly and leaves the board dirty,
-        // so the next attempt — or the explicit Save — tries again.
-        toast.error("Couldn't save the whiteboard", {
-          description: getErrorMessage(err),
+        const svg = await exportToSvg({
+          elements,
+          appState: { ...appState, exportBackground: true },
+          files,
+          exportPadding: 16,
         });
-        return false;
+        preview = withinPreviewBudget(svg.outerHTML) ? svg.outerHTML : null;
+      } catch {
+        // A missing thumbnail is cosmetic; never fail the save over it.
       }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [board?.id, title, saveWhiteboard],
-  );
-
-  const handleSave = async () => {
-    // Autosave means an untouched board is already on the server. Writing it
-    // again to close would bump `updated_at` and reorder the gallery for no
-    // reason, so this just leaves.
-    if (!isDirty && savedIdRef.current) {
-      onClose();
-      return;
     }
-    const ok = await persist();
-    if (ok) onClose();
-  };
+
+    const savingTitle = titleRef.current;
+    try {
+      const saved = await saveWhiteboard({
+        ...(savedIdRef.current ? { id: savedIdRef.current } : {}),
+        title: savingTitle.trim() || null,
+        ...scene,
+        preview,
+      }).unwrap();
+
+      if (!savedIdRef.current && saved?.id) {
+        savedIdRef.current = saved.id;
+        onCreated?.(saved.id);
+      }
+      baselineScene.current = sceneFingerprint(elements);
+      baselineTitle.current = savingTitle;
+      // Still dirty if the title changed while this was in flight.
+      setIsDirty(titleRef.current !== savingTitle);
+      setSavedAt(Date.now());
+      setFailed(false);
+      return true;
+    } catch {
+      // Quietly: the status says "Not saved" and the next pause tries again.
+      setFailed(true);
+      return false;
+    }
+  }, [onCreated, saveWhiteboard]);
 
   /**
-   * Autosave once the surface has been still for a moment.
-   *
-   * A tablet session ends by locking the screen or swiping the app away, and
-   * neither runs a save handler reliably — waiting for an explicit Save is how
-   * a board gets lost. Polling on a timer rather than debouncing per change
-   * keeps this off the drawing path entirely: `onChange` fires per pointer
-   * move, and re-arming a timeout on each one is work during a stroke.
+   * Autosave once the surface has been still for a moment. A tablet session
+   * ends by locking the screen, which runs no save handler. Polling on a
+   * timer keeps this off the drawing path: onChange fires per pointer move.
    */
   useEffect(() => {
-    const AUTOSAVE_IDLE_MS = 2500;
     const id = window.setInterval(() => {
       if (
         shouldAutosave({
@@ -285,17 +268,13 @@ function BoardSurface({
           idleThreshold: AUTOSAVE_IDLE_MS,
         })
       ) {
-        void persist({ silent: true });
+        void persist();
       }
     }, 1000);
     return () => window.clearInterval(id);
   }, [persist]);
 
-  /**
-   * The browser's own guard, for the paths this component never sees: a closed
-   * tab, a reload, a followed link. It cannot save — handlers here are not
-   * allowed to await — so it only asks.
-   */
+  // The browser's own guard for a closed tab or reload. It cannot save.
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!stateRef.current.isDirty) return;
@@ -306,95 +285,131 @@ function BoardSurface({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
+  /** Leaving saves first. The only question is when that save fails. */
   const handleClose = async () => {
-    if (isDirty) {
-      const ok = await confirm({
-        title: "Discard changes?",
-        description: "This whiteboard has unsaved changes.",
-        variant: "destructive",
-      });
-      if (!ok) return;
+    if (leaving) return;
+    if (!stateRef.current.isDirty) {
+      onClose();
+      return;
     }
-    onClose();
+    setLeaving(true);
+    const ok = await persist();
+    setLeaving(false);
+    if (ok) {
+      onClose();
+      return;
+    }
+    const leave = await confirm({
+      title: "This board couldn't be saved",
+      description:
+        "Your latest changes are only on this screen. Stay to try again, or leave without them.",
+      confirmText: "Leave without saving",
+      cancelText: "Stay",
+      variant: "destructive",
+    });
+    if (leave) onClose();
   };
 
-  const actions = (
-    <div className="flex items-center gap-1.5">
-      {/*
-        Hidden until a stylus has actually been used on this surface. On a
-        laptop it is a control for a problem the owner does not have, and there
-        is no way to ask whether a pen exists before one is used.
-      */}
-      {pen.hasPen && (
-        <Toggle
-          size="sm"
-          pressed={pen.stylusOnly}
-          onPressedChange={pen.setStylusOnly}
-          aria-label="Draw with pen only"
-          title="Draw with pen only — fingers pan and zoom"
-          className="h-8"
-        >
-          <PenLine className="size-4" aria-hidden />
-        </Toggle>
-      )}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={handleClose}
-        aria-label="Close whiteboard"
-        className="h-8"
-      >
-        <X className="size-4" aria-hidden />
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        onClick={handleSave}
-        disabled={isSaving}
-        className="h-8"
-      >
-        {isSaving ? (
-          <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-        ) : (
-          <Save className="mr-2 size-4" aria-hidden />
-        )}
-        Save
-      </Button>
-    </div>
-  );
-
-  const footer = (
-    <div className="flex min-w-0 items-center gap-2">
-      <Input
-        value={title}
-        onChange={(event) => handleTitleChange(event.target.value)}
-        placeholder="Untitled whiteboard"
-        aria-label="Whiteboard title"
-        className="h-8 w-40 border-0 bg-transparent px-2 text-sm font-medium shadow-none focus-visible:bg-secondary focus-visible:ring-0 sm:w-56"
-      />
-      {/* The only save feedback there is, now that Save is not the thing you
-          must remember to press. */}
-      <span
-        role="status"
-        className="hidden whitespace-nowrap text-xs text-muted-foreground sm:inline"
-      >
-        {describeSaveState({ isSaving, isDirty, savedAt })}
-      </span>
-    </div>
-  );
+  const state: SaveState =
+    isSaving || leaving
+      ? "saving"
+      : failed
+        ? "error"
+        : isDirty
+          ? "dirty"
+          : savedAt
+            ? "saved"
+            : "idle";
+  const statusText =
+    state === "error"
+      ? "Not saved — retrying"
+      : state === "saved"
+        ? describeSaveState({ isSaving: false, isDirty: false, savedAt })
+        : undefined;
 
   return (
-    <>
+    // ⌘S saves now, from the canvas or the title field; the browser's own
+    // "Save page" and Excalidraw's "Save to file" both stay out of it.
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      onKeyDownCapture={(event) => {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === "s"
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          void persist();
+        }
+      }}
+    >
+      <header
+        className="flex h-12 shrink-0 items-center gap-1 border-b bg-card px-2 sm:gap-2 sm:px-3"
+        onKeyDown={(event) => {
+          // Enter in the title hands the keyboard back to the canvas.
+          if (
+            event.key === "Enter" &&
+            event.target instanceof HTMLInputElement
+          ) {
+            event.currentTarget.closest<HTMLElement>("[role=dialog]")?.focus();
+          }
+        }}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0"
+          aria-label="Back to boards"
+          title="Back to boards"
+          onClick={() => void handleClose()}
+          disabled={leaving}
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+        </Button>
+        <Input
+          value={title}
+          onChange={(event) => handleTitleChange(event.target.value)}
+          placeholder="Untitled board"
+          aria-label="Whiteboard title"
+          maxLength={200}
+          className="h-9 min-w-0 max-w-xs flex-1 border-transparent bg-transparent px-2 text-sm font-semibold shadow-none hover:border-input focus-visible:border-input"
+        />
+        {/* Right after the title, where the eye already is. */}
+        <SaveStatus state={state} text={statusText} className="shrink-0" />
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {/*
+            Shown once a stylus has been used here: on a laptop it answers a
+            question nobody asked, and there is no way to know a pen exists
+            before one touches the screen.
+          */}
+          {pen.hasPen && (
+            <Toggle
+              size="sm"
+              pressed={pen.stylusOnly}
+              onPressedChange={pen.setStylusOnly}
+              aria-label="Draw with pen only"
+              title="Draw with pen only — fingers pan and zoom"
+              className="h-9"
+            >
+              <PenLine className="size-4" aria-hidden />
+            </Toggle>
+          )}
+        </div>
+      </header>
       {/*
-        Interaction is captured here rather than through Excalidraw, which
-        owns pointer events on its own surface and offers no "the user did
-        something" signal. Capture phase, so it is seen before the canvas
-        stops propagation; `once` semantics by way of the ref, since the flag
-        only ever turns on.
+        The drawing surface owns every gesture on it. Without these the
+        browser gets there first: a two-finger drag zooms the page, a long
+        press raises the selection callout mid-stroke, and a swipe down at the
+        top pulls to refresh. On the canvas only, so the title field above
+        still takes a tap on an iPad.
+
+        Interaction is noticed here, in the capture phase, because Excalidraw
+        offers no "the user did something" signal of its own.
       */}
       <div
-        className="min-h-0 flex-1"
+        className="min-h-0 flex-1 select-none [-webkit-touch-callout:none]"
+        style={{ touchAction: "none", overscrollBehavior: "none" }}
         ref={pen.ref}
         onPointerDownCapture={() => {
           hasInteracted.current = true;
@@ -408,10 +423,8 @@ function BoardSurface({
           theme={theme}
           onApiReady={handleApiReady}
           onChange={handleChange}
-          topRight={actions}
-          footer={footer}
         />
       </div>
-    </>
+    </div>
   );
 }

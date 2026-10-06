@@ -8,7 +8,6 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { useGetCaseStudyBySlugQuery } from "@/store/api/publicApi";
 import { Band } from "@/components/layout/band";
-import { Reveal } from "@/components/layout/motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { safeImageUrl } from "@/lib/safe-url";
@@ -39,7 +38,7 @@ const PostContent = dynamic(
 );
 
 const BACK_LINK =
-  "group inline-flex items-center gap-1.5 rounded-full text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "group inline-flex items-center gap-1.5 rounded-control text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-ring";
 
 function CaseStudyNotFound() {
   return (
@@ -52,7 +51,7 @@ function CaseStudyNotFound() {
         <p className="t-lead mt-4 text-pretty">
           It may have been taken down, or the link may be mistyped.
         </p>
-        <Button asChild size="lg" className="mt-10 rounded-full px-7">
+        <Button asChild size="lg" className="mt-10">
           <Link href="/work/">
             <ArrowLeft className="mr-2 size-4" aria-hidden />
             All work
@@ -108,89 +107,99 @@ export function CaseStudyPage({ slug }: { slug: string }) {
   const tags = (study.tags ?? []).filter((tag) => tag.trim());
   const linked = isLinkable(study.link_url);
 
+  const hasFacts = hasDates || tags.length > 0 || linked;
+  /**
+   * The facts: when, the stack, the project. In the margin rail from lg, the
+   * case study template's "facts rail" (information-architecture.md §4);
+   * under the title, ruled, on smaller screens. Rendered in one place at a
+   * time, so a screen reader meets it once.
+   */
+  const facts = (className: string) => (
+    <dl className={className}>
+      {hasDates && (
+        <div>
+          <dt className="t-micro">When</dt>
+          <dd className="mt-1.5">
+            <ItemDates
+              from={study.date_from}
+              to={study.date_to}
+              className="text-sm text-foreground"
+            />
+          </dd>
+        </div>
+      )}
+      {tags.length > 0 && (
+        <div className="min-w-0">
+          <dt className="t-micro">Stack</dt>
+          <dd className="mt-1.5">
+            <ItemTags tags={tags} max={12} />
+          </dd>
+        </div>
+      )}
+      {linked && (
+        <div>
+          <dt className="t-micro">Project</dt>
+          <dd className="mt-1.5">
+            <TextLink
+              href={study.link_url}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              View the project
+              <ArrowUpRight aria-hidden className="size-4" />
+            </TextLink>
+          </dd>
+        </div>
+      )}
+    </dl>
+  );
+
   return (
     <>
-      <Band weight="content" width="wide">
-        <article className="mx-auto max-w-3xl">
-          <header>
-            <Reveal>
+      <Band weight="content">
+        <div className="grid gap-x-12 lg:grid-cols-[12rem_minmax(0,1fr)]">
+          <div className="hidden lg:block">
+            {hasFacts && facts("sticky top-24 space-y-6 pt-24")}
+          </div>
+          <article className="min-w-0 max-w-prose">
+            <header>
               <Link href="/work/" className={BACK_LINK}>
                 <ArrowLeft
-                  className="size-4 transition-transform duration-base ease-enter group-hover:-translate-x-0.5 motion-reduce:transition-none"
+                  className="size-4 transition-transform duration-fast group-hover:-translate-x-0.5 motion-reduce:transition-none"
                   aria-hidden
                 />
                 All work
               </Link>
-            </Reveal>
 
-            <Reveal delay={0.05}>
               <p className="t-eyebrow mt-10">
                 {study.subtitle?.trim() || "Case study"}
               </p>
               <h1 className="t-title mt-3 text-balance [overflow-wrap:anywhere]">
                 {study.title}
               </h1>
-              {summary && (
-                <p className="t-lead mt-5 text-pretty">{summary}</p>
+              {summary && <p className="t-lead mt-5 text-pretty">{summary}</p>}
+
+              {hasFacts && (
+                <div className="lg:hidden">
+                  {facts(
+                    "mt-8 grid gap-6 border-y border-border py-6 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-10",
+                  )}
+                </div>
               )}
-            </Reveal>
 
-            {(hasDates || tags.length > 0 || linked) && (
-              <Reveal delay={0.1}>
-                <dl className="mt-8 grid gap-6 border-y border-border/60 py-6 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-10">
-                  {hasDates && (
-                    <div>
-                      <dt className="t-micro">When</dt>
-                      <dd className="mt-1.5">
-                        <ItemDates
-                          from={study.date_from}
-                          to={study.date_to}
-                          className="text-sm text-foreground"
-                        />
-                      </dd>
-                    </div>
-                  )}
-                  {tags.length > 0 && (
-                    <div className="min-w-0">
-                      <dt className="t-micro">Stack</dt>
-                      <dd className="mt-1.5">
-                        <ItemTags tags={tags} max={12} />
-                      </dd>
-                    </div>
-                  )}
-                  {linked && (
-                    <div className="sm:self-center">
-                      <dt className="sr-only">Project</dt>
-                      <dd>
-                        <TextLink
-                          href={study.link_url}
-                          className="inline-flex items-center gap-1.5 rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity duration-base hover:opacity-90"
-                        >
-                          View project
-                          <ArrowUpRight aria-hidden className="size-4" />
-                        </TextLink>
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </Reveal>
-            )}
-
-            {safeImageUrl(study.image_url) && (
-              <Reveal delay={0.15}>
+              {safeImageUrl(study.image_url) && (
                 <ItemImage
                   src={study.image_url}
                   alt=""
-                  className="mt-10 aspect-[21/9] w-full rounded-surface object-cover shadow-e2"
+                  className="mt-10 aspect-[21/9] w-full rounded-surface object-cover"
                 />
-              </Reveal>
-            )}
-          </header>
+              )}
+            </header>
 
-          <div className="mt-12">
-            <PostContent content={study.case_study} />
-          </div>
-        </article>
+            <div className="mt-12">
+              <PostContent content={study.case_study} />
+            </div>
+          </article>
+        </div>
       </Band>
       <ContactCta />
     </>

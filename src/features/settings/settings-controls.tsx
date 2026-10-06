@@ -44,7 +44,7 @@ export function ToggleRow({
       control={form.control}
       name={name as any}
       render={({ field }) => (
-        <FormItem className="flex flex-row items-center justify-between gap-6 rounded-surface bg-card p-3.5 shadow-e1">
+        <FormItem className="flex flex-row items-center justify-between gap-6 rounded-surface border bg-card p-3.5">
           <div className="space-y-0.5">
             <FormLabel className="cursor-pointer">{label}</FormLabel>
             {description && <FormDescription>{description}</FormDescription>}

@@ -14,6 +14,7 @@ import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
 import { activeNavItem } from "./nav-config";
 import { useShellLayout } from "./use-shell-layout";
+import { WorkspaceTabBar } from "./workspace-tab-bar";
 
 const COLLAPSE_KEY = "admin_sidebar_collapsed";
 
@@ -153,10 +154,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           showLauncher={!railed}
           onOpenSidebar={railed ? () => setMobileOpen(true) : undefined}
         />
-        <main className="flex-1 px-4 py-6 sm:px-6">
+        {/* Below lg the tab bar is fixed to the bottom, so the page keeps
+            its height clear of it. */}
+        <main className="flex-1 px-4 pb-[calc(var(--tabbar-h)+1.5rem+env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:pb-6">
           <div className="mx-auto w-full max-w-wide">{children}</div>
         </main>
       </div>
+      <WorkspaceTabBar />
     </div>
   );
 }

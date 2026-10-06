@@ -17,8 +17,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "out");
 
 const PAGES = ["", "about", "contact", "blog", "work", "updates"];
-/** Old URLs that now forward to another page (V2-040a). */
-const MOVED = { projects: "/work/", showcase: "/work/" };
+/** Removed pages that must not come back (2026-10-01: /work only). */
+const GONE = ["projects", "showcase"];
 const failures = [];
 
 const read = (relative) => readFileSync(path.join(out, relative), "utf8");
@@ -45,17 +45,9 @@ for (const page of PAGES) {
   else console.log(`✓ /${page} — h1 "${h1.slice(0, 60)}"`);
 }
 
-for (const [page, to] of Object.entries(MOVED)) {
-  const file = path.join(page, "index.html");
-  const html = existsSync(path.join(out, file)) ? read(file) : "";
-  const refresh = new RegExp(
-    `http-equiv="refresh" content="0; url=${to}"`,
-    "i",
-  );
-  if (!refresh.test(html)) failures.push(`${file}: does not forward to ${to}`);
-  else if (!/name="robots" content="noindex/.test(html)) {
-    failures.push(`${file}: forwards but is indexable`);
-  } else console.log(`✓ /${page} → ${to}`);
+for (const page of GONE) {
+  if (existsSync(path.join(out, page, "index.html"))) failures.push(`${page}/index.html: removed page is back`);
+  else console.log(`✓ /${page} is gone (its sections live on /work)`);
 }
 
 const blogDir = path.join(out, "blog");

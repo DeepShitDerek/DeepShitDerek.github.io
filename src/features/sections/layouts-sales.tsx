@@ -73,7 +73,7 @@ export function FaqLayout({ items }: LayoutProps) {
           key={item.id}
           className={cn(CARD, "group [&_summary::-webkit-details-marker]:hidden")}
         >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-surface px-6 py-5 text-left font-heading text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-surface px-6 py-5 text-left font-heading text-base font-semibold focus-ring">
             <span className="[overflow-wrap:anywhere]">{item.title}</span>
             <ChevronDown
               aria-hidden

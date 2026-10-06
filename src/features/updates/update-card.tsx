@@ -12,6 +12,7 @@ import {
   shortDate,
 } from "@/lib/life-update";
 import { useHydrated } from "@/hooks/use-hydrated";
+import { CategoryIcon } from "./category-icon";
 
 /**
  * One update as a visitor reads it.
@@ -72,7 +73,7 @@ export function UpdateCard({
       <div className={cn("min-w-0", feature ? "p-6 sm:p-8" : "p-5")}>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-0.5 font-medium text-secondary-foreground">
-            <span aria-hidden>{option.emoji}</span>
+            <CategoryIcon category={option.value} />
             {option.label}
           </span>
           {showDate && update.created_at && (
@@ -133,7 +134,7 @@ export function UpdateCard({
                     aria-label={`Show updates tagged ${tag}`}
                     className={cn(
                       "rounded-control px-1.5 py-0.5 text-xs font-medium transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "focus-ring",
                       activeTag === tag
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-secondary hover:text-foreground",

@@ -33,7 +33,7 @@ function Brand({ className }: { className?: string }) {
     <Link
       href="/"
       className={cn(
-        "inline-flex items-center gap-2.5 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "inline-flex items-center gap-2.5 rounded-control focus-ring",
         className,
       )}
     >
@@ -112,7 +112,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <Brand className="lg:invisible" />
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 rounded-control px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 rounded-control px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-ring"
           >
             <ArrowLeft className="size-4" aria-hidden />
             Back to the site

@@ -162,7 +162,7 @@ function LoanCard({
       {!loan ? (
         <p className="mt-3 text-sm text-muted-foreground">Add the rate and payment to see when it ends and what it costs.</p>
       ) : owedMinor <= 0 ? (
-        <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">Paid off.</p>
+        <p className="mt-3 text-sm text-success">Paid off.</p>
       ) : base?.neverEnds ? (
         <p role="alert" className="mt-3 text-sm text-destructive">
           The payment does not cover the interest, so this balance never falls. Check the terms.
@@ -185,7 +185,7 @@ function LoanCard({
             {renewal && (
               <div>
                 <dt className="text-muted-foreground">Term renews</dt>
-                <dd className={cn("font-medium", renewal > today && daysBetween(today, renewal) <= 120 && "text-amber-700 dark:text-amber-400")}>
+                <dd className={cn("font-medium", renewal > today && daysBetween(today, renewal) <= 120 && "text-warning")}>
                   {renewal}
                   {renewal > today && daysBetween(today, renewal) <= 120 && <span className="block text-xs">in {daysBetween(today, renewal)} days — shop rates now</span>}
                 </dd>
@@ -224,7 +224,7 @@ function LoanCard({
                   <>
                     Paid off <strong>{whatIf.payoffDate}</strong> instead of {base.payoffDate};{" "}
                     {whatIf.totalInterestMinor <= base.totalInterestMinor ? (
-                      <><Amount minor={base.totalInterestMinor - whatIf.totalInterestMinor} currency={currency} className="font-semibold text-emerald-700 dark:text-emerald-400" /> less interest.</>
+                      <><Amount minor={base.totalInterestMinor - whatIf.totalInterestMinor} currency={currency} className="font-semibold text-success" /> less interest.</>
                     ) : (
                       <><Amount minor={whatIf.totalInterestMinor - base.totalInterestMinor} currency={currency} className="font-semibold text-destructive" /> more interest.</>
                     )}

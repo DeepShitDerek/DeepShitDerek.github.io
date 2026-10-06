@@ -41,7 +41,9 @@ function query(table: string) {
   return builder;
 }
 
-vi.mock("@/supabase/client", () => ({ supabase: { from: (table: string) => query(table) } }));
+vi.mock("@/supabase/client", () => ({
+  supabase: { from: (table: string) => query(table), rpc: async () => ({ data: null, error: null }) },
+}));
 
 describe("getHabits (ADM-018)", () => {
   it("loads every log, across pages, onto its habit", async () => {
@@ -59,5 +61,39 @@ describe("getHabits (ADM-018)", () => {
     expect(habits[0].habit_logs!.every((log) => log.habit_id === "h1")).toBe(true);
     // The oldest log, years back, is there — no 30-day window.
     expect(habits[0].habit_logs![0].completed_date).toBe("2020-01-02");
+  });
+});
+
+describe("setHabitLog", () => {
+  it("succeeds without an error, and updates both lists the page can show", async () => {
+    const { adminApi } = await import("./baseApi");
+    const { habitsApi } = await import("./habitsApi");
+    const store = configureStore({
+      reducer: { [adminApi.reducerPath]: adminApi.reducer },
+      middleware: (m) => m().concat(adminApi.middleware),
+    });
+    await store.dispatch(habitsApi.endpoints.getHabits.initiate());
+    await store.dispatch(habitsApi.endpoints.getHabits.initiate({ includeArchived: true }));
+
+    // It returned { data: undefined }. RTK Query checks the shape only in
+    // development, where it logged "returned an object containing neither a
+    // valid error and result" on every tick (the dev overlay showed it).
+    vi.stubEnv("NODE_ENV", "development");
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const result = await store.dispatch(
+        habitsApi.endpoints.setHabitLog.initiate({ habit_id: "h2", date: "2030-01-01", value: 1 }),
+      );
+      expect("error" in result && result.error).toBeFalsy();
+      expect(logged).not.toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+      vi.unstubAllEnvs();
+    }
+
+    for (const args of [undefined, { includeArchived: true }] as const) {
+      const habits = habitsApi.endpoints.getHabits.select(args)(store.getState()).data!;
+      expect(habits.find((h) => h.id === "h2")!.habit_logs!.some((l) => l.completed_date === "2030-01-01")).toBe(true);
+    }
   });
 });

@@ -1,17 +1,21 @@
 "use client";
 
-import { Archive, CornerUpLeft, Mail, MailOpen } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  CornerUpLeft,
+  Mail,
+  MailOpen,
+} from "lucide-react";
 import type { ContactSubmission } from "@/types";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/cn";
 import { contactTopicLabel } from "@/lib/contact-topics";
 import { inboxTimestamp, messageState, type InboxState } from "./inbox-filters";
 
 /**
- * Icons, not colour alone, carry the state.
- *
- * `chart-2` is the success accent and `chart-3` the warning accent, so both
- * move with all 52 presets — but a reader who cannot separate them still has
- * a filled envelope, an open envelope, an arrow and a box to go on.
+ * Icons, not colour alone, carry the state: a filled envelope, an open one,
+ * an arrow and a box. The colours are the status tokens (P-status).
  */
 const STATE_META: Record<
   InboxState,
@@ -21,9 +25,9 @@ const STATE_META: Record<
   open: {
     icon: MailOpen,
     label: "Read, not replied",
-    className: "text-chart-3",
+    className: "text-warning",
   },
-  replied: { icon: CornerUpLeft, label: "Replied", className: "text-chart-2" },
+  replied: { icon: CornerUpLeft, label: "Replied", className: "text-success" },
   archived: {
     icon: Archive,
     label: "Archived",
@@ -31,45 +35,58 @@ const STATE_META: Record<
   },
 };
 
+export interface RowActions {
+  onToggleRead: (message: ContactSubmission) => void;
+  onToggleArchive: (message: ContactSubmission) => void;
+}
+
+/**
+ * A message list, not a stack of cards: one surface, flush rows divided by a
+ * hairline, the shape every mail client converges on.
+ *
+ * Each row has a checkbox for cleaning up several at once (P-selection). It
+ * shows on hover and focus, and on every row once anything is checked, so
+ * the list does not read as a form; on a touch screen it is always there.
+ * Archive and mark read/unread sit at the row's right edge on hover.
+ */
 export function MessageList({
   messages,
   selectedId,
   onSelect,
   emptyMessage,
+  checked,
+  onCheck,
+  ...actions
 }: {
   messages: ContactSubmission[];
   selectedId: string | null;
   onSelect: (message: ContactSubmission) => void;
   emptyMessage: string;
-}) {
+  checked: ReadonlySet<string>;
+  onCheck: (id: string, on: boolean) => void;
+} & RowActions) {
   if (messages.length === 0) {
     return (
-      <div className="rounded-surface bg-card p-8 text-center shadow-e1">
+      <div className="rounded-surface border bg-card p-8 text-center">
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       </div>
     );
   }
 
-  /*
-    A message list, not a stack of cards.
-    
-    Each row was its own elevated surface with a gap between, which is a good
-    shape for eight things and a poor one for two hundred: the eye has to
-    re-acquire the left edge on every row, and the shadows add visual weight to
-    a list whose whole job is to be scanned. One surface holding flush rows
-    divided by a hairline is what every mail client converges on, and it is
-    also fewer pixels of chrome per message.
-  */
+  const selecting = checked.size > 0;
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-surface bg-card shadow-e1">
+    <ul className="list-none divide-y divide-border overflow-hidden rounded-surface border bg-card p-0">
       {messages.map((message) => (
-        <li key={message.id}>
-          <MessageRow
-            message={message}
-            selected={message.id === selectedId}
-            onSelect={() => onSelect(message)}
-          />
-        </li>
+        <MessageRow
+          key={message.id}
+          message={message}
+          selected={message.id === selectedId}
+          checked={checked.has(message.id)}
+          selecting={selecting}
+          onSelect={() => onSelect(message)}
+          onCheck={(on) => onCheck(message.id, on)}
+          {...actions}
+        />
       ))}
     </ul>
   );
@@ -78,32 +95,41 @@ export function MessageList({
 function MessageRow({
   message,
   selected,
+  checked,
+  selecting,
   onSelect,
+  onCheck,
+  onToggleRead,
+  onToggleArchive,
 }: {
   message: ContactSubmission;
   selected: boolean;
+  checked: boolean;
+  selecting: boolean;
   onSelect: () => void;
-}) {
+  onCheck: (on: boolean) => void;
+} & RowActions) {
   const state = messageState(message);
   const meta = STATE_META[state];
   const Icon = meta.icon;
   const unread = state === "unread";
   const topic = contactTopicLabel(message.topic);
+  const who = message.name || message.email;
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={selected ? "true" : undefined}
+    <li
       className={cn(
-        "relative w-full py-3 pl-4 pr-3.5 text-left transition-colors",
-        selected ? "bg-primary/10" : "hover:bg-secondary/60",
+        "group relative flex items-start transition-colors",
+        selected
+          ? "bg-primary/10"
+          : checked
+            ? "bg-secondary/60"
+            : "hover:bg-secondary/40",
       )}
     >
       {/*
-        Unread carries a rail as well as weight. Bold alone is a weak signal
-        once a few rows are bold, and it disappears entirely for a reader who
-        has the font rendering turned down.
+        Unread carries a rail as well as weight: bold alone is a weak signal
+        once a few rows are bold.
       */}
       {unread && (
         <span
@@ -112,64 +138,111 @@ function MessageRow({
         />
       )}
 
-      <div className="flex items-start gap-3">
-        <Icon
-          className={cn("mt-0.5 size-4 shrink-0", meta.className)}
-          aria-hidden
+      <div
+        className={cn(
+          "flex shrink-0 items-center self-stretch pl-3",
+          !selecting &&
+            "[@media(pointer:fine)]:opacity-0 [@media(pointer:fine)]:focus-within:opacity-100 [@media(pointer:fine)]:group-hover:opacity-100",
+        )}
+      >
+        <Checkbox
+          checked={checked}
+          onCheckedChange={(value) => onCheck(value === true)}
+          aria-label={`Select the message from ${who}`}
         />
-
-        {/* min-w-0 so the truncation on the children can actually engage. */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-3">
-            <p
-              className={cn(
-                "min-w-0 truncate text-sm",
-                unread ? "font-semibold text-foreground" : "text-foreground",
-              )}
-            >
-              {message.name || message.email}
-            </p>
-            {/*
-              An absolute stamp in a fixed shape, the way mail clients write
-              it. "3 days ago" has to be decoded before it can be compared
-              with the row above, and a column of relative phrases at varying
-              lengths does not scan.
-            */}
-            <time
-              dateTime={message.created_at}
-              className={cn(
-                "shrink-0 text-xs tabular-nums",
-                unread
-                  ? "font-medium text-foreground"
-                  : "text-muted-foreground",
-              )}
-            >
-              {inboxTimestamp(message.created_at)}
-            </time>
-          </div>
-
-          <p
-            className={cn(
-              "mt-0.5 truncate text-sm",
-              unread ? "text-foreground" : "text-muted-foreground",
-            )}
-          >
-            {topic && (
-              <span className="mr-1.5 rounded-full bg-secondary px-1.5 py-px text-[0.6875rem] font-medium text-secondary-foreground">
-                {topic}
-              </span>
-            )}
-            {message.subject}
-          </p>
-
-          {/* break-words: clamping does not constrain a single long token. */}
-          <p className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">
-            {message.message}
-          </p>
-        </div>
       </div>
 
-      <span className="sr-only">{meta.label}</span>
-    </button>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-current={selected ? "true" : undefined}
+        className="min-w-0 flex-1 py-3 pl-3 pr-3.5 text-left focus-ring"
+      >
+        <div className="flex items-start gap-3">
+          <Icon
+            className={cn("mt-0.5 size-4 shrink-0", meta.className)}
+            aria-hidden
+          />
+          {/* min-w-0 so the truncation on the children can engage. */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <p
+                className={cn(
+                  "min-w-0 truncate text-sm text-foreground",
+                  unread && "font-semibold",
+                )}
+              >
+                {who}
+              </p>
+              {/* An absolute stamp in a fixed shape, the way mail clients
+                  write it: it scans down a column. */}
+              <time
+                dateTime={message.created_at}
+                className={cn(
+                  "shrink-0 text-xs tabular-nums",
+                  unread
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {inboxTimestamp(message.created_at)}
+              </time>
+            </div>
+
+            <p
+              className={cn(
+                "mt-0.5 truncate text-sm",
+                unread ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {topic && (
+                <span className="mr-1.5 rounded-full bg-secondary px-1.5 py-px text-micro font-medium text-secondary-foreground">
+                  {topic}
+                </span>
+              )}
+              {message.subject}
+            </p>
+
+            {/* break-words: clamping does not constrain one long token. */}
+            <p className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground">
+              {message.message}
+            </p>
+          </div>
+        </div>
+        <span className="sr-only">{meta.label}</span>
+      </button>
+
+      {/* Hover actions, on a fine pointer only: the detail has them all. */}
+      <div className="absolute right-2 top-2 hidden gap-0.5 rounded-control border bg-card p-0.5 [@media(pointer:fine)]:group-focus-within:flex [@media(pointer:fine)]:group-hover:flex">
+        <button
+          type="button"
+          onClick={() => onToggleRead(message)}
+          aria-label={
+            message.is_read ? `Mark ${who} unread` : `Mark ${who} read`
+          }
+          title={message.is_read ? "Mark unread" : "Mark read"}
+          className="rounded-control p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground focus-ring"
+        >
+          {message.is_read ? (
+            <Mail className="size-4" aria-hidden />
+          ) : (
+            <MailOpen className="size-4" aria-hidden />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => onToggleArchive(message)}
+          aria-label={message.is_archived ? `Restore ${who}` : `Archive ${who}`}
+          title={message.is_archived ? "Restore" : "Archive"}
+          className="rounded-control p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground focus-ring"
+        >
+          {message.is_archived ? (
+            <ArchiveRestore className="size-4" aria-hidden />
+          ) : (
+            <Archive className="size-4" aria-hidden />
+          )}
+        </button>
+      </div>
+    </li>
   );
 }

@@ -68,7 +68,7 @@ export function TaskRail({
       </div>
 
       {unscheduled.length === 0 ? (
-        <p className="rounded-surface bg-card p-3 text-xs text-muted-foreground shadow-e1">
+        <p className="rounded-surface border bg-card p-3 text-xs text-muted-foreground">
           Nothing waiting. Every open task already has time set aside.
         </p>
       ) : (
@@ -87,7 +87,7 @@ export function TaskRail({
                   event.dataTransfer.setData("application/x-task-id", task.id);
                   event.dataTransfer.effectAllowed = "move";
                 }}
-                className="group cursor-grab rounded-surface bg-card p-2.5 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 active:cursor-grabbing"
+                className="group cursor-grab rounded-surface border bg-card p-2.5 transition-colors hover:border-input active:cursor-grabbing"
               >
                 <p className="flex items-start gap-2 text-xs font-medium text-foreground">
                   <span className="min-w-0 flex-1 break-words">
@@ -98,12 +98,12 @@ export function TaskRail({
                     onClick={() => onSchedule(task.id)}
                     aria-label={`Block time for “${task.title}” at the next half hour`}
                     title="Block time at the next half hour"
-                    className="-m-1 inline-flex size-6 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="-m-1 inline-flex size-6 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-ring"
                   >
                     <CalendarPlus className="size-3.5" aria-hidden />
                   </button>
                 </p>
-                <p className="mt-1 flex flex-wrap items-center gap-x-2 pl-5 text-[11px] text-muted-foreground">
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 pl-5 text-micro text-muted-foreground">
                   {task.estimate_minutes ? (
                     <span>{formatEstimate(task.estimate_minutes)}</span>
                   ) : (
@@ -111,7 +111,7 @@ export function TaskRail({
                   )}
                   {task.due_date && <span>· due {task.due_date.slice(5)}</span>}
                   {task.priority === "high" && (
-                    <span className="text-chart-3">· high</span>
+                    <span className="text-warning">· high</span>
                   )}
                 </p>
               </div>

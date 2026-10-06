@@ -64,7 +64,7 @@ export function MaterialFields({
   const active = KINDS.find((entry) => entry.id === kind) ?? KINDS[1];
 
   return (
-    <section className="space-y-4 rounded-surface bg-card p-4 shadow-e1">
+    <section className="space-y-4 rounded-surface border bg-card p-4">
       <div>
         <Label className="text-xs">What kind of material is this?</Label>
         <div

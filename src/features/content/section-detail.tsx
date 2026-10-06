@@ -6,8 +6,6 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
-  Check,
-  CloudOff,
   ExternalLink,
   Eye,
   EyeOff,
@@ -15,7 +13,7 @@ import {
   Info,
   LayoutTemplate,
   Link as LinkIcon,
-  Loader2,
+  MoreHorizontal,
   PenLine,
   Plus,
   Settings2,
@@ -24,7 +22,19 @@ import {
 } from "lucide-react";
 import type { PortfolioItem, PortfolioSection } from "@/types";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/admin/shared";
+import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  EmptyState,
+  SaveStatus,
+  type SaveState,
+} from "@/components/admin/shared";
 import NovelEditor from "@/components/admin/novel-editor";
 /**
  * The public renderer pulls in every section layout — ~100 kB that the edit
@@ -60,8 +70,6 @@ export interface SectionDetailProps {
   onMoveItem: (itemId: string, direction: -1 | 1) => void;
 }
 
-type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
-
 const AUTOSAVE_DELAY = 1200;
 
 /**
@@ -76,9 +84,11 @@ const FIELD_HINTS: Record<string, string> = {
     "Title = the quote. Subtitle = who said it. Description = their role. Image = avatar.",
   "work-experience":
     "Title = role. Subtitle = company. Image = company logo. Dates drive the range.",
-  "case-study": "Description carries the write-up — markdown works. Image = hero.",
+  "case-study":
+    "Description carries the write-up — markdown works. Image = hero.",
   services: "Tags render as a checklist of what's included.",
-  process: "Title = the step. Subtitle = how long it takes. Description = what happens.",
+  process:
+    "Title = the step. Subtitle = how long it takes. Description = what happens.",
   faq: "Title = the question. Description = the answer.",
   uses: "Subtitle is the group heading — items sharing one are grouped together.",
   "client-logos": "Image = the logo. Without one, the title is shown as text.",
@@ -90,35 +100,11 @@ const FIELD_HINTS: Record<string, string> = {
   masonry: "Led by images. Items without one get a placeholder tile.",
   "cards-with-image": "The image sits above the text.",
   "feature-alternating": "Subtitle doubles as the eyebrow above the title.",
-  "github-grid": "Fetches your repositories from GitHub. Items here are ignored.",
+  "github-grid":
+    "Fetches your repositories from GitHub. Items here are ignored.",
   highlight:
     "Shows one of your public Library highlights at random. Items here are ignored.",
 };
-
-function SaveIndicator({ state }: { state: SaveState }) {
-  const map = {
-    idle: { icon: Check, text: "Saved", className: "text-muted-foreground" },
-    dirty: { icon: Loader2, text: "Unsaved", className: "text-chart-3" },
-    saving: { icon: Loader2, text: "Saving…", className: "text-muted-foreground" },
-    saved: { icon: Check, text: "Saved", className: "text-chart-2" },
-    error: {
-      icon: CloudOff,
-      text: "Couldn't save — retrying on your next edit",
-      className: "text-destructive",
-    },
-  } as const;
-  const { icon: Icon, text, className } = map[state];
-  return (
-    <span
-      className={cn("flex items-center gap-1.5 text-xs", className)}
-      role="status"
-      aria-live="polite"
-    >
-      <Icon className={cn("size-3.5", state === "saving" && "animate-spin")} aria-hidden />
-      {text}
-    </span>
-  );
-}
 
 function Notice({
   tone,
@@ -133,7 +119,7 @@ function Notice({
     <div
       className={cn(
         "flex items-start gap-2.5 rounded-control px-3.5 py-3 text-sm",
-        tone === "warn" && "bg-chart-3/10",
+        tone === "warn" && "bg-warning/10",
         tone === "danger" && "bg-destructive/10",
         tone === "info" && "bg-secondary/60",
       )}
@@ -141,7 +127,7 @@ function Notice({
       <Icon
         className={cn(
           "mt-0.5 size-4 shrink-0",
-          tone === "warn" && "text-chart-3",
+          tone === "warn" && "text-warning",
           tone === "danger" && "text-destructive",
           tone === "info" && "text-muted-foreground",
         )}
@@ -287,32 +273,47 @@ export function SectionDetail({
   const items = [...(section.portfolio_items ?? [])].sort(
     (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0),
   );
-  const hint = section.layout_style ? FIELD_HINTS[section.layout_style] : undefined;
+  const hint = section.layout_style
+    ? FIELD_HINTS[section.layout_style]
+    : undefined;
   const unknownLayout = !isMarkdown && !layoutMeta;
-  const kind = isMarkdown ? "Written text" : (layoutMeta?.label ?? section.layout_style);
+  const kind = isMarkdown
+    ? "Written text"
+    : (layoutMeta?.label ?? section.layout_style);
 
   return (
-    <div className="rounded-surface bg-card shadow-e1">
+    <div className="rounded-surface border bg-card">
+      {/*
+        The section's header, in the order you scan it (03-workspace-ui.md
+        §2.11): where it is and what it is, its name, then whether it is on
+        the site — a switch that says so in words — the live page, and the
+        rest behind ⋯. Five icon buttons with tooltips were the only way in.
+      */}
       <header className="flex flex-wrap items-start justify-between gap-4 p-5 sm:p-6">
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">
-            {pageLabel(section.page_path)} · {kind}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span>{pageLabel(section.page_path)}</span>
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              onClick={() => onEditSection(section)}
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium text-foreground transition-colors hover:bg-secondary focus-ring"
+              aria-label={`Layout: ${kind}. Change it in section settings`}
+            >
+              <LayoutTemplate className="size-3" aria-hidden />
+              {kind}
+            </button>
           </p>
-          <h2 className="mt-1 break-words font-heading text-2xl font-semibold tracking-tight">
+          <h2 className="mt-1.5 break-words font-heading text-2xl font-semibold tracking-tight">
             {section.title}
           </h2>
-          {isHidden && (
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-chart-3/10 px-2.5 py-0.5 text-xs font-medium text-chart-3">
-              <EyeOff className="size-3" aria-hidden /> Hidden from the site
-            </span>
-          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2">
           <div
             role="group"
             aria-label="View"
-            className="mr-1 flex rounded-control bg-secondary p-0.5"
+            className="flex rounded-control bg-secondary p-0.5"
           >
             {(["edit", "preview"] as const).map((mode) => (
               <button
@@ -322,7 +323,7 @@ export function SectionDetail({
                 onClick={() => setView(mode)}
                 className={cn(
                   "flex items-center gap-1.5 rounded-[calc(var(--r-control)-2px)] px-3 py-1.5 text-sm font-medium transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "focus-ring",
                   view === mode
                     ? "bg-card text-foreground shadow-e1"
                     : "text-muted-foreground hover:text-foreground",
@@ -337,47 +338,53 @@ export function SectionDetail({
               </button>
             ))}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            aria-label={isHidden ? "Show on the site" : "Hide from the site"}
-            title={isHidden ? "Show on the site" : "Hide from the site"}
-            onClick={() => onToggleVisible(section)}
-          >
-            {isHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="size-9" asChild>
+          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-control border px-2.5 text-sm">
+            <Switch
+              checked={!isHidden}
+              onCheckedChange={() => onToggleVisible(section)}
+              aria-label="Shown on the site"
+            />
+            <span
+              className={isHidden ? "text-muted-foreground" : "text-foreground"}
+            >
+              {isHidden ? "Hidden" : "On the site"}
+            </span>
+          </label>
+          <Button variant="outline" size="sm" className="h-9" asChild>
             <a
               href={section.page_path}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Open the page on the site"
-              title="Open the page on the site"
             >
-              <ExternalLink className="size-4" />
+              <ExternalLink className="size-4 sm:mr-1.5" aria-hidden />
+              <span className="sr-only sm:not-sr-only">View on site</span>
             </a>
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            aria-label="Section settings"
-            title="Title, page and layout"
-            onClick={() => onEditSection(section)}
-          >
-            <Settings2 className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Delete section"
-            title="Delete section"
-            className="size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => onDeleteSection(section.id)}
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9"
+                aria-label="More actions for this section"
+              >
+                <MoreHorizontal className="size-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onSelect={() => onEditSection(section)}>
+                <Settings2 className="mr-2 size-4" aria-hidden /> Section
+                settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => onDeleteSection(section.id)}
+              >
+                <Trash2 className="mr-2 size-4" aria-hidden /> Delete section
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -409,7 +416,14 @@ export function SectionDetail({
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium">Content</p>
-              <SaveIndicator state={saveState} />
+              <SaveStatus
+                state={saveState}
+                text={
+                  saveState === "error"
+                    ? "Couldn't save — retrying on your next edit"
+                    : undefined
+                }
+              />
             </div>
             {/* No fixed height and not clipped: the editor grows with the
                 section, and its block handle sits in the left padding. */}
@@ -539,7 +553,12 @@ function ItemRow({
         <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-control bg-secondary">
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="" loading="lazy" className="size-full object-cover" />
+            <img
+              src={image}
+              alt=""
+              loading="lazy"
+              className="size-full object-cover"
+            />
           ) : (
             <ImageOff
               className="size-4 text-destructive"
@@ -552,7 +571,7 @@ function ItemRow({
       <button
         type="button"
         onClick={onEdit}
-        className="min-w-0 flex-1 rounded-control text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-w-0 flex-1 rounded-control text-left focus-ring"
       >
         <span className="line-clamp-1 break-words font-medium text-foreground">
           {item.title}
@@ -580,33 +599,40 @@ function ItemRow({
             </span>
           )}
           {item.internal_notes && (
-            <span className="inline-flex items-center gap-1" title={item.internal_notes}>
+            <span
+              className="inline-flex items-center gap-1"
+              title={item.internal_notes}
+            >
               <StickyNote className="size-3" aria-hidden /> Notes
             </span>
           )}
         </span>
       </button>
 
-      <div className="flex shrink-0 items-center">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          aria-label={`Edit ${item.title}`}
-          onClick={onEdit}
-        >
-          <PenLine className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-muted-foreground hover:text-destructive"
-          aria-label={`Delete ${item.title}`}
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            aria-label={`More actions for ${item.title}`}
+          >
+            <MoreHorizontal className="size-4" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onSelect={onEdit}>
+            <PenLine className="mr-2 size-4" aria-hidden /> Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={onDelete}
+          >
+            <Trash2 className="mr-2 size-4" aria-hidden /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </li>
   );
 }

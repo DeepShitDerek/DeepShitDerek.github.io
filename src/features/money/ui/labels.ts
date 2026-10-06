@@ -99,3 +99,14 @@ export const ALL_CURRENCIES = [
   "PLN", "TRY", "PKR", "BDT", "LKR", "NPR", "PHP", "MYR", "THB", "IDR", "VND",
   "MXN", "BRL", "ZAR", "NGN", "KES", "EGP",
 ];
+
+/** "Feb 3", or "Feb 3, 2025" outside the current year. */
+export function shortDate(iso: string, today: string): string {
+  const date = new Date(`${iso}T00:00:00Z`);
+  return date.toLocaleDateString("en-CA", {
+    month: "short",
+    day: "numeric",
+    ...(iso.slice(0, 4) !== today.slice(0, 4) && { year: "numeric" }),
+    timeZone: "UTC",
+  });
+}

@@ -273,18 +273,18 @@ export const SECURITY: { icon: LucideIcon; title: string; text: string }[] = [
 
 /** A curated handful for the live preview; all of them are real presets. */
 export const FEATURED_THEMES = [
+  "theme-field-notes-light",
+  "theme-field-notes-dark",
   "theme-ink-light",
   "theme-ink-dark",
   "theme-nord",
   "theme-dracula",
   "theme-tokyo-night",
   "theme-rose-pine",
-  "theme-github-light",
   "theme-catppuccin-latte",
   "theme-solarized-light",
   "theme-blueprint",
   "theme-synthwave",
-  "theme-paper",
 ];
 
 function asItems(

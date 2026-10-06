@@ -97,10 +97,10 @@ export function ReviewSession({
 
   if (!topic) {
     return (
-      <div className="rounded-surface bg-card px-6 py-16 text-center shadow-e1">
+      <div className="rounded-surface border bg-card px-6 py-16 text-center">
         <PartyPopper
           aria-hidden
-          className="mx-auto mb-3 size-10 text-chart-2"
+          className="mx-auto mb-3 size-10 text-success"
         />
         <p className="text-lg font-medium">Done for today</p>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -124,14 +124,28 @@ export function ReviewSession({
         </Button>
         {/* The count is of today's queue, which is capped — never of everything
             outstanding. */}
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <span className="text-sm tabular-nums text-muted-foreground">
           {index + 1} of {queue.length}
         </span>
       </div>
+      {/* Progress through today's queue, as a bar under the count. */}
+      <div
+        role="progressbar"
+        aria-label="Today's reviews"
+        aria-valuemin={0}
+        aria-valuemax={queue.length}
+        aria-valuenow={index}
+        className="mb-4 h-1 overflow-hidden rounded-full bg-secondary"
+      >
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-base"
+          style={{ width: `${(index / Math.max(queue.length, 1)) * 100}%` }}
+        />
+      </div>
 
-      <article className="rounded-surface bg-card p-6 shadow-e2">
+      <article className="rounded-surface border bg-card p-6">
         {isFirstTime && (
-          <p className="mb-3 inline-flex items-center gap-1.5 rounded-control bg-chart-2/10 px-2 py-1 text-xs font-medium text-chart-2">
+          <p className="mb-3 inline-flex items-center gap-1.5 rounded-control bg-info/10 px-2 py-1 text-xs font-medium text-info">
             <Sparkles aria-hidden className="size-3" />
             First time
           </p>
@@ -174,7 +188,7 @@ export function ReviewSession({
                   }}
                   className={cn(
                     "w-full rounded-control bg-secondary px-4 py-2.5 text-left text-sm transition-colors",
-                    "hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "hover:bg-secondary/70 focus-ring",
                   )}
                 >
                   {choice}
@@ -191,7 +205,7 @@ export function ReviewSession({
               picked === null
                 ? "bg-secondary text-muted-foreground"
                 : picked === topic.answer
-                  ? "bg-chart-2/15 text-chart-2"
+                  ? "bg-success/15 text-success"
                   : "bg-destructive/15 text-destructive",
             )}
           >
@@ -254,7 +268,9 @@ export function ReviewSession({
               </ul>
             )}
 
-            <div className="mt-6 border-t pt-4">
+            {/* On a phone the ratings ride at the bottom of the screen, above
+                the tab bar, so a long answer never pushes them out of reach. */}
+            <div className="sticky bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] -mx-6 mt-6 border-t bg-card px-6 pb-4 pt-4 sm:static sm:mx-0 sm:px-0 sm:pb-0">
               <p className="mb-2 text-xs text-muted-foreground">
                 How did that go?
               </p>
@@ -273,9 +289,9 @@ export function ReviewSession({
                   >
                     <span className="flex w-full items-center justify-between text-sm font-medium">
                       {option.label}
-                      <span className="text-[10px] opacity-60">{i + 1}</span>
+                      <kbd className="text-micro font-normal opacity-70">{i + 1}</kbd>
                     </span>
-                    <span className="text-[11px] font-normal opacity-70">
+                    <span className="text-micro font-normal opacity-80">
                       {preview && describeInterval(preview[option.value])}
                     </span>
                   </Button>

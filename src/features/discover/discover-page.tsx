@@ -28,7 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LoadError, PageHeader } from "@/components/admin/shared";
+import { LoadError, ModuleTabs, PageHeader, type ModuleTab } from "@/components/admin/shared";
+import { useUrlParam } from "@/hooks/use-url-param";
 import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { discoverPlaceSchema, discoverTopicSchema } from "@/lib/schemas";
 import { getErrorMessage } from "@/lib/utils";
@@ -37,11 +38,14 @@ import {
   describeWeather,
   fetchJson,
   parseForecast,
+  parsePlaces,
+  placeSearchUrl,
   parseStories,
   topicUrl,
   weatherUrl,
   WINDOWS,
   type Forecast,
+  type PlaceMatch,
   type Story,
   type Window,
 } from "./sources";
@@ -72,14 +76,15 @@ import { WatchlistPanel } from "./watchlist-panel";
  *
  * Nothing fetched is stored. The rows behind this are only *what to ask for*.
  */
-const LANES = [
+type Lane = "money" | "career" | "reading" | "world";
+
+const LANES: ModuleTab<Lane>[] = [
   { id: "money", label: "Money & markets" },
   { id: "career", label: "Career" },
   { id: "reading", label: "Worth reading" },
   { id: "world", label: "What happened" },
-] as const;
-
-type Lane = (typeof LANES)[number]["id"];
+];
+const LANE_IDS = LANES.map((l) => l.id);
 
 export default function DiscoverPage() {
   const { data: places = [], error: placesError, refetch: refetchPlaces } = useGetDiscoverPlacesQuery();
@@ -90,7 +95,10 @@ export default function DiscoverPage() {
   const { data: money } = useGetMoneySettingsQuery();
   const { data: integrations } = useGetIntegrationSettingsQuery();
 
-  const [lane, setLane] = useState<Lane>("money");
+  // In the URL (?lane=), so Back and a reload return to the same lane.
+  const [laneParam, setLaneParam] = useUrlParam("lane", "replace");
+  const lane: Lane = (LANE_IDS as string[]).includes(laneParam ?? "") ? (laneParam as Lane) : "money";
+  const setLane = (next: Lane) => setLaneParam(next === "money" ? null : next);
   const [window, setWindow] = useState<Window>("day");
 
   /*
@@ -135,36 +143,11 @@ export default function DiscoverPage() {
       ) : null}
 
       {/*
-        A segmented control that scrolls sideways rather than wrapping.
-
-        A wrapped row of tabs changes the header's height as the selection
-        moves, which shifts the whole page under the pointer. Scrolling keeps
-        the control one row at every width — the same reason the editor toolbar
-        stopped wrapping.
+        The lanes are the module's sections, so they are its underlined tabs
+        (ModuleTabs), like every other module's: a hand-rolled tablist with
+        its own look sat here. The row scrolls on a phone, with an edge cue.
       */}
-      <div
-        role="tablist"
-        aria-label="Section"
-        className="no-scrollbar -mx-1 flex max-w-full gap-1 overflow-x-auto px-1 pb-1"
-      >
-        {LANES.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            role="tab"
-            aria-selected={option.id === lane}
-            onClick={() => setLane(option.id)}
-            className={cn(
-              "shrink-0 whitespace-nowrap rounded-control px-3 py-1.5 text-xs font-medium transition-[box-shadow,color] duration-base ease-enter",
-              option.id === lane
-                ? "bg-card text-foreground shadow-e2"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <ModuleTabs label="Discover sections" tabs={LANES} current={lane} onSelect={setLane} />
 
       {lane === "money" && (
         <MoneyLane
@@ -213,7 +196,7 @@ function MoneyLane({
         {home ? (
           <CorridorPanel base={base} quote={home} />
         ) : (
-          <section className="rounded-surface bg-card p-4 shadow-e1">
+          <section className="rounded-surface border bg-card p-4">
             <h2 className="text-sm font-semibold text-foreground">
               Currency corridor
             </h2>
@@ -305,7 +288,7 @@ function WorldLane({
           </section>
         </div>
 
-        <MostRead />
+        <MostRead window={window} />
       </div>
     </div>
   );
@@ -360,7 +343,7 @@ function WeatherCard({ place }: { place: DiscoverPlace }) {
   };
 
   return (
-    <article className="group relative rounded-surface bg-card p-4 shadow-e1">
+    <article className="group relative rounded-surface border bg-card p-4">
       <div className="flex items-start justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <MapPin className="size-3.5 shrink-0" aria-hidden />
@@ -407,19 +390,68 @@ function WeatherCard({ place }: { place: DiscoverPlace }) {
   );
 }
 
+/**
+ * Add a place by name (03-workspace-ui.md §2.18): type a city, pick it from
+ * the matches, keep or change its name, add. It asked for latitude and
+ * longitude, which nobody knows for their own city; the coordinates are
+ * still there under "Enter coordinates" for a place the search cannot find.
+ * The match also brings its time zone, so the forecast is in local time.
+ */
 function AddPlace() {
   const [savePlace, { isLoading }] = useSaveDiscoverPlaceMutation();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [matches, setMatches] = useState<PlaceMatch[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [chosen, setChosen] = useState<PlaceMatch | null>(null);
+  const [manual, setManual] = useState(false);
   const [label, setLabel] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
 
-  const submit = async () => {
-    const draft = {
-      label: label.trim(),
-      latitude: Number(latitude),
-      longitude: Number(longitude),
+  // Search as you type, a moment after you stop.
+  useEffect(() => {
+    const term = query.trim();
+    if (!open || chosen || manual || term.length < 2) {
+      setMatches([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      void (async () => {
+        const body = await fetchJson(placeSearchUrl(term));
+        if (cancelled) return;
+        setMatches(parsePlaces(body));
+        setSearching(false);
+      })();
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
     };
+  }, [query, open, chosen, manual]);
+
+  const reset = () => {
+    setOpen(false);
+    setQuery("");
+    setMatches([]);
+    setChosen(null);
+    setManual(false);
+    setLabel("");
+    setLatitude("");
+    setLongitude("");
+  };
+
+  const submit = async () => {
+    const draft = chosen
+      ? {
+          label: label.trim(),
+          latitude: chosen.latitude,
+          longitude: chosen.longitude,
+          ...(chosen.timezone ? { timezone: chosen.timezone } : {}),
+        }
+      : { label: label.trim(), latitude: Number(latitude), longitude: Number(longitude) };
 
     // Checked before the write: the columns bound the label at 80 and the
     // coordinates to real ranges, and a typo would otherwise fail at Postgres
@@ -434,10 +466,7 @@ function AddPlace() {
 
     try {
       await savePlace(draft).unwrap();
-      setLabel("");
-      setLatitude("");
-      setLongitude("");
-      setOpen(false);
+      reset();
       toast.success("Place added");
     } catch (error) {
       toast.error("Could not add it", {
@@ -451,7 +480,7 @@ function AddPlace() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex min-h-32 items-center justify-center gap-2 rounded-surface bg-secondary/40 text-sm text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground"
+        className="flex min-h-32 items-center justify-center gap-2 rounded-surface border border-dashed text-sm text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground focus-ring"
       >
         <Plus className="size-4" aria-hidden />
         Add a place
@@ -459,68 +488,129 @@ function AddPlace() {
     );
   }
 
+  const naming = chosen || manual;
+
   return (
-    <div className="space-y-2 rounded-surface bg-card p-4 shadow-e1">
-      <div className="space-y-1">
-        <Label htmlFor="place-label" className="text-xs">
-          Name
-        </Label>
-        <Input
-          id="place-label"
-          value={label}
-          maxLength={80}
-          placeholder="Home"
-          onChange={(event) => setLabel(event.target.value)}
-          className="h-8 text-sm"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
+    <div className="space-y-3 rounded-surface border bg-card p-4">
+      {!naming && (
         <div className="space-y-1">
-          <Label htmlFor="place-lat" className="text-xs">
-            Latitude
+          <Label htmlFor="place-search" className="text-xs">
+            City or town
           </Label>
           <Input
-            id="place-lat"
-            value={latitude}
-            inputMode="decimal"
-            placeholder="19.0760"
-            onChange={(event) => setLatitude(event.target.value)}
-            className="h-8 text-sm"
+            id="place-search"
+            autoFocus
+            value={query}
+            placeholder="Mumbai, Toronto…"
+            onChange={(event) => setQuery(event.target.value)}
+            className="h-9 text-sm"
+            aria-describedby="place-search-status"
           />
+          <p id="place-search-status" aria-live="polite" className="min-h-5 text-xs text-muted-foreground">
+            {query.trim().length < 2
+              ? ""
+              : searching
+                ? "Searching…"
+                : matches.length === 0
+                  ? "No place by that name."
+                  : `${matches.length} match${matches.length === 1 ? "" : "es"}`}
+          </p>
+          {matches.length > 0 && (
+            <ul className="divide-y rounded-control border">
+              {matches.map((match) => (
+                <li key={match.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChosen(match);
+                      setLabel(match.name);
+                    }}
+                    className="flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-secondary focus-ring"
+                  >
+                    <span className="font-medium">{match.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">{match.where}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="place-lon" className="text-xs">
-            Longitude
-          </Label>
-          <Input
-            id="place-lon"
-            value={longitude}
-            inputMode="decimal"
-            placeholder="72.8777"
-            onChange={(event) => setLongitude(event.target.value)}
-            className="h-8 text-sm"
-          />
+      )}
+
+      {naming && (
+        <>
+          {chosen && (
+            <p className="text-xs text-muted-foreground">
+              {chosen.name}
+              {chosen.where && `, ${chosen.where}`}
+            </p>
+          )}
+          <div className="space-y-1">
+            <Label htmlFor="place-label" className="text-xs">
+              Name
+            </Label>
+            <Input
+              id="place-label"
+              autoFocus
+              value={label}
+              maxLength={80}
+              placeholder="Home"
+              onChange={(event) => setLabel(event.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+        </>
+      )}
+
+      {manual && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="place-lat" className="text-xs">
+              Latitude
+            </Label>
+            <Input
+              id="place-lat"
+              value={latitude}
+              inputMode="decimal"
+              placeholder="19.0760"
+              onChange={(event) => setLatitude(event.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="place-lon" className="text-xs">
+              Longitude
+            </Label>
+            <Input
+              id="place-lon"
+              value={longitude}
+              inputMode="decimal"
+              placeholder="72.8777"
+              onChange={(event) => setLongitude(event.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
         </div>
-      </div>
-      <div className="flex gap-2 pt-1">
-        <Button
-          type="button"
-          size="sm"
-          className="h-8"
-          disabled={isLoading}
-          onClick={() => void submit()}
-        >
-          Add
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-8"
-          onClick={() => setOpen(false)}
-        >
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        {naming && (
+          <Button type="button" size="sm" disabled={isLoading} onClick={() => void submit()}>
+            Add
+          </Button>
+        )}
+        <Button type="button" size="sm" variant="ghost" onClick={reset}>
           Cancel
         </Button>
+        {!manual && !chosen && (
+          <button
+            type="button"
+            onClick={() => setManual(true)}
+            className="ml-auto rounded-control text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-ring"
+          >
+            Enter coordinates
+          </button>
+        )}
       </div>
     </div>
   );
@@ -585,7 +675,7 @@ function TopicPanel({
   };
 
   return (
-    <section className="group overflow-hidden rounded-surface bg-card shadow-e1">
+    <section className="group overflow-hidden rounded-surface border bg-card">
       <header className="flex items-center justify-between gap-2 px-5 pb-2 pt-4">
         <div className="min-w-0">
           <h2 className="truncate break-words text-sm font-semibold text-foreground">
@@ -686,7 +776,7 @@ function AddTopic({ count }: { count: number }) {
   };
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-surface bg-card p-3 shadow-e1">
+    <div className="flex flex-wrap gap-2 rounded-surface border bg-card p-3">
       <Input
         value={term}
         maxLength={80}

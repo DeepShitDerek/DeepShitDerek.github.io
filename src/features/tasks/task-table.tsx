@@ -10,8 +10,9 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from "./task-meta";
-import { formatDueDate, formatMinutes } from "./task-card";
-import { isOverdue, type TaskGroup } from "./task-filters";
+import { formatMinutes } from "./task-card";
+import { type TaskGroup } from "./task-filters";
+import { TaskDue } from "./task-due";
 
 export interface TaskTableProps {
   groups: TaskGroup[];
@@ -80,7 +81,6 @@ export function TaskTable({
                 ? projectsById.get(task.project_id)
                 : undefined;
               const blockers = blockersFor(task);
-              const overdue = isOverdue(task);
 
               return (
                 <tr
@@ -117,7 +117,7 @@ export function TaskTable({
                     <Badge
                       variant="outline"
                       className={cn(
-                        "h-5 px-1.5 text-[10px]",
+                        "h-5 px-1.5 text-micro",
                         TASK_STATUS_META[status].pill,
                       )}
                     >
@@ -129,7 +129,7 @@ export function TaskTable({
                     <Badge
                       variant="outline"
                       className={cn(
-                        "h-5 px-1.5 text-[10px]",
+                        "h-5 px-1.5 text-micro",
                         TASK_PRIORITY_META[priority].pill,
                       )}
                     >
@@ -141,13 +141,8 @@ export function TaskTable({
                     {project?.name ?? "—"}
                   </td>
 
-                  <td
-                    className={cn(
-                      "whitespace-nowrap px-3 py-2 text-muted-foreground",
-                      overdue && "font-medium text-destructive",
-                    )}
-                  >
-                    {task.due_date ? formatDueDate(task.due_date) : "—"}
+                  <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                    {task.due_date ? <TaskDue task={task} icon={false} /> : "—"}
                   </td>
 
                   <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-muted-foreground">

@@ -163,6 +163,7 @@ export function buildEntries({
         start: actualStart,
         end: actualEnd,
         occurrenceStart,
+        seriesStart: start,
         // Only when the occurrence actually diverges from the series; an
         // untouched occurrence has nothing to reset.
         exceptionId: exception?.id,

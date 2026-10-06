@@ -51,7 +51,7 @@ function FilterRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-11 shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="w-11 shrink-0 text-micro font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <div className="no-scrollbar flex min-w-0 flex-1 gap-1 overflow-x-auto">
@@ -76,7 +76,7 @@ function FilterToggle({
       aria-pressed={active}
       onClick={onToggle}
       className={cn(
-        "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+        "shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-micro font-medium transition-colors",
         active
           ? "bg-primary text-primary-foreground"
           : "bg-secondary text-muted-foreground hover:text-foreground",
@@ -152,13 +152,13 @@ export function CareerPanel() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <section className="overflow-hidden rounded-surface bg-card shadow-e1">
+      <section className="overflow-hidden rounded-surface border bg-card">
         <header className="space-y-3 px-5 pb-3 pt-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-foreground">
               Open roles
             </h2>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-micro text-muted-foreground">
               {state === "done"
                 ? `${matches.length} of ${postings.length} postings`
                 : "Two boards"}
@@ -268,7 +268,7 @@ export function CareerPanel() {
                       </>
                     )}
                     {posting.remote && (
-                      <span className="rounded-control bg-chart-2/15 px-1.5 text-[10px] text-chart-2">
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-micro text-secondary-foreground">
                         remote
                       </span>
                     )}
@@ -285,7 +285,7 @@ export function CareerPanel() {
         </ul>
 
         {state === "done" && matches.length > 12 && (
-          <p className="border-t border-border/60 px-5 py-2 text-[11px] text-muted-foreground">
+          <p className="border-t border-border/60 px-5 py-2 text-micro text-muted-foreground">
             Showing 12 of {matches.length}. Narrow the filter to see the rest.
           </p>
         )}
@@ -296,7 +296,7 @@ export function CareerPanel() {
           suspended without it — hence no `nofollow` on that one, which is the
           opposite of the usual instinct for an outbound link.
         */}
-        <p className="border-t border-border/60 px-5 py-2 text-[11px] text-muted-foreground">
+        <p className="border-t border-border/60 px-5 py-2 text-micro text-muted-foreground">
           Postings from{" "}
           <a
             href={JOB_SOURCES.remoteok.credit.href}
@@ -319,11 +319,11 @@ export function CareerPanel() {
         </p>
       </section>
 
-      <aside className="h-fit rounded-surface bg-card p-5 shadow-e1">
+      <aside className="h-fit rounded-surface border bg-card p-5">
         <h2 className="text-sm font-semibold text-foreground">
           Most asked for
         </h2>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-micro text-muted-foreground">
           {/* The sample, always. "TypeScript, 12" means nothing without it. */}
           Across all {market.sampled} postings on the board
         </p>
@@ -366,7 +366,7 @@ export function CareerPanel() {
                       style={{ width: `${(skill.count / top) * 100}%` }}
                     />
                   </div>
-                  <span className="w-6 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                  <span className="w-6 shrink-0 text-right text-micro tabular-nums text-muted-foreground">
                     {skill.count}
                   </span>
                 </div>
@@ -375,7 +375,7 @@ export function CareerPanel() {
           </div>
         )}
 
-        <p className="mt-4 text-[11px] text-muted-foreground">
+        <p className="mt-4 text-micro text-muted-foreground">
           One board, weighted towards European and remote roles. A signal, not a
           census.
         </p>

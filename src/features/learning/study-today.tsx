@@ -33,11 +33,11 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="rounded-surface bg-card p-4 shadow-e1">
+    <div className="rounded-surface border bg-card p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
       {hint && (
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
+        <p className="mt-0.5 text-micro text-muted-foreground">{hint}</p>
       )}
     </div>
   );
@@ -80,8 +80,8 @@ export function StudyToday({
     <div className="space-y-6">
       <section
         className={cn(
-          "rounded-surface p-6 shadow-e1",
-          total > 0 ? "bg-card" : "bg-secondary/40",
+          "rounded-surface border p-6",
+          total > 0 ? "border-primary/30 bg-card" : "bg-secondary/40",
         )}
       >
         {total > 0 ? (
@@ -180,14 +180,14 @@ export function StudyToday({
             <Brain aria-hidden className="size-3.5" />
             Up next
           </h2>
-          <ul className="space-y-1.5">
+          <ul className="list-none divide-y rounded-surface border bg-card p-0">
             {[...queue.due, ...queue.fresh].slice(0, 5).map((topic) => (
               <li
                 key={topic.id}
-                className="flex items-center gap-3 rounded-surface bg-card px-3 py-2 text-sm shadow-e1"
+                className="flex items-center gap-3 px-3 py-2 text-sm"
               >
                 <span className="min-w-0 flex-1 truncate">{topic.title}</span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">
+                <span className="shrink-0 text-micro text-muted-foreground">
                   {topic.last_reviewed_at ? "review" : "new"}
                 </span>
               </li>

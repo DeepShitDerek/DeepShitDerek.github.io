@@ -119,7 +119,7 @@ export function WatchlistPanel({
   };
 
   return (
-    <section className="overflow-hidden rounded-surface bg-card shadow-e1">
+    <section className="overflow-hidden rounded-surface border bg-card">
       <header className="flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-4">
         <h2 className="text-sm font-semibold">Watchlist</h2>
         <div className="flex items-center gap-1.5">
@@ -229,13 +229,13 @@ function Row({
         <p className="flex flex-wrap items-baseline gap-x-2 text-sm font-medium">
           <span className="tabular-nums">{normalizeSymbol(entry.symbol)}</span>
           {entry.exchange && (
-            <span className="text-[11px] font-normal text-muted-foreground">
+            <span className="text-micro font-normal text-muted-foreground">
               {entry.exchange}
             </span>
           )}
         </p>
         {(entry.name || entry.note) && (
-          <p className="truncate text-[11px] text-muted-foreground">
+          <p className="truncate text-micro text-muted-foreground">
             {entry.name ?? entry.note}
           </p>
         )}
@@ -249,21 +249,21 @@ function Row({
                 maximumFractionDigits: quote.price < 10 ? 4 : 2,
               })}
               {quote.currency && (
-                <span className="ml-1 text-[11px] text-muted-foreground">
+                <span className="ml-1 text-micro text-muted-foreground">
                   {quote.currency}
                 </span>
               )}
             </p>
             {quote.change !== null && (
               /*
-                `chart-2` is the success accent and `destructive` the negative
-                one — both move with all 52 presets. A literal green or red
-                would not.
+                Up is `success`, down `destructive`: the status tokens every
+                preset sets and check:themes holds to 4.5:1. The sign is
+                printed too, so colour is never the only cue.
               */
               <p
                 className={cn(
-                  "text-[11px] tabular-nums",
-                  quote.change >= 0 ? "text-chart-2" : "text-destructive",
+                  "text-micro tabular-nums",
+                  quote.change >= 0 ? "text-success" : "text-destructive",
                 )}
               >
                 {quote.change >= 0 ? "+" : ""}
@@ -272,7 +272,7 @@ function Row({
             )}
           </>
         ) : (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-micro text-muted-foreground">
             {quotable ? "—" : hasKey ? "not priced" : "no key"}
           </p>
         )}
@@ -342,7 +342,7 @@ function MarketKeySettings({
   return (
     <div className="border-t border-border/60 px-5 py-2.5">
       {!open ? (
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-micro leading-relaxed text-muted-foreground">
           {hasKey ? (
             <>
               <span>
@@ -385,7 +385,7 @@ function MarketKeySettings({
                 setChosen(event.target.value as QuoteProvider)
               }
               aria-label="Market data provider"
-              className="h-8 rounded-control bg-card px-2 text-sm shadow-e1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-8 rounded-control border border-input bg-background px-2 text-sm focus-ring"
             >
               {QUOTE_PROVIDERS.map((entry) => (
                 <option key={entry.id} value={entry.id}>
@@ -435,7 +435,7 @@ function MarketKeySettings({
             </Button>
           </div>
 
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-micro leading-relaxed text-muted-foreground">
             Free keys:{" "}
             {QUOTE_PROVIDERS.map((entry, index) => (
               <span key={entry.id}>

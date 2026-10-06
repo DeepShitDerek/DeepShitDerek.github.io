@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Scale } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/cn";
@@ -79,7 +85,16 @@ export function AccountsArea({ onOpenRegister }: { onOpenRegister: (accountId: s
             <div className="mb-3 flex items-baseline justify-between gap-3">
               <h2 id={`group-${group.label}`} className="font-heading text-base font-semibold">{group.label}</h2>
               <span className="text-sm text-muted-foreground">
-                <Amount minor={groupTotal} currency={settings.baseCurrency} tone="balance" />
+                {/* A debt group reads like its rows: what is owed, as a
+                    positive amount and the word, not a red negative. Owing on
+                    a loan is not an alarm; overspending is. */}
+                {members.every((a) => isLiability(a.kind)) && groupTotal <= 0 ? (
+                  <>
+                    <Amount minor={-groupTotal} currency={settings.baseCurrency} className="text-foreground" /> owed
+                  </>
+                ) : (
+                  <Amount minor={groupTotal} currency={settings.baseCurrency} tone="balance" />
+                )}
                 {unpriced && " + unconverted"}
               </span>
             </div>
@@ -94,7 +109,7 @@ export function AccountsArea({ onOpenRegister }: { onOpenRegister: (accountId: s
                     <button
                       type="button"
                       onClick={() => onOpenRegister(account.id)}
-                      className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-control"
+                      className="min-w-0 flex-1 text-left focus-ring rounded-control"
                     >
                       <span className="block truncate font-medium">{account.name}</span>
                       <span className="block truncate text-xs text-muted-foreground">
@@ -126,7 +141,7 @@ export function AccountsArea({ onOpenRegister }: { onOpenRegister: (accountId: s
                         )}
                         {!quote && account.currency !== settings.baseCurrency && "No exchange rate yet"}
                         {util && (
-                          <span className={cn(util.ratio > 0.3 && "text-amber-700 dark:text-amber-400")}>
+                          <span className={cn(util.ratio > 0.3 && "text-warning")}>
                             {Math.round(util.ratio * 100)}% of limit used
                           </span>
                         )}
@@ -137,12 +152,26 @@ export function AccountsArea({ onOpenRegister }: { onOpenRegister: (accountId: s
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" aria-label={`Reconcile ${account.name}`} title="Check against a statement" onClick={() => setReconciling(account)}>
-                        <Scale className="size-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(account)}>Edit</Button>
-                    </div>
+                    {/* Row actions in one menu (G5): an unlabelled scale icon and a
+                        text "Edit" sat side by side on every row. Opening the
+                        register stays the row itself. */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" aria-label={`Actions: ${account.name}`}>
+                          <MoreHorizontal aria-hidden className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setReconciling(account)}>
+                          <Scale aria-hidden className="mr-2 size-4" />
+                          Check against a statement
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setEditing(account)}>
+                          <Pencil aria-hidden className="mr-2 size-4" />
+                          Edit account
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </li>
                 );
               })}

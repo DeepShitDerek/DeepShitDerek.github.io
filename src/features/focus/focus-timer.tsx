@@ -134,9 +134,8 @@ export function FocusTimer() {
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        // Above the palette's floating button on phones, which sits at
-        // bottom-right below md (ADM-007).
-        className="fixed bottom-20 right-4 z-overlay md:bottom-6 md:right-6"
+        // Above the workspace tab bar below lg.
+        className="fixed bottom-[calc(var(--tabbar-h)+1rem+env(safe-area-inset-bottom))] right-4 z-overlay lg:bottom-6 lg:right-6"
       >
         <Card className="flex items-center gap-4 border-primary/20 bg-background/80 p-3 shadow-e3 backdrop-blur">
           <div className="flex flex-col">

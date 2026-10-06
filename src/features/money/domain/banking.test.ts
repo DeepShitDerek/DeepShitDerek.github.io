@@ -199,6 +199,62 @@ describe("guessing the mapping", () => {
     });
   });
 
+  it("reads RBC's USD$ column for a US-dollar account", () => {
+    const rows = parseCsv(
+      [
+        "Account Type,Account Number,Transaction Date,Cheque Number,Description 1,Description 2,CAD$,USD$",
+        "Chequing,01234-5678901,9/2/2026,,AMAZON.COM,,,-20.00",
+      ].join("\n"),
+    );
+    const mapping = guessMapping(rows, "CA", { currency: "USD" })!;
+    expect(mapping.amount).toBe(7);
+    expect(readStatement(rows, mapping, { accountId: "usd", currency: "USD" }).rows[0].amountMinor).toBe(-2000);
+  });
+
+  it("reads a CIBC export: no header; date, description, money out, money in", () => {
+    const rows = parseCsv(
+      ['2026-09-02,"STARBUCKS #123 TORONTO, ON",4.50,', "2026-09-03,PAYROLL ACME CORP,,2500.00", "2026-09-05,E-TRANSFER,100.00,"].join("\n"),
+    );
+    const mapping = guessMapping(rows, "CA")!;
+    expect(mapping).toMatchObject({ hasHeader: false, date: 0, description: 1, debit: 2, credit: 3, amount: null });
+    expect(readStatement(rows, mapping, { accountId: "chq", currency: "CAD" }).rows.map((r) => [r.description, r.amountMinor])).toEqual([
+      ["STARBUCKS #123 TORONTO, ON", -450],
+      ["PAYROLL ACME CORP", 250000],
+      ["E-TRANSFER", -10000],
+    ]);
+  });
+
+  it("reads a CIBC export with only money out, or only money in, as the right direction", () => {
+    const out = parseCsv(["2026-09-02,STARBUCKS,4.50,", "2026-09-05,RENT,1400.00,"].join("\n"));
+    expect(readStatement(out, guessMapping(out, "CA")!, { accountId: "chq", currency: "CAD" }).rows.map((r) => r.amountMinor)).toEqual([
+      -450, -140000,
+    ]);
+    const inn = parseCsv(["2026-09-03,PAYROLL,,2500.00"].join("\n"));
+    expect(readStatement(inn, guessMapping(inn, "CA")!, { accountId: "chq", currency: "CAD" }).rows.map((r) => r.amountMinor)).toEqual([
+      250000,
+    ]);
+  });
+
+  it("does not flip a card export that already says which way the money went", () => {
+    const cibc = parseCsv(["2026-09-02,STARBUCKS,4.50,,4500********1234", "2026-09-10,PAYMENT THANK YOU,,200.00,4500********1234"].join("\n"));
+    const cibcMap = guessMapping(cibc, "CA", { card: true })!;
+    expect(cibcMap.invertSign).toBe(false);
+    expect(readStatement(cibc, cibcMap, { accountId: "visa", currency: "CAD" }).rows.map((r) => r.amountMinor)).toEqual([-450, 20000]);
+
+    const rbc = parseCsv(
+      [
+        "Account Type,Account Number,Transaction Date,Cheque Number,Description 1,Description 2,CAD$,USD$",
+        "Visa,4510123412341234,9/3/2026,,AMAZON,,-20.00,",
+        "Visa,4510123412341234,9/4/2026,,COFFEE,,-4.50,",
+        "Visa,4510123412341234,9/20/2026,,PAYMENT - THANK YOU,,100.00,",
+      ].join("\n"),
+    );
+    expect(guessMapping(rbc, "CA", { card: true })!.invertSign).toBe(false);
+
+    const positive = parseCsv(["Date,Description,Amount", "2026-02-05,COFFEE,4.50", "2026-02-06,BOOKS,30.00", "2026-02-20,PAYMENT,-100.00"].join("\n"));
+    expect(guessMapping(positive, "CA", { card: true })!.invertSign).toBe(true);
+  });
+
   it("uses a Dr/Cr column for direction", () => {
     const rows = parseCsv(["Date,Description,Amount,Dr/Cr", "2026-02-05,Groceries,450.00,DR", "2026-02-06,Refund,50.00,CR"].join("\n"));
     const mapping = guessMapping(rows, "IN")!;

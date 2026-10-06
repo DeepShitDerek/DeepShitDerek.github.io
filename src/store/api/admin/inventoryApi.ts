@@ -44,7 +44,7 @@ export const inventoryApi = adminApi.injectEndpoints({
         } as Partial<InventoryItem>),
       invalidatesTags: ["Inventory"],
     }),
-    deleteInventoryItem: builder.mutation<void, string>({
+    deleteInventoryItem: builder.mutation<null, string>({
       queryFn: async (id) => {
         if (!supabase) return { error: NO_DB_ERROR };
         const { error } = await supabase
@@ -52,7 +52,7 @@ export const inventoryApi = adminApi.injectEndpoints({
           .delete()
           .eq("id", id);
         if (error) return { error };
-        return { data: undefined };
+        return { data: null };
       },
       invalidatesTags: ["Inventory"],
     }),

@@ -11,7 +11,12 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
-import { isActiveNavHref, NAV_GROUPS, type NavItem } from "./nav-config";
+import {
+  isActiveNavHref,
+  NAV_GROUPS,
+  type NavGroup,
+  type NavItem,
+} from "./nav-config";
 
 /**
  * Every module, as a grid.
@@ -70,7 +75,7 @@ export function AppLauncher() {
           type="button"
           aria-label="All modules"
           aria-expanded={open}
-          className="flex size-9 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex size-9 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-ring"
         >
           <LayoutGrid className="size-5" aria-hidden />
         </button>
@@ -120,26 +125,50 @@ export function AppLauncher() {
               Nothing matches “{query}”.
             </p>
           ) : (
-            groups.map((group) => (
-              <section key={group.label} className="mb-2 last:mb-0">
-                <h3 className="t-eyebrow px-2 pb-1.5 pt-1">{group.label}</h3>
-                <ul className="grid grid-cols-3 gap-1">
-                  {group.items.map((item) => (
-                    <li key={item.href}>
-                      <LauncherTile
-                        item={item}
-                        active={isActiveNavHref(pathname, item.href)}
-                        onNavigate={() => setOpen(false)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))
+            <ModuleGrid
+              groups={groups}
+              pathname={pathname}
+              onNavigate={() => setOpen(false)}
+            />
           )}
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+/**
+ * The grouped tiles, shared by this launcher and the phone tab bar's "More"
+ * sheet, so the two lists cannot disagree.
+ */
+export function ModuleGrid({
+  groups,
+  pathname,
+  onNavigate,
+}: {
+  groups: NavGroup[];
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <>
+      {groups.map((group) => (
+        <section key={group.label} className="mb-2 last:mb-0">
+          <h3 className="t-eyebrow px-2 pb-1.5 pt-1">{group.label}</h3>
+          <ul className="grid grid-cols-3 gap-1">
+            {group.items.map((item) => (
+              <li key={item.href}>
+                <LauncherTile
+                  item={item}
+                  active={isActiveNavHref(pathname, item.href)}
+                  onNavigate={onNavigate}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </>
   );
 }
 
@@ -160,7 +189,7 @@ function LauncherTile({
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex flex-col items-center gap-1.5 rounded-control px-1 py-3 text-center transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "focus-ring",
         // Filled, not tinted — and the same fill the rail uses, because the two
         // are the same answer to the same question and must not disagree about
         // what "you are here" looks like. See the note in admin-sidebar.tsx.
@@ -175,7 +204,7 @@ function LauncherTile({
         are wider than a third of a 24rem panel, and a clipped module name is
         a module you cannot find.
       */}
-      <span className="w-full break-words text-[11px] font-medium leading-tight">
+      <span className="w-full break-words text-micro font-medium leading-tight">
         {item.name}
       </span>
     </Link>

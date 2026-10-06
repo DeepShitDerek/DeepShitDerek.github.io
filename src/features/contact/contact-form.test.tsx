@@ -130,3 +130,21 @@ describe("classifyContactError", () => {
     expect(classifyContactError(error)).toBe(kind);
   });
 });
+
+describe("contact topic from the link", () => {
+  it("selects the topic a link names, and ignores one it does not know", async () => {
+    window.history.replaceState(null, "", "/contact/?topic=project");
+    const { unmount } = render(<ContactForm />);
+    await waitFor(() =>
+      expect((screen.getByLabelText("A project") as HTMLInputElement).checked).toBe(true),
+    );
+    unmount();
+
+    window.history.replaceState(null, "", "/contact/?topic=nonsense");
+    render(<ContactForm />);
+    expect(
+      screen.getAllByRole("radio").some((radio) => (radio as HTMLInputElement).checked),
+    ).toBe(false);
+    window.history.replaceState(null, "", "/");
+  });
+});

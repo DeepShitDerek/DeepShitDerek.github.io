@@ -64,7 +64,7 @@ export function TaskTimelineView({
             {ticks.map((tick) => (
               <span
                 key={tick.label}
-                className="absolute top-0 text-[11px] text-muted-foreground"
+                className="absolute top-0 text-micro text-muted-foreground"
                 style={{ left: `${tick.left}%` }}
               >
                 {tick.label}
@@ -103,7 +103,7 @@ export function TaskTimelineView({
                         backgroundColor: project?.color ?? undefined,
                       }}
                       className={cn(
-                        "absolute inset-y-0 flex min-w-0 items-center rounded-control px-2 text-left text-[11px] text-foreground transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "absolute inset-y-0 flex min-w-0 items-center rounded-control px-2 text-left text-micro text-foreground transition-opacity hover:opacity-80 focus-ring",
                         !project?.color && BAR_TONE[priority],
                         task.status === "done" && "opacity-50",
                         overdue && "ring-1 ring-destructive",

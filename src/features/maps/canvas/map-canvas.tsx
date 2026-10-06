@@ -20,6 +20,8 @@ import {
 import { effectiveColor, type Point } from "../domain/types";
 import { COLOR_HSL } from "../ui/visuals";
 import { useEditor, useMapState } from "../ui/editor-context";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { minimapVisible } from "../state/minimap";
 import { createFlowAdapter, type Measured } from "./adapter";
 import { MapEdge, type MapFlowEdge } from "./edge-view";
 import { MapNode, type MapFlowNode } from "./node-view";
@@ -49,6 +51,7 @@ export function MapCanvas({
   const graph = useMapState((s) => s.graph);
   const selection = useMapState((s) => s.selection);
   const settings = useMapState((s) => s.settings);
+  const isMobile = useIsMobile();
   const flow = useReactFlow<MapFlowNode, MapFlowEdge>();
 
   const [dragging, setDragging] = useState<ReadonlyMap<string, Point>>(
@@ -212,7 +215,14 @@ export function MapCanvas({
             }),
           })
         }
-        onPaneClick={() => ui.setEditingId(null)}
+        // A click on empty canvas ends a rename, but not the second click of
+        // a double-click: that is the gesture starting one. Depending on
+        // timing, its click could land after the double-click had opened
+        // the new node's title, closing it before anything was typed.
+        onPaneClick={(event) => {
+          if (event.detail > 1) return;
+          ui.setEditingId(null);
+        }}
         defaultViewport={initialViewport}
         minZoom={0.1}
         maxZoom={2.5}
@@ -245,12 +255,16 @@ export function MapCanvas({
         {settings.grid && (
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
         )}
-        {settings.minimap && (
+        {minimapVisible({
+          enabled: settings.minimap,
+          nodeCount: Object.keys(graph.nodes).length,
+          isMobile,
+        }) && (
           <MiniMap<MapFlowNode>
             pannable
             zoomable
             ariaLabel="Map overview"
-            className="!rounded-control !border !shadow-e1"
+            className="!rounded-control !border"
             nodeColor={(node) => {
               const color = effectiveColor(node.data.node);
               return color

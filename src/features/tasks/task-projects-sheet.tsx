@@ -187,7 +187,7 @@ function ProjectRow({
               onClick={() => onRecolour(swatch)}
               style={{ backgroundColor: swatch }}
               className={cn(
-                "flex size-5 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "flex size-5 items-center justify-center rounded-full transition-transform hover:scale-110 focus-ring",
                 project.color === swatch && "ring-2 ring-ring ring-offset-1",
               )}
             >

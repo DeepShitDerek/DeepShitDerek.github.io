@@ -68,10 +68,6 @@ function GenuineNotFound({ links }: { links: { label: string; href: string }[] }
   return (
     <Band weight="feature">
       <div className="relative mx-auto flex max-w-2xl flex-col items-center text-center">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-[36rem] max-w-[100vw] -translate-x-1/2 bg-[radial-gradient(closest-side,hsl(var(--primary)/0.16),transparent)]"
-        />
         <Reveal>
           <p className="t-eyebrow">Page not found</p>
         </Reveal>
@@ -87,7 +83,7 @@ function GenuineNotFound({ links }: { links: { label: string; href: string }[] }
           </p>
         </Reveal>
         <Reveal delay={0.15} className="mt-10">
-          <Button asChild size="lg" className="rounded-full px-7">
+          <Button asChild size="lg">
             <Link href="/">
               <ArrowLeft className="mr-2 size-4" aria-hidden />
               Back home
@@ -104,7 +100,7 @@ function GenuineNotFound({ links }: { links: { label: string; href: string }[] }
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="group inline-flex items-center gap-1.5 rounded-full bg-card px-4 py-2 text-sm font-medium shadow-e1 transition-[box-shadow,color] duration-base ease-enter hover:text-primary hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="group inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors duration-fast hover:border-input hover:text-foreground focus-ring"
                     >
                       {link.label}
                       <ArrowRight

@@ -107,7 +107,7 @@ export const MOCK_BLOG_POSTS: BlogPost[] = config.blogPosts.filter(isPublicConfi
   updated_at: new Date(Date.now() - 86400000 * i * 5).toISOString(),
 }));
 
-// --- 4. SECTIONS (For Home, About, Showcase, Projects, Contact) ---
+// --- 4. SECTIONS (For Home, About, Work, Contact) ---
 
 // Helper to build section items
 function buildItems(
@@ -161,16 +161,8 @@ export const MOCK_SECTIONS: PortfolioSection[] = [
       })),
     ),
   },
-  {
-    id: "home-work",
-    title: "Selected work",
-    type: "list_items",
-    page_path: "/",
-    layout_style: "case-study",
-    is_visible: true,
-    display_order: 2,
-    portfolio_items: buildItems("home-work", config.showcase),
-  },
+  // No "Selected work" here: the home page draws it from /work (FeaturedWork),
+  // and a second copy repeated the same projects twice on one page (X12).
   {
     id: "home-process",
     title: "How I work",
@@ -219,12 +211,12 @@ export const MOCK_SECTIONS: PortfolioSection[] = [
     portfolio_items: buildItems("home-tech", config.techStack),
   },
 
-  // --- SHOWCASE PAGE (/showcase) ---
+  // --- WORK PAGE (/work): case studies first, then projects ---
   {
     id: "showcase-deep",
     title: "Selected work",
     type: "list_items",
-    page_path: "/showcase",
+    page_path: "/work",
     // The case-study layout, as on the home page: problem, approach, outcome
     // — not a two-column grid of equal tiles.
     layout_style: "case-study",
@@ -285,15 +277,14 @@ export const MOCK_SECTIONS: PortfolioSection[] = [
     portfolio_items: buildItems("about-tools", config.tools),
   },
 
-  // --- PROJECTS PAGE (/projects) ---
   {
     id: "projects-featured",
     title: "Featured Projects",
     type: "list_items",
-    page_path: "/projects",
+    page_path: "/work",
     layout_style: "feature-alternating",
     is_visible: true,
-    display_order: 1,
+    display_order: 2,
     portfolio_items: buildItems(
       "projects-featured",
       config.projects.map((p) => ({

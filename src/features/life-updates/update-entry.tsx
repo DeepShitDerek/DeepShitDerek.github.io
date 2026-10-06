@@ -11,6 +11,7 @@ import {
   relativeDate,
   updateHeadline,
 } from "@/lib/life-update";
+import { CategoryIcon } from "@/features/updates/category-icon";
 
 export interface UpdateEntryProps {
   update: LifeUpdate;
@@ -23,9 +24,9 @@ export interface UpdateEntryProps {
 /**
  * One update in the admin stream.
  *
- * A published update is a raised surface, as it will be on the site; a draft
- * sits flat on a tinted fill and says "Draft" — not yet out, and visibly so,
- * without dimming the text the owner is about to edit.
+ * A published update sits on a bordered surface; a draft has a dashed border
+ * on a tinted fill and says "Draft" — not yet out, and visibly so, without
+ * dimming the text the owner is about to edit.
  *
  * The actions are always on screen. They used to live in a menu that appeared
  * on hover, which on a phone meant they did not appear at all.
@@ -48,7 +49,7 @@ export function UpdateEntry({
       aria-label={headline.text}
       className={cn(
         "rounded-surface p-3 transition-shadow duration-base ease-enter sm:p-4",
-        draft ? "bg-secondary/50" : "bg-card shadow-e1 hover:shadow-e2",
+        draft ? "border border-dashed bg-secondary/30" : "border bg-card",
       )}
     >
       <div className="flex items-start gap-3 sm:gap-4">
@@ -56,7 +57,7 @@ export function UpdateEntry({
           type="button"
           onClick={onEdit}
           aria-label={`Edit ${headline.text}`}
-          className="flex min-w-0 flex-1 items-start gap-3 rounded-control text-left transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4"
+          className="flex min-w-0 flex-1 items-start gap-3 rounded-control text-left transition-colors hover:bg-secondary/40 focus-ring sm:gap-4"
         >
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -69,9 +70,9 @@ export function UpdateEntry({
           ) : (
             <span
               aria-hidden
-              className="flex size-14 shrink-0 items-center justify-center rounded-control bg-background/60 text-2xl sm:size-16"
+              className="flex size-14 shrink-0 items-center justify-center rounded-control bg-background/60 text-muted-foreground sm:size-16"
             >
-              {option.emoji}
+              <CategoryIcon category={option.value} className="size-6" />
             </span>
           )}
 

@@ -1,9 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarClock, Loader2, Plus, Repeat } from "lucide-react";
+import { CalendarClock, Loader2, MoreHorizontal, Plus, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/cn";
 import { getErrorMessage } from "@/lib/utils";
 import { categoryLabel } from "../domain/categories";
@@ -19,6 +25,7 @@ import {
 } from "../domain/schedule";
 import { useRecordTransactionMutation, useSkipOccurrenceMutation } from "../data/money-api";
 import { Amount } from "./amount";
+import { shortDate } from "./labels";
 import { useMoney } from "./money-context";
 import { FREQUENCY_LABEL, ScheduleSheet } from "./schedule-sheet";
 import { TransactionSheet } from "./transaction-sheet";
@@ -120,8 +127,9 @@ export function UpcomingPanel({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="space-y-6">
-      <section aria-labelledby="due-heading" className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Compact (on Overview) the page supplies the heading and its link. */}
+      <section aria-labelledby={compact ? undefined : "due-heading"} className="space-y-3">
+        <div className={cn("flex flex-wrap items-center justify-between gap-3", compact && "hidden")}>
           <h2 id="due-heading" className="font-heading text-base font-semibold">
             {queue.length ? "Due" : "Nothing due"}
           </h2>
@@ -150,7 +158,7 @@ export function UpcomingPanel({ compact = false }: { compact?: boolean }) {
                       item.status === "overdue" ? "font-semibold text-destructive" : item.status === "today" ? "font-semibold text-primary" : "text-muted-foreground",
                     )}
                   >
-                    {item.status === "today" ? "Today" : item.dueDate}
+                    {item.status === "today" ? "Today" : shortDate(item.dueDate, today)}
                     {item.status === "overdue" && <span className="block font-normal">overdue</span>}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -162,27 +170,33 @@ export function UpcomingPanel({ compact = false }: { compact?: boolean }) {
                     </span>
                   </span>
                   {account && <Amount minor={signed} currency={account.currency} tone="flow" signed className="font-semibold" />}
-                  <span className="flex gap-1">
+                  {/* One action per row: record it (or, for an estimate, enter
+                      the real amount). Adjusting first and skipping this one
+                      are rarer, so they wait under ⋯ instead of wrapping the
+                      row onto a second line on a phone. */}
+                  <span className="flex items-center gap-1">
                     {item.schedule.isEstimate ? (
-                      <Button size="sm" onClick={() => recordAdjusted(item)}>Enter amount</Button>
+                      <Button size="sm" variant="outline" onClick={() => recordAdjusted(item)}>Enter amount</Button>
                     ) : (
-                      <>
-                        <Button size="sm" onClick={() => recordNow(item)} disabled={busy !== null} aria-label={`Record ${item.schedule.name} due ${item.dueDate}`}>
-                          {busy === key ? <Loader2 className="size-4 animate-spin" /> : "Record"}
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => recordAdjusted(item)} aria-label={`Adjust and record ${item.schedule.name}`}>
-                          Adjust
-                        </Button>
-                      </>
+                      <Button size="sm" variant="outline" onClick={() => recordNow(item)} disabled={busy !== null} aria-label={`Record ${item.schedule.name} due ${item.dueDate}`}>
+                        {busy === key ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Record"}
+                      </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => skip({ scheduleId: item.schedule.id, dueDate: item.dueDate, skip: true })}
-                      aria-label={`Skip ${item.schedule.name} due ${item.dueDate}`}
-                    >
-                      Skip
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost" className="size-8" aria-label={`More actions: ${item.schedule.name} due ${item.dueDate}`}>
+                          <MoreHorizontal aria-hidden className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {!item.schedule.isEstimate && (
+                          <DropdownMenuItem onSelect={() => recordAdjusted(item)}>Adjust and record</DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onSelect={() => skip({ scheduleId: item.schedule.id, dueDate: item.dueDate, skip: true })}>
+                          Skip this one
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </span>
                 </li>
               );

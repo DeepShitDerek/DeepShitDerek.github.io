@@ -17,7 +17,9 @@ export function PostBody({ content }: { content: string }) {
     // point: overriding it would set the body to the full column width, which
     // is well past a readable line length in the table-of-contents layout.
     <RichMarkdown
-      className="mx-auto leading-relaxed [&>*:first-child]:mt-0"
+      // Left-aligned in its column: centring it there was one of the post's
+      // three left edges (P1-13).
+      className="post-prose [&>*:first-child]:mt-0"
       components={{
         a: ({ href, children, ...props }) => (
           <a href={href} target="_blank" rel="noopener noreferrer" {...props}>

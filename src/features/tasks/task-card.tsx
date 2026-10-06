@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CalendarDays,
   CircleSlash,
   Clock,
   ListChecks,
@@ -28,7 +27,7 @@ import {
   type TaskStatus,
 } from "./task-meta";
 import { describeRecurrence } from "./task-recurrence";
-import { isOverdue } from "./task-filters";
+import { TaskDue } from "./task-due";
 
 /** "1h 30m" — minutes are how they are stored, not how they are read. */
 export function formatMinutes(minutes: number | null | undefined): string {
@@ -40,26 +39,7 @@ export function formatMinutes(minutes: number | null | undefined): string {
   return `${h}h ${m}m`;
 }
 
-/** `2026-06-15` → `15 Jun`, without constructing a zone-shifted Date. */
-export function formatDueDate(iso: string): string {
-  const [, month, day] = iso.split("-").map(Number);
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  if (!month || !day) return iso;
-  return `${day} ${months[month - 1]}`;
-}
+export { formatDueDate } from "./task-due";
 
 export interface TaskCardProps {
   task: Task;
@@ -105,7 +85,6 @@ export function TaskCard({
   className,
 }: TaskCardProps) {
   const priority = (task.priority ?? "medium") as TaskPriority;
-  const overdue = isOverdue(task);
   const subtasks = task.sub_tasks ?? [];
   const doneSubtasks = subtasks.filter((s) => s.is_completed).length;
   const repeat = describeRecurrence(task.recurrence, task.recurrence_interval);
@@ -129,7 +108,7 @@ export function TaskCard({
       tabIndex={0}
       aria-label={task.title}
       className={cn(
-        "cursor-pointer rounded-surface border-l-2 bg-card p-3 text-left shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "cursor-pointer rounded-surface border-l-2 bg-card p-3 text-left shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 focus-ring",
         TASK_PRIORITY_META[priority].edge,
         task.status === "done" && "opacity-60",
         className,
@@ -138,7 +117,7 @@ export function TaskCard({
       {blockers.length > 0 && (
         // Derived, never stored: the moment the last blocker is marked done
         // this disappears with no second write anywhere.
-        <p className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-destructive">
+        <p className="mb-1.5 flex items-center gap-1 text-micro font-medium text-destructive">
           <CircleSlash aria-hidden className="size-3 shrink-0" />
           Blocked by{" "}
           {blockers.length === 1
@@ -198,7 +177,7 @@ export function TaskCard({
       </div>
 
       {project && (
-        <span className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className="mt-1.5 inline-flex items-center gap-1.5 text-micro text-muted-foreground">
           <span
             aria-hidden
             className="size-2 shrink-0 rounded-full"
@@ -208,19 +187,8 @@ export function TaskCard({
         </span>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-        {task.due_date && (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1",
-              overdue && "font-medium text-destructive",
-            )}
-          >
-            <CalendarDays aria-hidden className="size-3" />
-            {formatDueDate(task.due_date)}
-            {overdue && <span className="sr-only">(overdue)</span>}
-          </span>
-        )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-muted-foreground">
+        <TaskDue task={task} />
 
         {subtasks.length > 0 && (
           <span className="inline-flex items-center gap-1">
@@ -253,7 +221,7 @@ export function TaskCard({
           {task.tags.slice(0, 3).map((tag) => (
             <li
               key={tag}
-              className="rounded-control bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground"
+              className="rounded-control bg-secondary px-1.5 py-0.5 text-micro text-muted-foreground"
             >
               {tag}
             </li>

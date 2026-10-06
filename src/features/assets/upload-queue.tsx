@@ -39,7 +39,7 @@ export function UploadQueue({
     <section
       aria-label="Uploads"
       aria-live="polite"
-      className="mb-4 overflow-hidden rounded-surface bg-card shadow-e1"
+      className="mb-4 overflow-hidden rounded-surface border bg-card"
     >
       <header className="flex items-center gap-3 px-4 pb-2 pt-3">
         <h3 className="flex-1 text-sm font-medium">
@@ -90,7 +90,7 @@ export function UploadQueue({
               <p className="truncate text-sm">{task.name}</p>
               <p
                 className={cn(
-                  "text-[11px] tabular-nums",
+                  "text-micro tabular-nums",
                   task.stage === "failed"
                     ? "text-destructive"
                     : "text-muted-foreground",
@@ -130,8 +130,8 @@ function StageIcon({ stage }: { stage: UploadTask["stage"] }) {
     );
   }
   if (stage === "done") {
-    // `chart-2` is the success accent, so it moves with all 52 presets.
-    return <Check className="size-4 shrink-0 text-chart-2" aria-label="Done" />;
+    // The success token: every preset sets it, check:themes holds it to 4.5:1.
+    return <Check className="size-4 shrink-0 text-success" aria-label="Done" />;
   }
   return (
     <Loader2

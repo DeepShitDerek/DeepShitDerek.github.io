@@ -64,7 +64,7 @@ export function FreeTimeBar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface bg-card px-4 py-2.5 shadow-e1",
+        "flex flex-wrap items-center gap-x-4 gap-y-2 rounded-surface border bg-card px-4 py-2.5",
         className,
       )}
     >
@@ -92,9 +92,9 @@ export function FreeTimeBar({
             // Past about three-quarters booked, the remaining gaps are mostly
             // too fragmented to do anything with.
             bookedShare > 0.75
-              ? "bg-chart-3"
+              ? "bg-warning"
               : bookedShare > 0.5
-                ? "bg-chart-2"
+                ? "bg-success"
                 : "bg-primary",
           )}
           style={{ width: `${Math.min(bookedShare * 100, 100)}%` }}

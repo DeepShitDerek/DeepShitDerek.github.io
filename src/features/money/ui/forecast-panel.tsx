@@ -141,7 +141,7 @@ export function ForecastPanel() {
         <p role="alert" className="text-sm font-medium text-destructive">Below zero on {result.firstBelowZero}. Move money in, or push a bill back.</p>
       )}
       {!result.firstBelowZero && result.firstBelowCushion && (
-        <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">Below your cushion from {result.firstBelowCushion}.</p>
+        <p role="alert" className="text-sm text-warning">Below your cushion from {result.firstBelowCushion}.</p>
       )}
 
       <section aria-labelledby="fc-chart" className="rounded-surface border bg-card p-5">

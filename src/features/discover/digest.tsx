@@ -7,9 +7,10 @@ import {
   compactNumber,
   fetchJson,
   minimumScore,
-  mostReadUrl,
+  mostReadSource,
   newReposUrl,
   parseMostRead,
+  parseTopArticles,
   parseRepos,
   parseStories,
   topStoriesUrl,
@@ -18,6 +19,7 @@ import {
   type Story,
   type Window,
 } from "./sources";
+import { Panel } from "./panel";
 
 /**
  * The digest panels: what happened, in the window you asked about.
@@ -28,50 +30,6 @@ import {
  * dashboard's batch had to learn the hard way.
  */
 
-/** Shared shell, so three panels cannot drift into three layouts. */
-function Panel({
-  title,
-  note,
-  state,
-  empty,
-  children,
-}: {
-  title: string;
-  note?: string;
-  state: "loading" | "done" | "failed";
-  empty: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="overflow-hidden rounded-surface bg-card shadow-e1">
-      <header className="px-5 pb-2 pt-4">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-        {note && <p className="text-xs text-muted-foreground">{note}</p>}
-      </header>
-
-      {state === "loading" && (
-        <p className="px-5 pb-4 text-sm text-muted-foreground">Reading…</p>
-      )}
-
-      {state === "failed" && (
-        <p className="px-5 pb-4 text-sm text-muted-foreground">
-          {/* Named rather than "an error occurred": knowing which service is
-              quiet is the difference between waiting and investigating. */}
-          {title} did not answer. The service may be down, or the request may
-          have been blocked.
-        </p>
-      )}
-
-      {state === "done" && empty && (
-        <p className="px-5 pb-4 text-sm text-muted-foreground">
-          Nothing cleared the bar in this window.
-        </p>
-      )}
-
-      {children}
-    </section>
-  );
-}
 
 function Row({
   href,
@@ -153,6 +111,7 @@ export function TopStories({ window }: { window: Window }) {
 
   return (
     <Panel
+      flush
       title="Most discussed"
       note={`Hacker News, above ${minimumScore(window)} points`}
       state={state}
@@ -175,36 +134,40 @@ export function TopStories({ window }: { window: Window }) {
   );
 }
 
-export function MostRead() {
+export function MostRead({ window }: { window: Window }) {
   const [articles, setArticles] = useState<ReadArticle[]>([]);
   const [state, setState] = useState<"loading" | "done" | "failed">("loading");
+  const source = mostReadSource(window);
 
+  // Follows the window: yesterday's feed, the last seven days summed, or
+  // the last full month. It ignored the window, which made the control look
+  // broken: switching to a week left the whole right column unchanged.
   useEffect(() => {
     let cancelled = false;
+    setState("loading");
 
     void (async () => {
-      const body = await fetchJson(mostReadUrl());
+      const { urls } = mostReadSource(window);
+      const bodies = await Promise.all(urls.map((url) => fetchJson(url)));
       if (cancelled) return;
-      if (body === null) {
+      if (bodies.every((body) => body === null)) {
         setState("failed");
         return;
       }
-      setArticles(parseMostRead(body, 6));
+      setArticles(window === "day" ? parseMostRead(bodies[0], 6) : parseTopArticles(bodies, 6));
       setState("done");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [window]);
 
   return (
     <Panel
+      flush
       title="What the world looked up"
-      /* Stated, not implied: this feed is published per day, so it does not
-         follow the window control. Silently ignoring the selection would be
-         the worse choice. */
-      note="Wikipedia, yesterday — this one is always a single day"
+      note={source.label}
       state={state}
       empty={articles.length === 0}
     >
@@ -249,6 +212,7 @@ export function NewRepos({ window }: { window: Window }) {
 
   return (
     <Panel
+      flush
       title="New in software"
       note="Repositories created in this window, by stars"
       state={state}

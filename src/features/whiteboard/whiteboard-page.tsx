@@ -2,7 +2,8 @@
 
 import { useUrlParam } from "@/hooks/use-url-param";
 import { useMemo, useState } from "react";
-import { Plus, Presentation } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Pin, PinOff, Plus, Presentation, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Whiteboard } from "@/types";
 import {
@@ -12,70 +13,97 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  DocumentCard,
   EmptyState,
-  ManagerWrapper,
-  PageHeader,
-  LoadingState,
   LoadError,
+  LoadingState,
+  ManagerWrapper,
+  NewDocumentCard,
+  PageHeader,
 } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import { getErrorMessage } from "@/lib/utils";
-import { BoardCard } from "./board-card";
 import { BoardEditor } from "./board-editor";
 
+/** One empty list for every render while the query has none (see Navigation). */
+const NO_BOARDS: Whiteboard[] = [];
+
+/**
+ * The thumbnail goes through an `<img>` data URL rather than injected markup:
+ * an SVG in an `<img>` cannot run script or fetch anything, so a stored
+ * preview stays inert whatever produced it.
+ */
+function previewSrc(svg: string): string {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+export function BoardThumbnail({ board }: { board: Whiteboard }) {
+  return board.preview ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={previewSrc(board.preview)}
+      alt=""
+      className="size-full object-contain"
+    />
+  ) : (
+    <span className="flex size-full items-center justify-center">
+      <Presentation className="size-6 text-muted-foreground" aria-hidden />
+    </span>
+  );
+}
+
 export default function WhiteboardPage() {
-  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState("");
   // The open board lives in the URL, "new" for one not yet saved (ADM-004).
   const [boardParam, setBoardParam] = useUrlParam("board", "replace");
-  const editorOpen = boardParam !== null;
   const editingId = boardParam === "new" ? null : boardParam;
 
-  const { data: boards = [], isLoading, error: loadError, refetch } = useGetWhiteboardsQuery();
+  const {
+    data: allBoards = NO_BOARDS,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetWhiteboardsQuery();
   const [saveWhiteboard] = useSaveWhiteboardMutation();
   const [deleteWhiteboard] = useDeleteWhiteboardMutation();
 
-  // The query already sorts pinned-first, newest-first; this only filters.
-  const filteredBoards = useMemo(() => {
-    if (!searchTerm) return boards;
-    const term = searchTerm.toLowerCase();
-    return boards.filter(
+  // Delete offers Undo instead of asking first (P1-10).
+  const { pending: deleting, remove: removeBoard } =
+    useUndoableDelete<Whiteboard>(async (board) => {
+      try {
+        await deleteWhiteboard(board.id).unwrap();
+      } catch (err: unknown) {
+        toast.error("Couldn't delete the board", {
+          description: getErrorMessage(err),
+        });
+      }
+    });
+
+  // The query already sorts pinned first, newest first; this only filters.
+  const boards = useMemo(() => {
+    const live = deleting.size
+      ? allBoards.filter((b) => !deleting.has(b.id))
+      : allBoards;
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return live;
+    return live.filter(
       (board) =>
         board.title?.toLowerCase().includes(term) ||
         board.tags?.some((tag) => tag.toLowerCase().includes(term)),
     );
-  }, [boards, searchTerm]);
+  }, [allBoards, deleting, searchTerm]);
 
-  const handleCreate = () => {
-    setBoardParam("new");
-  };
-
-  const handleOpen = (board: Whiteboard) => {
-    setBoardParam(board.id);
-  };
-
-  const handleDelete = async (board: Whiteboard) => {
-    const ok = await confirm({
-      title: "Delete whiteboard?",
-      description: "This action cannot be undone.",
-      variant: "destructive",
-    });
-    if (!ok) return;
-    try {
-      await deleteWhiteboard(board.id).unwrap();
-      toast.success("Whiteboard deleted.");
-    } catch (err: unknown) {
-      toast.error("Failed to delete whiteboard", {
-        description: getErrorMessage(err),
-      });
-    }
-  };
+  const handleCreate = () => setBoardParam("new");
 
   const handleRename = async (board: Whiteboard, title: string) => {
     try {
       await saveWhiteboard({ id: board.id, title }).unwrap();
     } catch (err: unknown) {
-      toast.error("Failed to rename whiteboard", {
+      toast.error("Couldn't rename the board", {
         description: getErrorMessage(err),
       });
     }
@@ -88,79 +116,135 @@ export default function WhiteboardPage() {
         is_pinned: !board.is_pinned,
       }).unwrap();
     } catch (err: unknown) {
-      toast.error("Failed to update pin status", {
+      toast.error("Couldn't change the pin", {
         description: getErrorMessage(err),
       });
     }
   };
 
-  if (loadError && !boards.length) {
+  const header = (
+    <PageHeader
+      title="Whiteboard"
+      description="Sketch, diagram, and think out loud."
+      actions={
+        <Button onClick={handleCreate}>
+          <Plus className="mr-2 size-4" aria-hidden /> New board
+        </Button>
+      }
+      searchValue={searchTerm}
+      onSearch={setSearchTerm}
+      searchPlaceholder="Search boards…"
+    />
+  );
+
+  const editor = boardParam !== null && (
+    // Mounted only while open, so the Excalidraw chunk is never fetched by
+    // someone just browsing the gallery. Keyed by what was opened: a blank
+    // board's id arriving in the URL must not remount it.
+    <BoardEditor
+      key={boardParam === "new" ? "new" : "open"}
+      boardId={editingId}
+      onClose={() => setBoardParam(null)}
+      onCreated={(id) => setBoardParam(id)}
+    />
+  );
+
+  if (loadError && !allBoards.length) {
     return (
       <ManagerWrapper>
-        <LoadError what="your whiteboards" error={loadError} onRetry={refetch} />
+        {header}
+        <LoadError
+          what="your whiteboards"
+          error={loadError}
+          onRetry={refetch}
+        />
       </ManagerWrapper>
     );
   }
 
-  if (isLoading && !boards.length) {
-    return <LoadingState />;
+  if (isLoading && !allBoards.length) {
+    return (
+      <ManagerWrapper>
+        {header}
+        <LoadingState label="Loading your boards" />
+        {editor}
+      </ManagerWrapper>
+    );
   }
 
   return (
     <ManagerWrapper>
-      <PageHeader
-        title="Whiteboard"
-        description="Sketch, diagram, and think out loud"
-        actions={
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 size-4" /> New Board
-          </Button>
-        }
-        searchValue={searchTerm}
-        onSearch={setSearchTerm}
-        searchPlaceholder="Search boards..."
-      />
+      {header}
 
-      {filteredBoards.length === 0 ? (
+      {boards.length === 0 && (searchTerm || allBoards.length > 0) ? (
         <EmptyState
           icon={Presentation}
-          title="No whiteboards found"
-          description={
-            searchTerm
-              ? "Try a different search."
-              : "Create your first board to start sketching."
-          }
-          action={
-            searchTerm
-              ? undefined
-              : { label: "New Board", onClick: handleCreate, icon: Plus }
-          }
+          title="No board matches"
+          description="Try a different search."
           variant="bordered"
         />
+      ) : allBoards.length === 0 ? (
+        <EmptyState
+          icon={Presentation}
+          variant="card"
+          title="No boards yet"
+          description="A blank canvas for sketches, diagrams and handwriting. It saves as you draw."
+          action={{ label: "New board", onClick: handleCreate, icon: Plus }}
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredBoards.map((board) => (
-            <BoardCard
-              key={board.id}
-              board={board}
-              onOpen={() => handleOpen(board)}
-              onDelete={() => handleDelete(board)}
-              onTogglePin={() => handleTogglePin(board)}
-              onRename={(title) => handleRename(board, title)}
-            />
+        <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {!searchTerm && (
+            <li>
+              <NewDocumentCard label="New board" onClick={handleCreate} />
+            </li>
+          )}
+          {boards.map((board) => (
+            <li key={board.id}>
+              <DocumentCard
+                title={board.title}
+                untitled="Untitled board"
+                thumbnail={<BoardThumbnail board={board} />}
+                meta={
+                  board.updated_at
+                    ? `Edited ${formatDistanceToNow(new Date(board.updated_at), { addSuffix: true })}`
+                    : undefined
+                }
+                pinned={!!board.is_pinned}
+                onOpen={() => setBoardParam(board.id)}
+                onRename={(title) => void handleRename(board, title)}
+                menuItems={
+                  <>
+                    <DropdownMenuItem
+                      onSelect={() => void handleTogglePin(board)}
+                    >
+                      {board.is_pinned ? (
+                        <PinOff className="mr-2 size-4" aria-hidden />
+                      ) : (
+                        <Pin className="mr-2 size-4" aria-hidden />
+                      )}
+                      {board.is_pinned ? "Unpin" : "Pin"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={() =>
+                        removeBoard(
+                          board,
+                          `Deleted "${board.title || "Untitled board"}"`,
+                        )
+                      }
+                    >
+                      <Trash2 className="mr-2 size-4" aria-hidden /> Delete
+                    </DropdownMenuItem>
+                  </>
+                }
+              />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      {/* Mounted only while open so the Excalidraw chunk is never fetched by
-          someone who is just browsing the gallery. */}
-      {editorOpen && (
-        <BoardEditor
-          boardId={editingId}
-          open={editorOpen}
-          onClose={() => setBoardParam(null)}
-        />
-      )}
+      {editor}
     </ManagerWrapper>
   );
 }

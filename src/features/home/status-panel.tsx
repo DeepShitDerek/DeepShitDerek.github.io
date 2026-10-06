@@ -282,7 +282,7 @@ function StackPanel({ panel }: { panel: StatusPanelData }) {
               : project
           }
           className={cn(
-            "group/front relative block rounded-surface bg-card p-6 shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "group/front relative block rounded-surface bg-card p-6 shadow-e2 focus-ring",
             items.length > 0 && overlap,
           )}
           style={{ zIndex: 10 }}

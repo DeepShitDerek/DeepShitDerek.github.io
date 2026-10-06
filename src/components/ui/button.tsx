@@ -4,37 +4,44 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /**
- * v3 controls.
+ * Controls (design-system.md §3.11, north star §3.4).
  *
- * Changes from v2: the control radius token instead of `rounded-lg` (so shape
- * stays distinct from surfaces), the shared 220ms enter curve instead of a
- * 300ms all-property transition, and elevation rather than a border to lift
- * the outline variant off the ground.
+ * One shape everywhere: the control radius, set per theme (6px in Field
+ * Notes). Pills are for chips and status only (X6).
+ *
+ * - **primary** (default) is filled and changes fill on hover. It does not
+ *   lift: a button that moves under the pointer is decoration (concept A),
+ *   and one filled primary per viewport is the rule (X7).
+ * - **outline** is the secondary: a 1px `--input` edge, which every preset
+ *   holds at 3:1 against its ground (WCAG 1.4.11, gated by check:themes).
+ * - **destructive** is for confirm flows that cannot be undone.
+ *
+ * Heights are 32 / 40 / 48px, and at least 44px under a coarse pointer
+ * whatever the size, so nothing is a small target on a phone.
  *
  * `overflow-hidden` is dropped — it clipped focus rings on buttons that sit
  * flush against a container edge.
  */
 const buttonVariants = cva(
-  "relative inline-flex items-center justify-center whitespace-nowrap rounded-control text-sm font-medium ring-offset-background transition-[background-color,box-shadow,transform,color] duration-base ease-enter focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none",
+  "relative inline-flex items-center justify-center whitespace-nowrap rounded-control text-sm font-semibold transition-[background-color,border-color,color] duration-fast ease-enter focus-ring disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none",
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground shadow-e1 hover:shadow-e2 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-e1 hover:bg-destructive/90 hover:shadow-e2",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "bg-card text-foreground shadow-e1 hover:-translate-y-0.5 hover:text-primary hover:shadow-e2 motion-reduce:hover:translate-y-0",
+          "border border-input bg-transparent text-foreground hover:border-foreground/60 hover:bg-secondary",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/70",
         ghost: "hover:bg-secondary hover:text-secondary-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 px-3",
-        lg: "h-12 px-8",
-        icon: "h-10 w-10",
+        default: "h-10 px-4 [@media(pointer:coarse)]:min-h-11",
+        sm: "h-8 px-3 [@media(pointer:coarse)]:min-h-11",
+        lg: "h-12 px-5 text-base",
+        icon: "size-10 [@media(pointer:coarse)]:size-11",
       },
     },
     defaultVariants: {

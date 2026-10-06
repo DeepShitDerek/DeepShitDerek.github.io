@@ -78,18 +78,18 @@ function ContrastReport({ colors }: { colors: Record<string, string> }) {
   const unreadable = results.some((result) => result.ratio === null);
 
   return (
-    <div className="rounded-surface bg-card p-4 shadow-e1">
+    <div className="rounded-surface border bg-card p-4">
       <div className="mb-3 flex items-center gap-2">
         {failures.length === 0 && !unreadable ? (
           <>
-            <ShieldCheck className="size-4 text-chart-2" />
+            <ShieldCheck className="size-4 text-success" aria-hidden />
             <p className="text-sm font-medium">
               Passes WCAG AA at {AA_NORMAL_TEXT}:1
             </p>
           </>
         ) : (
           <>
-            <AlertTriangle className="size-4 text-chart-3" />
+            <AlertTriangle className="size-4 text-warning" aria-hidden />
             <p className="text-sm font-medium">
               {unreadable
                 ? "Enter six valid hex colours to check contrast"
@@ -115,8 +115,8 @@ function ContrastReport({ colors }: { colors: Record<string, string> }) {
                   result.ratio === null
                     ? "text-muted-foreground"
                     : passes
-                      ? "text-chart-2"
-                      : "text-chart-3",
+                      ? "text-success"
+                      : "text-warning",
                 )}
               >
                 {result.ratio === null ? "—" : `${result.ratio.toFixed(2)}:1`}
@@ -170,10 +170,10 @@ export function ThemeSection({ form }: { form: SettingsForm }) {
                         aria-checked={active}
                         onClick={() => field.onChange(preset.value)}
                         className={cn(
-                          "group overflow-hidden rounded-surface bg-card text-left transition-shadow duration-base ease-enter",
+                          "group overflow-hidden rounded-surface border bg-card text-left transition-colors focus-ring",
                           active
-                            ? "shadow-e3 ring-2 ring-primary"
-                            : "shadow-e1 hover:shadow-e2",
+                            ? "border-primary ring-1 ring-primary"
+                            : "hover:border-input",
                         )}
                       >
                         <span className="relative flex h-10 w-full">
@@ -244,7 +244,7 @@ export function ThemeSection({ form }: { form: SettingsForm }) {
           control={form.control}
           name="profile_data.default_theme"
           render={({ field }) => (
-            <FormItem className="flex items-center justify-between gap-6 rounded-surface bg-card p-3.5 shadow-e1">
+            <FormItem className="flex items-center justify-between gap-6 rounded-surface border bg-card p-3.5">
               <div className="space-y-0.5">
                 <FormLabel className="cursor-pointer">
                   Use these colours

@@ -65,7 +65,7 @@ export function HabitStanding({
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <p className="flex items-center gap-2 text-lg font-semibold">
           {standing.perfect && (
-            <PartyPopper className="size-5 text-chart-2" aria-hidden />
+            <PartyPopper className="size-5 text-success" aria-hidden />
           )}
           {sentence}
         </p>
@@ -86,7 +86,7 @@ export function HabitStanding({
       {atRisk.length > 0 && (
         <div className="mt-4">
           <h3 className="t-eyebrow mb-2 flex items-center gap-1.5">
-            <Flame className="size-3.5 text-chart-3" aria-hidden />
+            <Flame className="size-3.5 text-warning" aria-hidden />
             On the line today
           </h3>
           <ul className="flex flex-wrap gap-2">

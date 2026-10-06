@@ -4,32 +4,49 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useGetSectionsByPathQuery } from "@/store/api/publicApi";
 import { Band, BandHeading } from "@/components/layout/band";
-import { Stagger, StaggerItem } from "@/components/layout/motion";
-import {
-  CARD,
-  CARD_INTERACTIVE,
-  ItemImage,
-  ItemTags,
-  sortedItems,
-} from "@/features/sections/shared";
+import { sortedItems } from "@/features/sections/shared";
 import { plainPreview } from "@/lib/text-preview";
-import { cn } from "@/lib/cn";
 import { useBuiltCaseStudySlugs } from "@/store/public-preload";
 import { caseStudyHref } from "@/features/work/case-study-href";
+import { SectionLink } from "./section-link";
 
 const SHOWN = 3;
+const STACK_SHOWN = 4;
+
+/** "RAG · PGVector · Python +2": the stack as one line of meta. */
+export function stackLine(tags?: string[] | null): string {
+  const clean = Array.from(
+    new Set((tags ?? []).map((t) => t?.trim()).filter(Boolean)),
+  );
+  const shown = clean.slice(0, STACK_SHOWN).join(" · ");
+  const more = clean.length - STACK_SHOWN;
+  return more > 0 ? `${shown} +${more}` : shown;
+}
+
+/** The when and where of a row, for the margin. */
+function railText(subtitle?: string | null, from?: string | null, to?: string | null) {
+  const start = from?.trim();
+  const end = to?.trim();
+  const when = start ? `${start} — ${end || "Present"}` : end ? `Until ${end}` : "";
+  return [subtitle?.trim(), when].filter(Boolean);
+}
 
 /**
- * The first three pieces of work, as a teaser for /work (V2-041).
+ * The first three pieces of work, as ruled rows (V2-041, north star §3.4).
  *
- * Reads the /showcase sections — where the case studies already live in the
- * CMS — so the home page shows proof without the owner curating a second copy
- * of it. A card goes to its case study when one is written (V2-042), and to
- * /work otherwise. Renders nothing
- * when there is no work to show, rather than an empty band.
+ * Rows, not cards: a row reads top to bottom like a list of results, and
+ * there is no image box to fill — the old cards drew a letter tile when a
+ * project had no picture, the most unfinished-looking thing on the page (X1).
+ * The margin carries where and when; the row is one link, to the case study
+ * when one is written (V2-042) and to /work otherwise, with no second
+ * "View project" button inside it (X7).
+ *
+ * Reads the /work sections, case studies first as ordered in Content, so the
+ * home page shows proof without the owner curating a second copy. Renders
+ * nothing when there is no work to show, rather than an empty band.
  */
 export function FeaturedWork() {
-  const { data: sections } = useGetSectionsByPathQuery("/showcase");
+  const { data: sections } = useGetSectionsByPathQuery("/work");
   const built = useBuiltCaseStudySlugs();
   const items = (sections ?? [])
     .flatMap((section) => sortedItems(section.portfolio_items))
@@ -43,60 +60,57 @@ export function FeaturedWork() {
         id="featured-work-heading"
         eyebrow="Selected work"
         title="Systems that shipped"
-        actions={
-          <Link
-            href="/work/"
-            className="group inline-flex items-center gap-1.5 rounded-full text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            All work
-            <ArrowRight
-              aria-hidden
-              className="size-4 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
-            />
-          </Link>
-        }
+        actions={<SectionLink href="/work/">All work</SectionLink>}
       />
-      <Stagger as="ul" className="mt-10 grid gap-6 md:grid-cols-3">
-        {items.map((item) => (
-          <StaggerItem as="li" key={item.id} className="min-w-0">
-            <Link
-              href={
-                item.has_case_study && item.slug
-                  ? caseStudyHref(item.slug, built)
-                  : "/work/"
-              }
-              className={cn(
-                CARD,
-                CARD_INTERACTIVE,
-                "group flex h-full flex-col overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              )}
-            >
-              <ItemImage
-                src={item.image_url}
-                alt=""
-                fallbackLabel={item.title}
-                className="aspect-[16/10] w-full object-cover"
-              />
-              <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
-                <h3 className="font-heading text-lg font-semibold leading-snug [overflow-wrap:anywhere] transition-colors group-hover:text-primary">
-                  {item.title}
-                </h3>
-                {item.subtitle && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {item.subtitle}
+      <ul className="mt-8 border-b border-border">
+        {items.map((item) => {
+          const caseStudy = Boolean(item.has_case_study && item.slug);
+          const rail = railText(item.subtitle, item.date_from, item.date_to);
+          const stack = stackLine(item.tags);
+          return (
+            <li key={item.id} className="border-t border-border">
+              <Link
+                href={caseStudy ? caseStudyHref(item.slug!, built) : "/work/"}
+                className="group grid gap-x-8 gap-y-2 rounded-control py-6 focus-ring lg:grid-cols-[12rem_minmax(0,1fr)_auto]"
+              >
+                {rail.length > 0 ? (
+                  <p className="font-mono text-micro leading-relaxed text-muted-foreground lg:pt-1.5">
+                    {rail.map((line, index) => (
+                      <span key={index} className="mr-3 inline-block lg:mr-0 lg:block">
+                        {line}
+                      </span>
+                    ))}
                   </p>
+                ) : (
+                  <span aria-hidden className="hidden lg:block" />
                 )}
-                {item.description && (
-                  <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
-                    {plainPreview(item.description)}
-                  </p>
-                )}
-                <ItemTags tags={item.tags} max={3} className="mt-auto pt-5" />
-              </div>
-            </Link>
-          </StaggerItem>
-        ))}
-      </Stagger>
+                <div className="min-w-0">
+                  <h3 className="t-heading underline-offset-4 decoration-primary decoration-2 [overflow-wrap:anywhere] group-hover:underline">
+                    {item.title}
+                  </h3>
+                  {item.description && (
+                    <p className="mt-2 line-clamp-2 max-w-prose text-base leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+                      {plainPreview(item.description)}
+                    </p>
+                  )}
+                  {stack && (
+                    <p className="mt-3 font-mono text-micro text-muted-foreground">
+                      {stack}
+                    </p>
+                  )}
+                </div>
+                <span className="hidden items-start gap-1.5 pt-1.5 text-sm font-semibold text-primary lg:flex">
+                  {caseStudy ? "Read the case study" : "See it on Work"}
+                  <ArrowRight
+                    aria-hidden
+                    className="mt-0.5 size-4 transition-transform duration-fast group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  />
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </Band>
   );
 }

@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Menu, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import type { SiteContent } from "@/types";
 import {
   useGetNavLinksQuery,
@@ -12,7 +11,7 @@ import {
 } from "@/store/api/publicApi";
 import { usePublicSession } from "@/hooks/use-public-session";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EASE } from "@/components/layout/motion";
+import { SchemeToggle } from "./scheme-toggle";
 import { cn } from "@/lib/cn";
 import { splitNav } from "./nav-links";
 
@@ -41,25 +40,25 @@ function useScrolled(threshold: number): boolean {
   return scrolled;
 }
 
-const FOCUS =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+/** Up to this many links share one row with the logo on a phone. */
+const ONE_ROW_LINKS = 3;
 
 /**
- * The site header — a floating pill that sits *on* the page.
+ * The site header: a plain bar, not a floating pill.
  *
- * Three behaviours carry it:
- *
- *  - **It earns its weight on scroll.** At the top of the page it is a light,
- *    translucent pill; once content passes under it the fill thickens and it
- *    rises to the next elevation, because that is the moment it needs to
- *    separate from what is behind it.
- *  - **The active page is a pill that travels.** One shared element moves
- *    between links on navigation, so the change of place is *seen* rather than
- *    inferred from two colours swapping. Under reduced motion the global
- *    `MotionConfig` makes it jump instead.
- *  - **The phone menu is a floating sheet** that closes on navigation, on
- *    Escape, and from its own button — never a full-screen takeover for five
- *    links.
+ *  - **No menu.** Three or four links fit on any phone, and a link that is
+ *    visible gets used; one behind a hamburger mostly does not (S02, S03).
+ *    That also removes the old phone sheet, which let keyboard focus wander
+ *    into the page behind it (P0-3). Past three links, the links take a
+ *    second row on phones rather than hide.
+ *  - **One call to action.** "Work with me" ends the bar from `sm` up; on a
+ *    phone the hero and the closing band carry it, so the bar never holds two
+ *    filled buttons with the hero's in view (X7).
+ *  - **Solid when it matters.** It sits on the ground at the top and gains a
+ *    hairline once content scrolls under it. The fill is the page ground at
+ *    95%, so text under it can never show through at low contrast (P2-7).
+ *  - **The current page is underlined** in the primary colour, by CSS. There
+ *    is no travelling pill, and no animation library in the bar.
  *
  * `identity` overrides the fetched row. Only the settings preview passes it, so
  * the preview renders the *real* header against unsaved form values.
@@ -75,260 +74,122 @@ export default function SiteHeader({
   const identity = identityOverride ?? fetched;
   const { data: navLinks, isLoading: isNavLoading } = useGetNavLinksQuery();
   const { session } = usePublicSession();
-  const [menuOpen, setMenuOpen] = useState(false);
   const scrolled = useScrolled(8);
 
   const isLoading = (!identityOverride && isIdentityLoading) || isNavLoading;
   const logo = identity?.profile_data.logo;
+  const wordmark = `${logo?.main ?? ""}${logo?.highlight ?? ""}`;
   // The contact link is the call to action, not one more text link.
   const { items: links, cta } = splitNav(navLinks ?? []);
-
-  // Close the phone menu whenever navigation lands somewhere.
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
+  const twoRows = links.length > ONE_ROW_LINKS;
 
   return (
-    <header className="sticky top-0 z-overlay px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="mx-auto max-w-content">
-        <nav
-          aria-label="Main"
-          data-scrolled={scrolled || undefined}
+    <header
+      data-scrolled={scrolled || undefined}
+      className={cn(
+        "sticky top-0 z-overlay border-b bg-background/95 backdrop-blur-sm",
+        "transition-[border-color] duration-fast",
+        scrolled ? "border-border" : "border-transparent",
+      )}
+    >
+      <nav
+        aria-label="Main"
+        className="mx-auto flex max-w-content flex-wrap items-center gap-x-1 px-[var(--band-x)] max-[399px]:px-4 sm:gap-x-2"
+      >
+        <Link
+          href="/"
+          aria-label={wordmark ? `${wordmark}, home` : "Home"}
+          className="-ml-1.5 flex h-14 min-w-0 items-center gap-2 rounded-control px-1.5 focus-ring"
+        >
+          {isLoading || !logo ? (
+            <Skeleton className="h-5 w-24" />
+          ) : (
+            <>
+              {/* The monogram stands in where the name would crowd the links. */}
+              <span
+                aria-hidden
+                className="flex size-8 shrink-0 items-center justify-center rounded-control bg-foreground font-heading text-base font-semibold text-background min-[400px]:hidden"
+              >
+                {(logo.main || logo.highlight || "·").charAt(0).toUpperCase()}
+              </span>
+              <span
+                aria-hidden
+                className="truncate font-heading text-lg font-semibold tracking-tight max-[399px]:hidden"
+              >
+                <span className="text-foreground">{logo.main}</span>
+                <span className="text-primary">{logo.highlight}</span>
+              </span>
+            </>
+          )}
+        </Link>
+
+        <ul
           className={cn(
-            "flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-1.5 backdrop-blur-xl backdrop-saturate-150",
-            "transition-[background-color,box-shadow] duration-slow ease-enter motion-reduce:transition-none",
-            scrolled ? "bg-card/90 shadow-e2" : "bg-card/60 shadow-e1",
+            "flex items-center",
+            twoRows
+              ? "-mx-2 order-last basis-full overflow-x-auto pb-2 sm:order-none sm:mx-0 sm:ml-auto sm:basis-auto sm:pb-0"
+              : "ml-auto",
           )}
         >
-          <Link
-            href="/"
-            aria-label={logo ? `${logo.main}${logo.highlight} — home` : "Home"}
-            className={cn(
-              "group flex min-w-0 items-center gap-2.5 rounded-full py-1 pl-1 pr-3",
-              FOCUS,
-            )}
-          >
-            {isLoading || !logo ? (
-              <>
-                <Skeleton className="size-8 rounded-full" />
-                <Skeleton className="h-5 w-24" />
-              </>
-            ) : (
-              <>
-                <span
-                  aria-hidden
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary font-heading text-sm font-bold text-primary-foreground transition-transform duration-slow ease-enter group-hover:rotate-[-8deg] group-hover:scale-105 motion-reduce:transition-none"
-                >
-                  {(logo.main || logo.highlight || "·").charAt(0).toUpperCase()}
-                </span>
-                <span className="truncate font-heading text-base font-bold tracking-tight">
-                  <span className="text-foreground">{logo.main}</span>
-                  <span className="text-primary">{logo.highlight}</span>
-                </span>
-              </>
-            )}
-          </Link>
-
-          <ul className="ml-auto hidden items-center gap-0.5 lg:flex">
-            {isLoading ? (
-              <li className="flex gap-3 px-3">
-                <Skeleton className="h-4 w-14" />
-                <Skeleton className="h-4 w-14" />
-                <Skeleton className="h-4 w-14" />
-              </li>
-            ) : (
-              links.map((link) => {
-                const active = isActivePath(pathname, link.href);
-                return (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "relative isolate block rounded-full px-4 py-2 text-sm font-medium",
-                        "transition-colors duration-base ease-enter",
-                        FOCUS,
-                        // Quiet on purpose: the call to action is the only
-                        // solid primary element in the bar.
-                        active
-                          ? "text-foreground"
-                          : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
-                      )}
-                    >
-                      {active && (
-                        <motion.span
-                          layoutId="site-nav-active"
-                          data-nav-active
-                          aria-hidden
-                          className="absolute inset-0 -z-10 rounded-full bg-secondary"
-                          transition={{
-                            type: "spring",
-                            stiffness: 420,
-                            damping: 34,
-                          }}
-                        />
-                      )}
-                      {link.label}
-                    </Link>
-                  </li>
-                );
-              })
-            )}
-            {!isLoading && cta && (
-              <li className="ml-1">
-                <Link
-                  href={cta.href}
-                  aria-current={
-                    isActivePath(pathname, cta.href) ? "page" : undefined
-                  }
-                  className={cn(
-                    "group flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-e1",
-                    "transition-[box-shadow,background-color] duration-base ease-enter hover:bg-primary/90 hover:shadow-e2",
-                    FOCUS,
-                  )}
-                >
-                  {cta.label}
-                  <ArrowRight
-                    aria-hidden
-                    className="size-3.5 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
-                  />
-                </Link>
-              </li>
-            )}
-            {session && (
-              <li className="ml-1">
-                <Link
-                  href="/admin"
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors duration-base hover:bg-secondary/70",
-                    FOCUS,
-                  )}
-                >
-                  <ShieldCheck className="size-3.5" aria-hidden />
-                  Admin
-                </Link>
-              </li>
-            )}
-          </ul>
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-controls="site-menu"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            className={cn(
-              "relative ml-auto flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors duration-base hover:bg-secondary lg:hidden",
-              FOCUS,
-            )}
-          >
-            <AnimatePresence initial={false} mode="wait">
-              <motion.span
-                key={menuOpen ? "close" : "open"}
-                initial={{ opacity: 0, rotate: -45, scale: 0.8 }}
-                animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                exit={{ opacity: 0, rotate: 45, scale: 0.8 }}
-                transition={{ duration: 0.18, ease: EASE }}
-                className="flex"
-              >
-                {menuOpen ? (
-                  <X className="size-5" aria-hidden />
-                ) : (
-                  <Menu className="size-5" aria-hidden />
-                )}
-              </motion.span>
-            </AnimatePresence>
-          </button>
-        </nav>
-
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div
-              id="site-menu"
-              initial={{ opacity: 0, y: -8, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: 0.22, ease: EASE }}
-              className="mt-2 origin-top rounded-surface bg-card p-2 shadow-e3 lg:hidden"
-            >
-              <ul className="flex flex-col gap-0.5">
-                {links.map((link, index) => {
-                  const active = isActivePath(pathname, link.href);
-                  return (
-                    <motion.li
-                      key={link.href}
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{
-                        duration: 0.25,
-                        ease: EASE,
-                        delay: 0.03 * index,
-                      }}
-                    >
-                      <Link
-                        href={link.href}
-                        aria-current={active ? "page" : undefined}
-                        className={cn(
-                          "flex items-center justify-between rounded-control px-4 py-3 text-base font-medium transition-colors",
-                          FOCUS,
-                          active
-                            ? "bg-secondary text-foreground"
-                            : "text-foreground hover:bg-secondary",
-                        )}
-                      >
-                        {link.label}
-                        {active && (
-                          <span
-                            aria-hidden
-                            className="size-1.5 rounded-full bg-primary"
-                          />
-                        )}
-                      </Link>
-                    </motion.li>
-                  );
-                })}
-                {cta && (
-                  <li className="mt-1">
-                    <Link
-                      href={cta.href}
-                      className={cn(
-                        "flex items-center justify-center gap-2 rounded-control bg-primary px-4 py-3 text-base font-semibold text-primary-foreground",
-                        FOCUS,
-                      )}
-                    >
-                      {cta.label}
-                      <ArrowRight aria-hidden className="size-4" />
-                    </Link>
-                  </li>
-                )}
-                {session && (
-                  <li>
-                    <Link
-                      href="/admin"
-                      className={cn(
-                        "flex items-center gap-2 rounded-control px-4 py-3 text-base font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
-                        FOCUS,
-                      )}
-                    >
-                      <ShieldCheck className="size-4" aria-hidden />
-                      Admin
-                    </Link>
-                  </li>
-                )}
-              </ul>
-            </motion.div>
+          {isLoading ? (
+            <li className="flex gap-3 px-2">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-12" />
+            </li>
+          ) : (
+            links.map((link) => {
+              const active = isActivePath(pathname, link.href);
+              return (
+                <li key={link.href} className="shrink-0">
+                  <Link
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "block rounded-control px-2 py-2.5 text-sm font-medium underline-offset-[0.4em] transition-colors duration-fast sm:px-3",
+                      "decoration-2 focus-ring",
+                      active
+                        ? "text-foreground underline decoration-primary"
+                        : "text-muted-foreground hover:text-foreground hover:underline hover:decoration-border",
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              );
+            })
           )}
-        </AnimatePresence>
-      </div>
+        </ul>
+
+        <div className={cn("flex items-center gap-1", twoRows && "ml-auto sm:ml-0")}>
+          <SchemeToggle />
+          {session && (
+            <Link
+              href="/admin"
+              aria-label="Admin"
+              title="Admin"
+              className="inline-flex size-10 items-center justify-center rounded-control text-muted-foreground transition-colors duration-fast hover:bg-secondary hover:text-foreground focus-ring sm:w-auto sm:gap-1.5 sm:px-3 sm:text-sm sm:font-medium [@media(pointer:coarse)]:size-11"
+            >
+              <ShieldCheck className="size-4" aria-hidden />
+              <span aria-hidden className="hidden sm:inline">
+                Admin
+              </span>
+            </Link>
+          )}
+          {!isLoading && cta && (
+            <Link
+              href={cta.href}
+              aria-current={
+                isActivePath(pathname, cta.href) ? "page" : undefined
+              }
+              className="ml-1 hidden h-10 items-center gap-1.5 rounded-control bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-fast hover:bg-primary/90 focus-ring sm:inline-flex"
+            >
+              {cta.label}
+              <ArrowRight aria-hidden className="size-3.5" />
+            </Link>
+          )}
+        </div>
+      </nav>
     </header>
   );
 }

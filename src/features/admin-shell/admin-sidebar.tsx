@@ -116,7 +116,7 @@ export function AdminSidebar({
               onClick={onToggleCollapse}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               className={cn(
-                "flex size-8 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "flex size-8 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-ring",
                 !collapsed && "ml-auto",
               )}
             >
@@ -135,7 +135,7 @@ export function AdminSidebar({
             type="button"
             onClick={openCommandPalette}
             className={cn(
-              "flex w-full items-center gap-2 rounded-control bg-secondary/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex w-full items-center gap-2 rounded-control bg-secondary/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary focus-ring",
               collapsed && "justify-center px-2",
             )}
             aria-label="Search and commands"

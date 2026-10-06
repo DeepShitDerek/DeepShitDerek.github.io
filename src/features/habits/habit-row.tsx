@@ -9,7 +9,6 @@ import {
   ArrowUp,
   BarChart2,
   Edit2,
-  Flame,
   MoreVertical,
 } from "lucide-react";
 import type { Habit } from "@/types";
@@ -26,11 +25,12 @@ import {
   currentStreak,
   completionRate,
   indexLogs,
+  progressOn,
   isSatisfiedOn,
 } from "./habit-progress";
 import { isDueOn } from "./habit-schedule";
-import { cn } from "@/lib/utils";
 import { HabitCell } from "./habit-cell";
+import { StreakBadge } from "./habit-streak";
 
 interface HabitRowProps {
   habit: Habit;
@@ -69,6 +69,14 @@ export const HabitRow = React.memo(
     const rate = useMemo(() => completionRate(habit), [habit]);
     const logIndex = useMemo(() => indexLogs(habit), [habit]);
 
+    /** A count habit's progress on a day it is short of its target. */
+    const partialOn = (dateStr: string) => {
+      if ((habit.kind ?? "build") === "quit") return null;
+      const day = progressOn(habit, logIndex, dateStr);
+      return day.value > 0 && !day.satisfied
+        ? { ratio: day.ratio, label: `${day.value} of ${day.target}` }
+        : null;
+    };
     const isSatisfied = (dateStr: string) =>
       isSatisfiedOn(habit, logIndex, dateStr);
 
@@ -97,7 +105,7 @@ export const HabitRow = React.memo(
             <p className="truncate text-sm font-semibold text-foreground">
               {habit.title}
             </p>
-            <p className="text-[10px] tabular-nums text-muted-foreground">
+            <p className="text-micro tabular-nums text-muted-foreground">
               {/* Nullable column — without a fallback this read as "/wk". */}
               {habit.target_per_week ?? 7}/wk • {rate}%
             </p>
@@ -114,6 +122,7 @@ export const HabitRow = React.memo(
               <HabitCell
                 dateStr={dateStr}
                 isCompleted={isSatisfied(dateStr)}
+                partial={partialOn(dateStr)}
                 // A day the habit was never due is not a miss, and shading it
                 // like one is what made every non-daily habit look neglected.
                 isScheduled={isDueOn(habit, dateStr)}
@@ -128,17 +137,7 @@ export const HabitRow = React.memo(
         {/* Sticky stats column */}
         <TableCell className="sticky right-0 z-raised w-[60px] min-w-[60px] border-l bg-card/95 px-1 backdrop-blur">
           <div className="flex items-center justify-center gap-1">
-            <div
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
-                streak > 0
-                  ? "border-chart-3/20 bg-chart-3/15 text-chart-3"
-                  : "border-transparent bg-muted/50 text-muted-foreground",
-              )}
-            >
-              <span>{streak}</span>
-              <Flame className="size-3" />
-            </div>
+            <StreakBadge streak={streak} />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

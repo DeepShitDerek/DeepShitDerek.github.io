@@ -5,7 +5,7 @@ import { useUrlParam } from "@/hooks/use-url-param";
 import { useCreateIntent } from "@/features/admin-shell/create-intent";
 import { useSetTaskStatus } from "./use-task-status";
 import { useEffect, useMemo, useState } from "react";
-import { FolderKanban, ListTodo, Plus } from "lucide-react";
+import { ListTodo, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { SubTask, Task } from "@/types";
 import {
@@ -31,10 +31,12 @@ import {
   ManagerWrapper,
   PageHeader,
   LoadError,
+  ModuleTabs,
 } from "@/components/admin/shared";
 import { useAppDispatch } from "@/store/hooks";
 import { startFocus } from "@/store/slices/focusSlice";
 import { getErrorMessage } from "@/lib/utils";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import { TASK_STATUS_META, type TaskStatus } from "./task-meta";
 import {
   eligibleBlockers as computeEligibleBlockers,
@@ -57,16 +59,21 @@ import { TaskList } from "./task-list";
 import { TaskTable } from "./task-table";
 import { TaskProjectsSheet } from "./task-projects-sheet";
 import { TaskProjectRail } from "./task-project-rail";
-import { TaskToolbar, type ViewMode } from "./task-toolbar";
+import { TaskToolbar, VIEW_TABS, type ViewMode } from "./task-toolbar";
+import { TaskQuickAdd } from "./task-quick-add";
 import { TaskTimelineView } from "./task-timeline-view";
-import { TaskDetail } from "./task-detail";
 import { TaskForm } from "./task-form";
 
 export default function TasksPage() {
   const confirm = useConfirm();
   const dispatch = useAppDispatch();
 
-  const [view, setView] = useRememberedChoice<ViewMode>("tasks", "board", ["board", "list", "table", "timeline"]);
+  const [view, setView] = useRememberedChoice<ViewMode>("tasks", "board", [
+    "board",
+    "list",
+    "table",
+    "timeline",
+  ]);
   const [groupBy, setGroupBy] = useState<TaskGroupBy>("status");
   const [sortBy, setSortBy] = useState<TaskSortBy>("manual");
   const [filters, setFilters] = useState<TaskFilters>(DEFAULT_FILTERS);
@@ -82,16 +89,23 @@ export default function TasksPage() {
    * reads; Edit is a deliberate second action. Creating goes straight to
    * "edit" — there is nothing to read yet.
    */
-  const [sheetMode, setSheetMode] = useState<"view" | "edit">("edit");
   const [draftDefaults, setDraftDefaults] = useState<Partial<Task> | null>(
     null,
   );
 
-  const { data: tasks = [], isLoading, error: loadError, refetch } = useGetTasksQuery();
+  const {
+    data: allTasks = [],
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetTasksQuery();
   const { data: projects = [] } = useGetTaskProjectsQuery();
   // Archived projects leave the rail and the pickers (ADM-017); their tasks
   // keep the project, and the board still labels them by it.
-  const activeProjects = useMemo(() => projects.filter((p) => !p.is_archived), [projects]);
+  const activeProjects = useMemo(
+    () => projects.filter((p) => !p.is_archived),
+    [projects],
+  );
   const { data: dependencies = [] } = useGetTaskDependenciesQuery();
 
   const [addTask] = useAddTaskMutation();
@@ -103,6 +117,27 @@ export default function TasksPage() {
   const [deleteSubTask] = useDeleteSubTaskMutation();
   const [addDependency] = useAddTaskDependencyMutation();
   const [deleteDependency] = useDeleteTaskDependencyMutation();
+
+  // Deleting offers Undo rather than asking first (P1-10); the task leaves
+  // every view at once and is deleted when the Undo window closes.
+  const { pending: deleting, remove: removeTask } = useUndoableDelete<Task>(
+    async (task) => {
+      try {
+        await deleteTask(task.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the task", {
+          description: getErrorMessage(err),
+        });
+      }
+    },
+  );
+  const tasks = useMemo(
+    () =>
+      deleting.size
+        ? allTasks.filter((task) => !deleting.has(task.id))
+        : allTasks,
+    [allTasks, deleting],
+  );
 
   const byId = useMemo(() => indexTasks(tasks), [tasks]);
   const depIndex = useMemo(
@@ -140,13 +175,6 @@ export default function TasksPage() {
     [editingTaskId, byId, draftDefaults],
   );
 
-  /**
-   * The saved row, for the read view. `editingTask` widens to `Partial<Task>`
-   * because it also carries the defaults for a *new* task, and a view of a
-   * task that does not exist yet is not a thing.
-   */
-  const viewingTask = editingTaskId ? (byId.get(editingTaskId) ?? null) : null;
-
   const tags = useMemo(() => collectTags(tasks), [tasks]);
 
   const taskCounts = useMemo(() => {
@@ -161,7 +189,6 @@ export default function TasksPage() {
   useCreateIntent("task", () => openNew());
 
   const openNew = (status: TaskStatus = "todo") => {
-    setSheetMode("edit");
     setEditingTaskId(null);
     setDraftDefaults({
       status,
@@ -173,8 +200,12 @@ export default function TasksPage() {
     setIsSheetOpen(true);
   };
 
+  /**
+   * A task opens straight into its form (03-workspace-ui.md §2.2). It opened
+   * read-only first, so changing a due date took an Edit click before the
+   * field; the form shows everything the read view did.
+   */
   const openTask = (task: Task) => {
-    setSheetMode("view");
     setEditingTaskId(task.id);
     setDraftDefaults(null);
     setIsSheetOpen(true);
@@ -234,29 +265,17 @@ export default function TasksPage() {
     }
   };
 
-  const handleDeleteTask = async (task: Task) => {
+  const handleDeleteTask = (task: Task) => {
     const dependents = depIndex.blocks.get(task.id) ?? [];
-    const ok = await confirm({
-      title: `Delete "${task.title}"?`,
-      description:
-        dependents.length > 0
-          ? // The edges cascade, so those tasks silently stop being blocked.
-            `${dependents.length} task${dependents.length === 1 ? " is" : "s are"} waiting on this one and will no longer be blocked. Its subtasks are deleted too. This cannot be undone.`
-          : "Its subtasks are deleted too. This cannot be undone.",
-      variant: "destructive",
-      confirmText: "Delete",
-    });
-    if (!ok) return;
-
-    try {
-      await deleteTask(task.id).unwrap();
-      toast.success("Task deleted.");
-      if (editingTaskId === task.id) setIsSheetOpen(false);
-    } catch (err) {
-      toast.error("Couldn't delete the task", {
-        description: getErrorMessage(err),
-      });
-    }
+    if (editingTaskId === task.id) setIsSheetOpen(false);
+    removeTask(
+      task,
+      `Deleted "${task.title}"`,
+      dependents.length > 0
+        ? // The edges cascade, so those tasks stop being blocked.
+          `With its subtasks. ${dependents.length} task${dependents.length === 1 ? " is" : "s are"} no longer blocked by it.`
+        : "With its subtasks.",
+    );
   };
 
   const handleSave = async (values: Partial<Task>) => {
@@ -304,9 +323,14 @@ export default function TasksPage() {
   // tick silently reappear (ADM-017).
   const handleToggleSubtask = async (subtask: SubTask) => {
     try {
-      await updateSubTask({ id: subtask.id, is_completed: !subtask.is_completed }).unwrap();
+      await updateSubTask({
+        id: subtask.id,
+        is_completed: !subtask.is_completed,
+      }).unwrap();
     } catch (err) {
-      toast.error("Couldn't update the subtask", { description: getErrorMessage(err) });
+      toast.error("Couldn't update the subtask", {
+        description: getErrorMessage(err),
+      });
     }
   };
 
@@ -333,20 +357,19 @@ export default function TasksPage() {
         title="Tasks"
         description="Plan, schedule and track what you're working on."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setIsProjectsOpen(true)}>
-              <FolderKanban className="mr-2 size-4" aria-hidden /> Projects
-              {activeProjects.length > 0 && (
-                <span className="ml-1.5 tabular-nums text-muted-foreground">
-                  {activeProjects.length}
-                </span>
-              )}
-            </Button>
-            <Button onClick={() => openNew("todo")}>
-              <Plus className="mr-2 size-4" aria-hidden /> New task
-            </Button>
-          </div>
+          // One primary (G7). Projects are managed from the rail's own
+          // control, where they are listed.
+          <Button onClick={() => openNew("todo")}>
+            <Plus className="mr-2 size-4" aria-hidden /> New task
+          </Button>
         }
+      />
+
+      <ModuleTabs
+        label="Task views"
+        tabs={VIEW_TABS}
+        current={view}
+        onSelect={setView}
       />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
@@ -361,9 +384,18 @@ export default function TasksPage() {
         />
 
         <div className="min-w-0 flex-1">
+          <TaskQuickAdd
+            projects={activeProjects}
+            defaultProjectId={
+              filters.projectId !== "all" && filters.projectId !== "none"
+                ? filters.projectId
+                : null
+            }
+            onCreate={(values) => addTask(values).unwrap()}
+          />
+
           <TaskToolbar
             view={view}
-            onViewChange={setView}
             groupBy={groupBy}
             onGroupByChange={setGroupBy}
             sortBy={sortBy}
@@ -440,88 +472,62 @@ export default function TasksPage() {
       <FormSheet
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
-        title={
-          !editingTaskId
-            ? "New task"
-            : sheetMode === "view"
-              ? "Task"
-              : "Edit task"
-        }
-        description={
-          sheetMode === "view" && editingTaskId
-            ? "Everything on this task. Edit to change it."
-            : "Details, schedule, subtasks and what blocks it."
-        }
+        title={editingTaskId ? "Task" : "New task"}
+        description="Details, schedule, subtasks and what blocks it."
       >
-        {sheetMode === "view" && viewingTask ? (
-          <TaskDetail
-            task={viewingTask}
-            project={projects.find(
-              (project) => project.id === viewingTask.project_id,
-            )}
-            blockers={(depIndex.blockedBy.get(viewingTask.id) ?? [])
-              .map((id) => byId.get(id))
-              .filter((candidate): candidate is Task => !!candidate)}
-            onEdit={() => setSheetMode("edit")}
-            onToggleSubtask={handleToggleSubtask}
-          />
-        ) : (
-          <TaskForm
-            key={editingTaskId ?? "new"}
-            task={editingTask}
-            // The task's own project stays choosable even once archived.
-            projects={projects.filter(
-              (p) => !p.is_archived || p.id === editingTask?.project_id,
-            )}
-            blockers={
-              editingTaskId
-                ? (depIndex.blockedBy.get(editingTaskId) ?? [])
-                    .map((id) => byId.get(id))
-                    .filter((t): t is Task => !!t)
-                : []
-            }
-            eligibleBlockers={
-              editingTaskId
-                ? computeEligibleBlockers(editingTaskId, tasks, depIndex)
-                : []
-            }
-            onSave={handleSave}
-            onAddSubtask={async (title) => {
-              if (!editingTaskId) return;
-              await addSubTask({
-                task_id: editingTaskId,
-                title,
-                is_completed: false,
-              }).unwrap();
-            }}
-            onToggleSubtask={handleToggleSubtask}
-            onDeleteSubtask={async (id) => {
-              const ok = await confirm({
-                title: "Delete subtask?",
-                description: "This cannot be undone.",
-                variant: "destructive",
+        <TaskForm
+          key={editingTaskId ?? "new"}
+          task={editingTask}
+          // The task's own project stays choosable even once archived.
+          projects={projects.filter(
+            (p) => !p.is_archived || p.id === editingTask?.project_id,
+          )}
+          blockers={
+            editingTaskId
+              ? (depIndex.blockedBy.get(editingTaskId) ?? [])
+                  .map((id) => byId.get(id))
+                  .filter((t): t is Task => !!t)
+              : []
+          }
+          eligibleBlockers={
+            editingTaskId
+              ? computeEligibleBlockers(editingTaskId, tasks, depIndex)
+              : []
+          }
+          onSave={handleSave}
+          onAddSubtask={async (title) => {
+            if (!editingTaskId) return;
+            await addSubTask({
+              task_id: editingTaskId,
+              title,
+              is_completed: false,
+            }).unwrap();
+          }}
+          onToggleSubtask={handleToggleSubtask}
+          onDeleteSubtask={async (id) => {
+            const ok = await confirm({
+              title: "Delete subtask?",
+              description: "This cannot be undone.",
+              variant: "destructive",
+            });
+            if (!ok) return;
+            try {
+              await deleteSubTask(id).unwrap();
+            } catch (err) {
+              toast.error("Couldn't delete the subtask", {
+                description: getErrorMessage(err),
               });
-              if (!ok) return;
-              try {
-                await deleteSubTask(id).unwrap();
-              } catch (err) {
-                toast.error("Couldn't delete the subtask", { description: getErrorMessage(err) });
-              }
-            }}
-            onAddBlocker={handleAddBlocker}
-            onRemoveBlocker={handleRemoveBlocker}
-            onDelete={
-              editingTask && editingTaskId
-                ? () => handleDeleteTask(editingTask as Task)
-                : undefined
             }
-            onCancel={() =>
-              // Cancelling an edit that started from a view returns to the view
-              // rather than closing outright: you opened it to read something.
-              editingTaskId ? setSheetMode("view") : setIsSheetOpen(false)
-            }
-          />
-        )}
+          }}
+          onAddBlocker={handleAddBlocker}
+          onRemoveBlocker={handleRemoveBlocker}
+          onDelete={
+            editingTask && editingTaskId
+              ? () => handleDeleteTask(editingTask as Task)
+              : undefined
+          }
+          onCancel={() => setIsSheetOpen(false)}
+        />
       </FormSheet>
 
       <TaskProjectsSheet

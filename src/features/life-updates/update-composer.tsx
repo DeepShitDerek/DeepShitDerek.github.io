@@ -23,6 +23,7 @@ import { addTags } from "@/lib/tag-input";
 import { safeImageUrl } from "@/lib/safe-url";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
+import { CategoryIcon } from "@/features/updates/category-icon";
 
 const BUCKET_NAME = process.env.NEXT_PUBLIC_BUCKET_NAME || "assets";
 
@@ -96,7 +97,7 @@ export function UpdateComposer({
     ? [...LIFE_UPDATE_CATEGORY_OPTIONS]
     : [
         ...LIFE_UPDATE_CATEGORY_OPTIONS,
-        { value: category, label: `${category} (unrecognised)`, emoji: "📝" },
+        { value: category, label: `${category} (unrecognised)` },
       ];
 
   const previewUrl = safeImageUrl(imageUrl);
@@ -289,13 +290,13 @@ export function UpdateComposer({
               onKeyDown={(event) => onRadioKey(event, index)}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "focus-ring",
                 selected
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
               )}
             >
-              <span aria-hidden>{option.emoji}</span>
+              <CategoryIcon category={option.value} />
               {option.label}
             </button>
           );

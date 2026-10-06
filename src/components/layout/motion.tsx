@@ -1,52 +1,26 @@
-"use client";
-
-import {
-  Children,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from "react";
-import {
-  animate,
-  motion,
-  useInView,
-  useMotionValue,
-  useReducedMotion,
-  useTransform,
-  type Variants,
-} from "framer-motion";
+import type { ReactNode } from "react";
 
 /**
- * The motion vocabulary every public section layout shares.
+ * Block wrappers that public sections share: `Reveal`, `Stagger` and
+ * `StaggerItem`, plus `CountUp` for a figure.
  *
- * Three moves, used everywhere, so the site has one way of arriving rather
- * than nineteen: **reveal** (a block eases up, or in from its side), **stagger**
- * (a group arrives in sequence) and **count up** (a figure counts to its
- * value). All three run once, on the house curve, and are absent under
- * reduced motion — the content is simply there, never waiting on an observer
- * that might not fire.
+ * **They no longer move.** Each one used to prerender at `opacity: 0` and
+ * wait for an IntersectionObserver and the animation library to bring it in.
+ * On a slow phone that left bands blank after scrolling, it held the first
+ * meaningful paint behind a script download, and a figure read "0" to anyone
+ * who looked before it counted (P0-2, X10, X11; ServiceNow and Borg showed
+ * the same blank panels in the research captures). The redesign's rule is
+ * that nothing animates on load and no text is animated (north star §3.6).
  *
- * Reveal and StaggerItem prerender with an inline `opacity: 0`. Each carries
- * `data-motion`, which the root layout's <noscript> stylesheet forces visible,
- * so a visitor without JavaScript never sees blank bands (V2-046).
+ * The components stay so the nineteen sections that use them keep their
+ * structure and element types; they now render exactly that element,
+ * visible from the first paint, with no client JavaScript.
  */
 
-/** The house curve — the same one as `--m-enter`. */
+/** The house curve — the same one as `--m-enter`, for the few animations left. */
 export const EASE = [0.32, 0.72, 0, 1] as const;
 
-const VIEWPORT = { once: true, margin: "0px 0px -10% 0px" } as const;
-
-const TAGS = {
-  div: motion.div,
-  ul: motion.ul,
-  ol: motion.ol,
-  li: motion.li,
-  article: motion.article,
-  figure: motion.figure,
-};
-type Tag = keyof typeof TAGS;
+type Tag = "div" | "ul" | "ol" | "li" | "article" | "figure";
 
 interface BlockProps {
   as?: Tag;
@@ -54,100 +28,31 @@ interface BlockProps {
   children?: ReactNode;
 }
 
-/** A block that eases into place once, from below or from one side. */
+/** A block. `from` and `delay` are accepted for existing callers and unused. */
 export function Reveal({
-  as = "div",
-  from = "up",
-  delay = 0,
+  as: Comp = "div",
   className,
   children,
 }: BlockProps & { from?: "up" | "left" | "right"; delay?: number }) {
-  const reduce = useReducedMotion();
-  if (reduce) {
-    const Plain = as as "div";
-    return <Plain className={className}>{children}</Plain>;
-  }
-
-  const Comp = TAGS[as] as typeof motion.div;
-  const offset =
-    from === "left" ? { x: -24 } : from === "right" ? { x: 24 } : { y: 24 };
-
-  return (
-    <Comp
-      data-motion=""
-      className={className}
-      initial={{ opacity: 0, ...offset }}
-      whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={VIEWPORT}
-      transition={{ duration: 0.6, ease: EASE, delay }}
-    >
-      {children}
-    </Comp>
-  );
+  return <Comp className={className}>{children}</Comp>;
 }
 
-const ITEM: Variants = {
-  hidden: { opacity: 0, y: 18 },
-  shown: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE } },
-};
-
-/**
- * A group whose children arrive in sequence.
- *
- * The step shrinks as the group grows, so the whole sequence never takes
- * longer than about 0.7s — forty tool chips at a fixed 70ms each would still be
- * arriving three seconds after the reader got there.
- */
+/** A group of `StaggerItem`s. `step` is accepted for existing callers. */
 export function Stagger({
-  as = "div",
-  step = 0.07,
+  as: Comp = "div",
   className,
   children,
 }: BlockProps & { step?: number }) {
-  const reduce = useReducedMotion();
-  const count = Children.count(children);
-
-  if (reduce) {
-    const Plain = as as "div";
-    return <Plain className={className}>{children}</Plain>;
-  }
-
-  const Comp = TAGS[as] as typeof motion.div;
-  const stagger = Math.min(step, 0.7 / Math.max(count, 1));
-
-  return (
-    <Comp
-      className={className}
-      initial="hidden"
-      whileInView="shown"
-      viewport={VIEWPORT}
-      variants={{
-        hidden: {},
-        shown: { transition: { staggerChildren: stagger } },
-      }}
-    >
-      {children}
-    </Comp>
-  );
+  return <Comp className={className}>{children}</Comp>;
 }
 
 /** One member of a `Stagger`. */
-export function StaggerItem({ as = "div", className, children }: BlockProps) {
-  const reduce = useReducedMotion();
-  if (reduce) {
-    const Plain = as as "div";
-    return <Plain className={className}>{children}</Plain>;
-  }
-  const Comp = TAGS[as] as typeof motion.div;
-  return (
-    <Comp data-motion="" className={className} variants={ITEM}>
-      {children}
-    </Comp>
-  );
+export function StaggerItem({ as: Comp = "div", className, children }: BlockProps) {
+  return <Comp className={className}>{children}</Comp>;
 }
 
 /* ────────────────────────────────────────────────────────────────
- * Count up
+ * Figures
  * ──────────────────────────────────────────────────────────────── */
 
 export interface Stat {
@@ -178,12 +83,10 @@ export function parseStat(value: string): Stat | null {
 }
 
 /**
- * A stat worth animating, or null.
+ * A stat that is a quantity, or null.
  *
- * Counting is only honest for a quantity. A year ("2019") counting up from
- * zero is absurd, a ratio ("24/7", "4.9/5") would count its first half and
- * then snap, and a phrase ("Since 2019", "Top 5") is words with a number in
- * them. Those render as written.
+ * A year ("2019"), a ratio ("24/7", "4.9/5") or a phrase ("Since 2019",
+ * "Top 5") is words with a number in them, not an amount.
  */
 export function animatableStat(value: string): Stat | null {
   const stat = parseStat(value);
@@ -206,17 +109,7 @@ export function formatStat(stat: Stat, n: number): string {
   return `${stat.prefix}${body}${stat.suffix}`;
 }
 
-const useIsoLayoutEffect =
-  typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-/**
- * A figure that counts up to its value when it comes into view.
- *
- * The server renders the real value, so a visitor without JavaScript — and a
- * crawler — reads the number, not a zero. It resets to zero before first
- * paint, counts when seen, and always lands on the author's exact string
- * ("01" stays "01"). Screen readers get the value once, never the frames.
- */
+/** A figure, exactly as the author wrote it, in tabular numerals. */
 export function CountUp({
   value,
   className,
@@ -224,34 +117,5 @@ export function CountUp({
   value: string;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
-  const stat = useMemo(() => animatableStat(value), [value]);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, VIEWPORT);
-
-  const count = useMotionValue(stat?.number ?? 0);
-  const display = useTransform(count, (n) =>
-    !stat || n === stat.number ? value : formatStat(stat, n),
-  );
-
-  useIsoLayoutEffect(() => {
-    if (stat && !reduce) count.set(0);
-  }, [stat, reduce, count]);
-
-  useEffect(() => {
-    if (!stat || reduce || !inView) return;
-    const controls = animate(count, stat.number, { duration: 1.4, ease: EASE });
-    return () => controls.stop();
-  }, [inView, stat, reduce, count]);
-
-  if (!stat || reduce) return <span className={className}>{value}</span>;
-
-  return (
-    <span className={className}>
-      <motion.span ref={ref} aria-hidden data-count-up>
-        {display}
-      </motion.span>
-      <span className="sr-only">{value}</span>
-    </span>
-  );
+  return <span className={className}>{value}</span>;
 }

@@ -123,7 +123,7 @@ export const learningApi = adminApi.injectEndpoints({
       },
       invalidatesTags: ["Learning"],
     }),
-    archiveTopic: builder.mutation<void, { id: string; archived: boolean }>({
+    archiveTopic: builder.mutation<null, { id: string; archived: boolean }>({
       queryFn: async ({ id, archived }) => {
         if (!supabase) return { error: NO_DB_ERROR };
         const { error } = await supabase
@@ -131,7 +131,7 @@ export const learningApi = adminApi.injectEndpoints({
           .update({ archived_at: archived ? new Date().toISOString() : null })
           .eq("id", id);
         if (error) return { error };
-        return { data: undefined };
+        return { data: null };
       },
       invalidatesTags: ["Learning"],
     }),

@@ -779,6 +779,13 @@ export interface CalendarEntry {
   /** The start this occurrence would have had, for writing an exception. */
   occurrenceStart?: Date;
   /**
+   * The series' own first start (the row's start_time). Moving or editing
+   * "the whole series" from one occurrence shifts this by the same amount;
+   * writing the occurrence's date here instead would drop every earlier
+   * occurrence.
+   */
+  seriesStart?: Date;
+  /**
    * Set when this occurrence has been detached from its series by an
    * exception row. Carrying the id is what makes the change reversible — the
    * sheet can offer to put the occurrence back rather than leaving a moved

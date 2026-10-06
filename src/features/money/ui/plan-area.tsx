@@ -5,11 +5,16 @@ import { BudgetsPanel } from "./budgets-panel";
 import { ForecastPanel } from "./forecast-panel";
 import { GoalsPanel } from "./goals-panel";
 import { UpcomingPanel } from "./upcoming-panel";
+import { useUrlTab } from "@/hooks/use-url-tab";
+
+const TABS = ["upcoming", "budgets", "goals", "forecast"] as const;
 
 /** Planning (V2-080): what is due, what the month is allowed, what you are saving for, and where it is all heading. */
 export function PlanArea() {
+  // In the URL (?tab=), so Back and a reload return to it.
+  const [tab, setTab] = useUrlTab("upcoming", TABS);
   return (
-    <Tabs defaultValue="upcoming" className="space-y-5">
+    <Tabs value={tab} onValueChange={setTab} className="space-y-5">
       <TabsList>
         <TabsTrigger value="upcoming">Bills & pay</TabsTrigger>
         <TabsTrigger value="budgets">Budgets</TabsTrigger>

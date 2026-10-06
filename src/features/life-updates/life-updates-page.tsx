@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ExternalLink, Pin, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ExternalLink, PenLine, Search } from "lucide-react";
 import { toast } from "sonner";
 import type { LifeUpdate } from "@/types";
 import {
@@ -11,12 +11,20 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { RemovableChip } from "@/components/ui/filter-chip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import {
   EmptyState,
   LoadingState,
   ManagerWrapper,
+  ModuleTabs,
   PageHeader,
   LoadError,
 } from "@/components/admin/shared";
@@ -37,16 +45,57 @@ type StatusFilter = "all" | "draft" | "published" | "pinned";
  * then month by month in the order the site will show it, with drafts in
  * place and marked. Editing swaps an entry for the composer in place.
  */
+/** One empty list for every render while the query has none (see Navigation). */
+const NO_UPDATES: LifeUpdate[] = [];
+
+const STATUS_TABS: { id: StatusFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "draft", label: "Drafts" },
+  { id: "published", label: "Published" },
+  { id: "pinned", label: "Pinned" },
+];
+
 export default function LifeUpdatesPage() {
-  const confirm = useConfirm();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [category, setCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [composing, setComposing] = useState(false);
+  const composerRef = useRef<HTMLDivElement>(null);
+  // The composer stays mounted (so a draft survives closing it), which means
+  // its autoFocus has already run: move focus into it when it opens, so a
+  // keyboard user lands in the field they asked for.
+  useEffect(() => {
+    if (composing)
+      composerRef.current?.querySelector<HTMLElement>("input, textarea, [contenteditable=true]")?.focus();
+  }, [composing]);
 
-  const { data: updates = [], isLoading, error: loadError, refetch } = useGetLifeUpdatesQuery();
+  const {
+    data: allUpdates = NO_UPDATES,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetLifeUpdatesQuery();
   const [updateLifeUpdate] = useUpdateLifeUpdateMutation();
   const [deleteLifeUpdate] = useDeleteLifeUpdateMutation();
+
+  // Delete offers Undo instead of asking first (P1-10). A published update
+  // stays on /updates until the toast closes, so Undo leaves the site as it was.
+  const { pending: deleting, remove: removeUpdate } =
+    useUndoableDelete<LifeUpdate>(async (update) => {
+      try {
+        await deleteLifeUpdate(update.id).unwrap();
+      } catch (err: unknown) {
+        toast.error("Couldn't delete", { description: getErrorMessage(err) });
+      }
+    });
+  const updates = useMemo(
+    () =>
+      deleting.size
+        ? allUpdates.filter((u) => !deleting.has(u.id))
+        : allUpdates,
+    [allUpdates, deleting],
+  );
 
   const counts = useMemo(
     () => ({
@@ -83,22 +132,15 @@ export default function LifeUpdatesPage() {
     status === "pinned" ? [] : visible.filter((u) => !u.is_pinned),
   );
 
-  const handleDelete = async (update: LifeUpdate) => {
-    const ok = await confirm({
-      title: "Delete this update?",
-      description: update.is_published
-        ? "It comes off /updates straight away. This can't be undone."
-        : "This can't be undone.",
-      variant: "destructive",
-    });
-    if (!ok) return;
-    try {
-      await deleteLifeUpdate(update.id).unwrap();
-      if (editingId === update.id) setEditingId(null);
-      toast.success("Update deleted.");
-    } catch (err: unknown) {
-      toast.error("Couldn't delete", { description: getErrorMessage(err) });
-    }
+  const handleDelete = (update: LifeUpdate) => {
+    if (editingId === update.id) setEditingId(null);
+    removeUpdate(
+      update,
+      "Update deleted",
+      update.is_published
+        ? "It comes off /updates when this closes."
+        : undefined,
+    );
   };
 
   const handlePatch = async (
@@ -164,7 +206,28 @@ export default function LifeUpdatesPage() {
       />
 
       <div className="mx-auto max-w-3xl space-y-8">
-        <UpdateComposer />
+        {/*
+          A one-line "What's new?" that opens the composer (03-workspace-ui.md
+          §2.13): the composer was always open and pushed the feed down on
+          every visit. Closed, it is hidden rather than removed, so whatever
+          you had typed is still there when you open it again.
+        */}
+        {!composing && (
+          <button
+            type="button"
+            onClick={() => setComposing(true)}
+            className="flex w-full items-center gap-3 rounded-surface border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-input focus-ring"
+          >
+            <PenLine aria-hidden className="size-4 shrink-0" />
+            What&apos;s new?
+          </button>
+        )}
+        <div ref={composerRef} hidden={!composing}>
+          <UpdateComposer
+            onDone={() => setComposing(false)}
+            onCancel={() => setComposing(false)}
+          />
+        </div>
 
         {isLoading ? (
           <LoadingState label="Loading updates" />
@@ -178,41 +241,22 @@ export default function LifeUpdatesPage() {
         ) : (
           <div className="space-y-6">
             <div className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <FilterBar label="Filter by status" className="min-w-0">
-                  <FilterChip
-                    active={status === "all"}
-                    count={counts.all}
-                    onClick={() => setStatus("all")}
-                  >
-                    All
-                  </FilterChip>
-                  <FilterChip
-                    active={status === "draft"}
-                    count={counts.draft}
-                    onClick={() => setStatus("draft")}
-                  >
-                    Drafts
-                  </FilterChip>
-                  <FilterChip
-                    active={status === "published"}
-                    count={counts.published}
-                    onClick={() => setStatus("published")}
-                  >
-                    Published
-                  </FilterChip>
-                  {counts.pinned > 0 && (
-                    <FilterChip
-                      active={status === "pinned"}
-                      count={counts.pinned}
-                      onClick={() => setStatus("pinned")}
-                    >
-                      <Pin className="size-3.5" aria-hidden />
-                      Pinned
-                    </FilterChip>
-                  )}
-                </FilterBar>
-                <div className="relative w-full shrink-0 sm:w-56">
+              {/* Status as tabs, and one row for search and kind: there were
+                  two rows of chips before the first update. */}
+              <ModuleTabs
+                label="Update status"
+                className="mb-0"
+                tabs={STATUS_TABS.filter(
+                  (t) => t.id !== "pinned" || counts.pinned > 0,
+                ).map((t) => ({
+                  ...t,
+                  label: `${t.label} ${counts[t.id]}`,
+                }))}
+                current={status}
+                onSelect={setStatus}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative min-w-0 flex-1">
                   <Search
                     className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                     aria-hidden
@@ -225,31 +269,43 @@ export default function LifeUpdatesPage() {
                     className="h-9 pl-8"
                   />
                 </div>
-              </div>
-
-              {presentCategories.length > 1 && (
-                <FilterBar label="Filter by category">
-                  <FilterChip
-                    active={category === null}
-                    onClick={() => setCategory(null)}
+                {presentCategories.length > 1 && (
+                  <Select
+                    value={category ?? "all"}
+                    onValueChange={(v) => setCategory(v === "all" ? null : v)}
                   >
-                    Every kind
-                  </FilterChip>
-                  {presentCategories.map((option) => (
-                    <FilterChip
-                      key={option.value}
-                      active={category === option.value}
-                      count={
-                        updates.filter((u) => u.category === option.value)
-                          .length
-                      }
-                      onClick={() => setCategory(option.value)}
+                    <SelectTrigger
+                      className="h-9 w-auto min-w-[9rem]"
+                      aria-label="Kind"
                     >
-                      <span aria-hidden>{option.emoji}</span>
-                      {option.label}
-                    </FilterChip>
-                  ))}
-                </FilterBar>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Every kind</SelectItem>
+                      {presentCategories.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label} (
+                          {
+                            updates.filter((u) => u.category === option.value)
+                              .length
+                          }
+                          )
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              {category && (
+                <div className="flex flex-wrap gap-2">
+                  <RemovableChip
+                    label={
+                      presentCategories.find((o) => o.value === category)
+                        ?.label ?? category
+                    }
+                    onRemove={() => setCategory(null)}
+                  />
+                </div>
               )}
             </div>
 

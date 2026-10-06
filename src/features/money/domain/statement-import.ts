@@ -8,7 +8,8 @@ import { applyRules, normaliseText } from "./rules";
  * Turning a bank's CSV export into ledger transactions (V2-080).
  *
  * Banks disagree on everything: RBC splits the description over two
- * columns, TD has no header and separate debit/credit columns, HDFC writes
+ * columns and has one amount column per currency (CAD$, USD$), CIBC and TD
+ * have no header and separate money-out/money-in columns, HDFC writes
  * "Withdrawal Amt." and dates as 05/02/26, SBI writes "5 Feb 2026", and a
  * credit-card export usually lists a purchase as a *positive* number. So the
  * mapping is guessed from the file (header words, then cell contents) and
@@ -147,11 +148,29 @@ const isAmount = (cell: string) => {
   }
 };
 
+const signedMinor = (cell: string) => {
+  try {
+    return parseAmount(cell, "CAD").minor;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * A first guess at the mapping. Header words when there is a header (a
  * first row with no date and no amounts in it), cell contents otherwise.
+ *
+ * `currency` picks RBC's USD$ column over CAD$ for a US-dollar account.
+ * `card` says the account is a card or credit line: a single amount column
+ * that is mostly positive is then read as purchases-positive and flipped.
+ * Money-out/money-in columns (CIBC) and mostly-negative amounts (RBC) already
+ * say which way the money went, so they are left alone.
  */
-export function guessMapping(rows: readonly string[][], country: string): ColumnMapping | null {
+export function guessMapping(
+  rows: readonly string[][],
+  country: string,
+  options: { currency?: string; card?: boolean } = {},
+): ColumnMapping | null {
   if (rows.length === 0) return null;
   const width = Math.max(...rows.map((r) => r.length));
   const first = rows[0];
@@ -198,6 +217,10 @@ export function guessMapping(rows: readonly string[][], country: string): Column
     if (mapping.date === -1) {
       mapping.date = first.findIndex((cell) => /date/i.test(cell));
     }
+    // RBC: "CAD$" and "USD$" — the account's own currency column wins.
+    const currency = options.currency?.toUpperCase();
+    const own = currency ? first.findIndex((cell) => cell.replace(/[^A-Za-z]/g, "").toUpperCase() === currency) : -1;
+    if (own !== -1 && mapping.debit === null && mapping.credit === null && own !== mapping.date) mapping.amount = own;
     if (mapping.debit !== null && mapping.credit !== null) mapping.amount = null;
     else if (mapping.amount === null && (mapping.debit !== null || mapping.credit !== null)) {
       mapping.amount = mapping.debit ?? mapping.credit;
@@ -216,8 +239,16 @@ export function guessMapping(rows: readonly string[][], country: string): Column
   );
   if (mapping.amount === null && mapping.debit === null && mapping.credit === null) {
     const sparse = numeric.filter((i) => column(i).some((cell) => !cell.trim()));
+    const blank = (i: number) => i >= 0 && i < width && i !== mapping.date && column(i).every((cell) => !cell.trim());
+    const unsigned = (i: number) => column(i).every((cell) => !cell.trim() || (signedMinor(cell) ?? -1) >= 0);
     if (sparse.length >= 2) {
       [mapping.debit, mapping.credit] = [sparse[0], sparse[1]];
+    } else if (numeric.length > 0 && !hasHeader && unsigned(numeric[0]) && blank(numeric[0] + 1)) {
+      // CIBC with only money out in this file: the money-in column is empty.
+      [mapping.debit, mapping.credit] = [numeric[0], numeric[0] + 1];
+    } else if (numeric.length > 0 && !hasHeader && unsigned(numeric[0]) && blank(numeric[0] - 1) && numeric[0] - 1 !== mapping.description) {
+      // …or only money in: the money-out column before it is empty.
+      [mapping.debit, mapping.credit] = [numeric[0] - 1, numeric[0]];
     } else if (numeric.length > 0) {
       mapping.amount = numeric[0];
     } else {
@@ -235,6 +266,10 @@ export function guessMapping(rows: readonly string[][], country: string): Column
   }
 
   mapping.dateOrder = detectDateOrder(column(mapping.date), country)?.order ?? "dmy";
+  if (options.card && mapping.amount !== null && mapping.direction === null) {
+    const amounts = column(mapping.amount).map(signedMinor).filter((n): n is number => n !== null && n !== 0);
+    mapping.invertSign = amounts.filter((n) => n > 0).length > amounts.length / 2;
+  }
   return mapping;
 }
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
 import { Markdown as MarkdownBase } from "@/components/ui/markdown";
 import type { PortfolioSection } from "@/types";
 import { cn } from "@/lib/utils";
@@ -78,10 +77,9 @@ function SectionBody({ section }: { section: PortfolioSection }) {
  *    title in an `aria-label`, so screen readers announce it once.
  *  - `scroll-mt-24` + an id make every section deep-linkable without the
  *    sticky header covering it.
- *  - Motion is skipped entirely under `prefers-reduced-motion`. The old
- *    version animated regardless, and `whileInView` with opacity 0 means a
- *    reduced-motion user could be left looking at invisible content if the
- *    IntersectionObserver never fires.
+ *  - Nothing fades in. Each section used to prerender at `opacity: 0` and
+ *    wait for an IntersectionObserver; on the redesign's first capture that
+ *    left the home page's CMS sections as 2,500px of blank page (P0-2, X10).
  *  - Sections with no renderable body are dropped in production rather than
  *    leaving an orphan heading.
  */
@@ -94,7 +92,6 @@ export default function SectionRenderer({
   index?: number;
   className?: string;
 }) {
-  const reduceMotion = useReducedMotion();
   const anchor = sectionAnchor(section);
 
   const isMarkdown = section.type === "markdown";
@@ -111,18 +108,8 @@ export default function SectionRenderer({
   // Absent (fallback data, pre-019 rows) means shown.
   const showTitle = section.show_title !== false;
 
-  const motionProps = reduceMotion
-    ? {}
-    : {
-        initial: { opacity: 0, y: 16 },
-        whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true, margin: "-40px" },
-        transition: { duration: 0.35, ease: "easeOut" as const },
-      };
-
   return (
-    <motion.section
-      {...motionProps}
+    <section
       id={anchor}
       aria-labelledby={headingId}
       className={cn("scroll-mt-24", className)}
@@ -141,7 +128,8 @@ export default function SectionRenderer({
         <h2
           id={headingId}
           className={cn(
-            "t-heading [overflow-wrap:anywhere]",
+            // The title role, like the home page's own section titles (P1-4).
+            "t-title text-balance [overflow-wrap:anywhere]",
             !showTitle && "sr-only",
           )}
         >
@@ -165,6 +153,6 @@ export default function SectionRenderer({
       </header>
 
       <SectionBody section={section} />
-    </motion.section>
+    </section>
   );
 }

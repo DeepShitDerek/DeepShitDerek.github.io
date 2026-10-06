@@ -2,12 +2,12 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Mirrors the three-pane layout so the page does not jump when it loads. */
+/** Mirrors the rail, form and preview so the page does not jump when it loads. */
 export function SettingsSkeleton() {
   return (
     <div
       aria-busy
-      className="grid gap-6 px-4 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_24rem]"
+      className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_minmax(0,1fr)]"
     >
       <div className="hidden space-y-2 lg:block">
         <Skeleton className="h-9 w-full rounded-control" />
@@ -17,6 +17,7 @@ export function SettingsSkeleton() {
       </div>
 
       <div className="space-y-5">
+        <Skeleton className="h-10 w-full rounded-control lg:hidden" />
         <div className="space-y-2">
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-4 w-72 max-w-full" />

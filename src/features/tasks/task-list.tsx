@@ -5,9 +5,10 @@ import type { Task, TaskProject } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/cn";
 import { TASK_PRIORITY_META, type TaskPriority } from "./task-meta";
-import { formatDueDate, formatMinutes } from "./task-card";
+import { formatMinutes } from "./task-card";
 import { describeRecurrence } from "./task-recurrence";
-import { isOverdue, type TaskGroup } from "./task-filters";
+import { type TaskGroup } from "./task-filters";
+import { TaskDue } from "./task-due";
 
 export interface TaskListProps {
   groups: TaskGroup[];
@@ -53,7 +54,6 @@ export function TaskList({
                   ? projectsById.get(task.project_id)
                   : undefined;
                 const blockers = blockersFor(task);
-                const overdue = isOverdue(task);
                 const done = task.status === "done";
                 const subtasks = task.sub_tasks ?? [];
                 const repeat = describeRecurrence(
@@ -81,7 +81,7 @@ export function TaskList({
                     <button
                       type="button"
                       onClick={() => onOpenTask(task)}
-                      className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="min-w-0 flex-1 text-left focus-ring"
                     >
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         {blockers.length > 0 && (
@@ -99,7 +99,7 @@ export function TaskList({
                           {task.title}
                         </span>
                         {project && (
-                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="inline-flex shrink-0 items-center gap-1 text-micro text-muted-foreground">
                             <span
                               aria-hidden
                               className="size-2 rounded-full"
@@ -113,21 +113,13 @@ export function TaskList({
                         )}
                       </span>
 
-                      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-muted-foreground">
                         {blockers.length > 0 && (
                           <span className="text-destructive">
                             Blocked by {blockers.length}
                           </span>
                         )}
-                        {task.due_date && (
-                          <span
-                            className={cn(
-                              overdue && "font-medium text-destructive",
-                            )}
-                          >
-                            {formatDueDate(task.due_date)}
-                          </span>
-                        )}
+                        <TaskDue task={task} icon={false} />
                         {subtasks.length > 0 && (
                           <span>
                             {subtasks.filter((s) => s.is_completed).length}/

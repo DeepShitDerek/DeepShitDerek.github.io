@@ -22,6 +22,7 @@ import type {
   InventorySortBy,
   WarrantyFilter,
 } from "./inventory-filters";
+import { RemovableChip } from "@/components/ui/filter-chip";
 
 const SORT_OPTIONS: { value: InventorySortBy; label: string }[] = [
   { value: "recent", label: "Newest" },
@@ -101,135 +102,173 @@ export function InventoryToolbar({
   onSortByChange,
   categories,
   locations,
-}: InventoryToolbarProps) {
+  children,
+}: InventoryToolbarProps & { children?: React.ReactNode }) {
+  const chips = [
+    filters.warranty !== "all" && {
+      key: "warranty",
+      label:
+        WARRANTY_OPTIONS.find((o) => o.value === filters.warranty)?.label ??
+        "Warranty",
+      clear: () => onFiltersChange((f) => ({ ...f, warranty: "all" })),
+    },
+    filters.category !== "all" && {
+      key: "category",
+      label: filters.category,
+      clear: () => onFiltersChange((f) => ({ ...f, category: "all" })),
+    },
+    filters.location !== "all" && {
+      key: "location",
+      label: filters.location,
+      clear: () => onFiltersChange((f) => ({ ...f, location: "all" })),
+    },
+  ].filter((chip): chip is { key: string; label: string; clear: () => void } =>
+    Boolean(chip),
+  );
+
   const activeCount =
     (filters.category !== "all" ? 1 : 0) +
     (filters.location !== "all" ? 1 : 0) +
     (filters.warranty !== "all" ? 1 : 0);
 
   return (
-    <div className="mb-5 flex flex-wrap items-center gap-2">
-      <Input
-        type="search"
-        value={filters.search}
-        onChange={(e) =>
-          onFiltersChange((f) => ({ ...f, search: e.target.value }))
-        }
-        placeholder="Search name, serial, location…"
-        aria-label="Search inventory"
-        className="w-full sm:max-w-[20rem]"
-      />
+    <div className="mb-5 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="search"
+          value={filters.search}
+          onChange={(e) =>
+            onFiltersChange((f) => ({ ...f, search: e.target.value }))
+          }
+          placeholder="Search name, serial, location…"
+          aria-label="Search inventory"
+          className="w-full sm:max-w-[20rem]"
+        />
 
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        <Select
-          value={sortBy}
-          onValueChange={(v) => onSortByChange(v as InventorySortBy)}
-        >
-          <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Sort by">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                Sort: {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Select
+            value={sortBy}
+            onValueChange={(v) => onSortByChange(v as InventorySortBy)}
+          >
+            <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Sort by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  Sort: {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant={activeCount > 0 ? "secondary" : "outline"}
-              size="sm"
-              className="h-9"
-            >
-              <SlidersHorizontal className="mr-2 size-4" aria-hidden />
-              Filters
-              {activeCount > 0 && (
-                <span className="ml-1.5 rounded-full bg-primary px-1.5 text-[10px] tabular-nums text-primary-foreground">
-                  {activeCount}
-                </span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 space-y-3">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="inv-warranty"
-                className="text-xs text-muted-foreground"
-              >
-                Warranty
-              </Label>
-              <Select
-                value={filters.warranty}
-                onValueChange={(v) =>
-                  onFiltersChange((f) => ({
-                    ...f,
-                    warranty: v as WarrantyFilter,
-                  }))
-                }
-              >
-                <SelectTrigger id="inv-warranty" className="h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WARRANTY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Only offered once there is something to choose between. */}
-            {categories.length > 0 && (
-              <FilterSelect
-                id="inv-category"
-                label="Category"
-                allLabel="Any category"
-                value={filters.category}
-                onChange={(v) =>
-                  onFiltersChange((f) => ({ ...f, category: v }))
-                }
-                options={categories}
-              />
-            )}
-
-            {locations.length > 0 && (
-              <FilterSelect
-                id="inv-location"
-                label="Location"
-                allLabel="Anywhere"
-                value={filters.location}
-                onChange={(v) =>
-                  onFiltersChange((f) => ({ ...f, location: v }))
-                }
-                options={locations}
-              />
-            )}
-
-            {activeCount > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
               <Button
-                variant="ghost"
+                variant={activeCount > 0 ? "secondary" : "outline"}
                 size="sm"
-                className={cn("w-full")}
-                onClick={() =>
-                  onFiltersChange((f) => ({
-                    ...f,
-                    category: "all",
-                    location: "all",
-                    warranty: "all",
-                  }))
-                }
+                className="h-9"
               >
-                Clear filters
+                <SlidersHorizontal className="mr-2 size-4" aria-hidden />
+                Filters
+                {activeCount > 0 && (
+                  <span className="ml-1.5 rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-primary-foreground">
+                    {activeCount}
+                  </span>
+                )}
               </Button>
-            )}
-          </PopoverContent>
-        </Popover>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 space-y-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="inv-warranty"
+                  className="text-xs text-muted-foreground"
+                >
+                  Warranty
+                </Label>
+                <Select
+                  value={filters.warranty}
+                  onValueChange={(v) =>
+                    onFiltersChange((f) => ({
+                      ...f,
+                      warranty: v as WarrantyFilter,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="inv-warranty" className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WARRANTY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Only offered once there is something to choose between. */}
+              {categories.length > 0 && (
+                <FilterSelect
+                  id="inv-category"
+                  label="Category"
+                  allLabel="Any category"
+                  value={filters.category}
+                  onChange={(v) =>
+                    onFiltersChange((f) => ({ ...f, category: v }))
+                  }
+                  options={categories}
+                />
+              )}
+
+              {locations.length > 0 && (
+                <FilterSelect
+                  id="inv-location"
+                  label="Location"
+                  allLabel="Anywhere"
+                  value={filters.location}
+                  onChange={(v) =>
+                    onFiltersChange((f) => ({ ...f, location: v }))
+                  }
+                  options={locations}
+                />
+              )}
+
+              {activeCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("w-full")}
+                  onClick={() =>
+                    onFiltersChange((f) => ({
+                      ...f,
+                      category: "all",
+                      location: "all",
+                      warranty: "all",
+                    }))
+                  }
+                >
+                  Clear filters
+                </Button>
+              )}
+            </PopoverContent>
+          </Popover>
+          {children}
+        </div>
       </div>
+      {/* What is set stays visible once the popover shuts (P-toolbar). */}
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {chips.map((chip) => (
+            <RemovableChip
+              key={chip.key}
+              label={chip.label}
+              onRemove={chip.clear}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

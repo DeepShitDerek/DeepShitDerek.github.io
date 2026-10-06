@@ -2,6 +2,15 @@
 
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/cn";
 import {
   SETTINGS_SECTIONS,
@@ -105,10 +114,10 @@ function NavItem({
       onClick={onSelect}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left text-sm transition-[box-shadow,color,background-color] duration-base ease-enter",
+        "flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left text-sm transition-colors focus-ring",
         active
-          ? "bg-card font-medium text-foreground shadow-e1"
-          : "text-muted-foreground hover:text-foreground",
+          ? "bg-secondary font-medium text-foreground"
+          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden />
@@ -123,7 +132,7 @@ function NavItem({
         <span
           className={cn(
             "size-1.5 shrink-0 rounded-full",
-            invalid ? "bg-destructive" : "bg-primary",
+            invalid ? "bg-destructive" : "bg-warning",
           )}
         >
           <span className="sr-only">
@@ -132,5 +141,44 @@ function NavItem({
         </span>
       )}
     </button>
+  );
+}
+
+/**
+ * Below `lg`, the same groups as a select (03-workspace-ui.md §2.14): the
+ * rail lived in a sheet behind an "All settings" button, one more step
+ * than choosing from a list. Unsaved and failing groups say so in words.
+ */
+export function SettingsGroupSwitcher({
+  activeId,
+  onSelect,
+  dirtyIds,
+  invalidIds,
+  className,
+}: Omit<SettingsNavProps, "search" | "onSearchChange">) {
+  const note = (id: string) =>
+    invalidIds.has(id) ? " · has errors" : dirtyIds.has(id) ? " · unsaved" : "";
+  return (
+    <Select value={activeId} onValueChange={onSelect}>
+      <SelectTrigger
+        aria-label="Settings group"
+        className={cn("h-10", className)}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {SETTINGS_SECTIONS.map((section) => (
+          <SelectGroup key={section.id}>
+            <SelectLabel>{section.label}</SelectLabel>
+            {section.groups.map((group) => (
+              <SelectItem key={group.id} value={group.id}>
+                {group.label}
+                {note(group.id)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

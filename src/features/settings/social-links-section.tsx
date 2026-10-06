@@ -69,7 +69,7 @@ export function SocialLinksSection({ form }: { form: SettingsForm }) {
                   : undefined
               }
             >
-              <div className="space-y-3 rounded-surface bg-card p-3.5 shadow-e1">
+              <div className="space-y-3 rounded-surface border bg-card p-3.5">
                 <div className="flex items-center gap-3">
                   <Icon
                     className="size-4 shrink-0 text-muted-foreground"
@@ -154,7 +154,7 @@ export function SocialLinksSection({ form }: { form: SettingsForm }) {
         })}
 
         {links.fields.length === 0 && (
-          <p className="rounded-surface bg-card p-4 text-sm text-muted-foreground shadow-e1">
+          <p className="rounded-surface border bg-card p-4 text-sm text-muted-foreground">
             No links yet. Add one below — the hero, the footer and the contact
             page all read from this list.
           </p>

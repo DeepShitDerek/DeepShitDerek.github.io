@@ -3,10 +3,13 @@
 import { useMemo, useState } from "react";
 import {
   Archive,
+  ArrowLeft,
   CalendarCheck2,
   ListChecks,
+  MoreHorizontal,
   Plus,
   Table2,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Habit } from "@/types";
@@ -18,16 +21,23 @@ import {
   useUpdateHabitOrderMutation,
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import {
   EmptyState,
   FormSheet,
   LoadingState,
   ManagerWrapper,
+  ModuleTabs,
   PageHeader,
   LoadError,
+  type ModuleTab,
 } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { getErrorMessage } from "@/lib/utils";
 import { HabitGrid } from "./habit-grid";
 import { HabitForm } from "./habit-form";
@@ -39,8 +49,25 @@ import { dueToday, indexLogs, toggledValue } from "./habit-progress";
 
 type HabitView = "today" | "week" | "archived";
 
+const VIEW_TABS: ModuleTab<"today" | "week">[] = [
+  { id: "today", label: "Today", icon: ListChecks },
+  { id: "week", label: "History", icon: Table2 },
+];
+
+function BackToHistory({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mb-4 inline-flex items-center gap-1.5 rounded-control text-sm text-muted-foreground hover:text-foreground focus-ring"
+    >
+      <ArrowLeft aria-hidden className="size-4" />
+      History
+    </button>
+  );
+}
+
 export default function HabitsPage() {
-  const confirm = useConfirm();
   const [view, setView] = useState<HabitView>("today");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
@@ -48,8 +75,9 @@ export default function HabitsPage() {
 
   const today = todayIso();
 
+  // History needs the archived ones too, to offer "Show archived (n)".
   const { data: habits = [], isLoading, error: loadError, refetch } = useGetHabitsQuery(
-    view === "archived" ? { includeArchived: true } : undefined,
+    view === "today" ? undefined : { includeArchived: true },
   );
   const [setHabitLog] = useSetHabitLogMutation();
   const [archiveHabit] = useArchiveHabitMutation();
@@ -72,13 +100,24 @@ export default function HabitsPage() {
     }
   };
 
+  // Delete offers Undo instead of asking first (P1-10). The delete runs when
+  // the toast closes, so Undo restores the habit and every logged day.
+  const { pending: deleting, remove: removeHabit } = useUndoableDelete<Habit>(
+    async (habit) => {
+      try {
+        await deleteHabit(habit.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the habit", { description: getErrorMessage(err) });
+      }
+    },
+  );
   const active = useMemo(
-    () => habits.filter((habit) => !habit.archived_at),
-    [habits],
+    () => habits.filter((habit) => !habit.archived_at && !deleting.has(habit.id)),
+    [habits, deleting],
   );
   const archived = useMemo(
-    () => habits.filter((habit) => habit.archived_at),
-    [habits],
+    () => habits.filter((habit) => habit.archived_at && !deleting.has(habit.id)),
+    [habits, deleting],
   );
 
   const todaysHabits = useMemo(() => dueToday(active, today), [active, today]);
@@ -128,27 +167,13 @@ export default function HabitsPage() {
     }
   };
 
-  const handleDelete = async (habit: Habit) => {
+  const handleDelete = (habit: Habit) => {
     const count = habit.habit_logs?.length ?? 0;
-    const ok = await confirm({
-      title: `Delete "${habit.title}"?`,
-      description:
-        count > 0
-          ? `Its ${count} recorded day${count === 1 ? "" : "s"} are deleted with it and cannot be recovered. Archiving keeps the history instead.`
-          : "This cannot be undone. Archiving keeps the habit out of the way instead.",
-      variant: "destructive",
-      confirmText: "Delete",
-    });
-    if (!ok) return;
-
-    try {
-      await deleteHabit(habit.id).unwrap();
-      toast.success("Habit deleted.");
-    } catch (err) {
-      toast.error("Couldn't delete the habit", {
-        description: getErrorMessage(err),
-      });
-    }
+    removeHabit(
+      habit,
+      `Deleted "${habit.title}"`,
+      count > 0 ? `With its ${count} recorded day${count === 1 ? "" : "s"}.` : undefined,
+    );
   };
 
   const openCreate = () => {
@@ -173,28 +198,22 @@ export default function HabitsPage() {
         }
       />
 
-      {!isLoading && active.length > 0 && (
+      {/*
+        The two views as the module's tabs (03-workspace-ui.md §2.5): they
+        were a small right-aligned toggle under the summary and read as a
+        filter. Archived is not a third view of the same habits; it opens
+        from the foot of History.
+      */}
+      <ModuleTabs
+        label="Habit views"
+        tabs={VIEW_TABS}
+        current={view === "archived" ? "week" : view}
+        onSelect={setView}
+      />
+
+      {!isLoading && active.length > 0 && view === "today" && (
         <HabitStanding habits={active} today={today} />
       )}
-
-      <div className="mb-4 flex items-center justify-end">
-        <ToggleGroup
-          type="single"
-          value={view}
-          onValueChange={(v) => v && setView(v as HabitView)}
-          size="sm"
-        >
-          <ToggleGroupItem value="today" aria-label="Today">
-            <ListChecks className="mr-1.5 size-4" aria-hidden /> Today
-          </ToggleGroupItem>
-          <ToggleGroupItem value="week" aria-label="History">
-            <Table2 className="mr-1.5 size-4" aria-hidden /> History
-          </ToggleGroupItem>
-          <ToggleGroupItem value="archived" aria-label="Archived">
-            <Archive className="mr-1.5 size-4" aria-hidden /> Archived
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
 
       {isLoading ? (
         <LoadingState variant="section" label="Loading habits" />
@@ -202,43 +221,49 @@ export default function HabitsPage() {
         <LoadError what="your habits" error={loadError} onRetry={refetch} />
       ) : view === "archived" ? (
         archived.length === 0 ? (
-          <EmptyState
-            icon={Archive}
-            variant="card"
-            title="Nothing archived"
-            description="Archiving retires a habit without losing its history."
-          />
+          <>
+            <BackToHistory onClick={() => setView("week")} />
+            <EmptyState
+              icon={Archive}
+              variant="bordered"
+              title="Nothing archived"
+              description="Archiving retires a habit without losing its history."
+            />
+          </>
         ) : (
-          <ul className="space-y-2">
-            {archived.map((habit) => (
-              <li
-                key={habit.id}
-                className="flex flex-wrap items-center gap-3 rounded-surface bg-card p-3 shadow-e1"
-              >
-                <span className="min-w-0 flex-1 break-words text-sm font-medium">
-                  {habit.title}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {habit.habit_logs?.length ?? 0} days recorded
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleArchive(habit, false)}
-                >
-                  Restore
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => handleDelete(habit)}
-                >
-                  Delete
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <BackToHistory onClick={() => setView("week")} />
+            <h2 className="t-heading mb-3">Archived</h2>
+            <ul className="divide-y rounded-surface border bg-card">
+              {archived.map((habit) => (
+                <li key={habit.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <span className="min-w-0 flex-1 break-words text-sm font-medium">{habit.title}</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {habit.habit_logs?.length ?? 0} days recorded
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => handleArchive(habit, false)}>
+                    Restore
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-8" aria-label={`Actions: ${habit.title}`}>
+                        <MoreHorizontal aria-hidden className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => handleDelete(habit)}
+                      >
+                        <Trash2 aria-hidden className="mr-2 size-4" />
+                        Delete for good
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </li>
+              ))}
+            </ul>
+          </>
         )
       ) : active.length === 0 ? (
         <EmptyState
@@ -265,14 +290,26 @@ export default function HabitsPage() {
           />
         )
       ) : (
-        <HabitGrid
-          habits={active}
-          onToggle={handleToggleDate}
-          onEdit={openEdit}
-          onArchive={(habit) => handleArchive(habit, true)}
-          onViewStats={setDetailHabit}
-          onReorder={handleReorder}
-        />
+        <>
+          <HabitGrid
+            habits={active}
+            onToggle={handleToggleDate}
+            onEdit={openEdit}
+            onArchive={(habit) => handleArchive(habit, true)}
+            onViewStats={setDetailHabit}
+            onReorder={handleReorder}
+          />
+          {archived.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setView("archived")}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-control text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-ring"
+            >
+              <Archive aria-hidden className="size-4" />
+              Show archived ({archived.length})
+            </button>
+          )}
+        </>
       )}
 
       <FormSheet

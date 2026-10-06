@@ -64,13 +64,13 @@ export function CreditPanel() {
               <li key={card.accountId}>
                 <div className="flex justify-between">
                   <span>{accountById.get(card.accountId)?.name}</span>
-                  <span className={cn(card.ratio > 0.3 && "font-semibold text-amber-700 dark:text-amber-400")}>
+                  <span className={cn(card.ratio > 0.3 && "font-semibold text-warning")}>
                     {Math.round(card.ratio * 100)}% · <Amount minor={card.usedMinor} currency={accountById.get(card.accountId)?.currency ?? "CAD"} /> of{" "}
                     <Amount minor={card.limitMinor} currency={accountById.get(card.accountId)?.currency ?? "CAD"} />
                   </span>
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
-                  <div className={cn("h-full", card.ratio > 0.3 ? "bg-amber-500" : "bg-emerald-600")} style={{ width: `${Math.min(100, card.ratio * 100)}%` }} />
+                  <div className={cn("h-full", card.ratio > 0.3 ? "bg-warning" : "bg-success")} style={{ width: `${Math.min(100, card.ratio * 100)}%` }} />
                 </div>
               </li>
             ))}
@@ -116,7 +116,7 @@ export function CreditPanel() {
                   <span className="w-24 tabular-nums text-muted-foreground">{s.asOf}</span>
                   <span className="flex-1">{BUREAU[s.bureau]}{s.source ? ` · ${s.source}` : ""}</span>
                   <span className="font-semibold tabular-nums">{s.score}</span>
-                  <span className={cn("w-12 text-right text-xs tabular-nums", change && change > 0 ? "text-emerald-700 dark:text-emerald-400" : change && change < 0 ? "text-destructive" : "text-muted-foreground")}>
+                  <span className={cn("w-12 text-right text-xs tabular-nums", change && change > 0 ? "text-success" : change && change < 0 ? "text-destructive" : "text-muted-foreground")}>
                     {change === null ? "" : change > 0 ? `+${change}` : change}
                   </span>
                   <Button variant="ghost" size="icon" aria-label={`Delete score from ${s.asOf}`} onClick={() => remove(s.id)}>

@@ -122,7 +122,7 @@ export function RoomPanel() {
                 This year&apos;s pay adds about <Amount minor={extra} currency="CAD" /> of RRSP room next year (18%, up to the limit).
               </p>
             )}
-            {unconverted > 0 && <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">{unconverted} movement(s) in another currency could not be counted.</p>}
+            {unconverted > 0 && <p className="mt-2 text-xs text-warning">{unconverted} movement(s) in another currency could not be counted.</p>}
           </section>
         ))}
       </div>

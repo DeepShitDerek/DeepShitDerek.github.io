@@ -217,6 +217,25 @@ CREATE INDEX IF NOT EXISTS portfolio_items_merged_into_idx
 -- Case studies (V2-042): an item with a slug and a markdown body gets its own
 -- page at /work/<slug>/. `has_case_study` lets list views know without
 -- downloading every body. 'view' is taken by the /work/view/ fallback route.
+-- /showcase and /projects are gone; their sections live on /work
+-- (owner, 2026-10-01). Case studies keep their order and come first;
+-- project sections follow. Runs once in effect: afterwards nothing matches.
+UPDATE portfolio_sections
+   SET display_order = CASE
+         WHEN page_path = '/projects' THEN display_order + (
+           SELECT COALESCE(MAX(display_order), -1) + 1
+             FROM portfolio_sections WHERE page_path IN ('/showcase', '/work'))
+         ELSE display_order
+       END,
+       page_path = '/work'
+ WHERE page_path IN ('/showcase', '/projects');
+-- Menu links to the old pages: dropped where a Work link exists, else repointed.
+DELETE FROM navigation_links
+ WHERE href IN ('/showcase', '/projects')
+   AND EXISTS (SELECT 1 FROM navigation_links WHERE href = '/work');
+UPDATE navigation_links SET href = '/work'
+ WHERE href IN ('/showcase', '/projects');
+
 ALTER TABLE portfolio_items ADD COLUMN IF NOT EXISTS slug TEXT;
 ALTER TABLE portfolio_items ADD COLUMN IF NOT EXISTS case_study TEXT;
 ALTER TABLE portfolio_items
@@ -2186,7 +2205,7 @@ VALUES (1,
     "description": "A brief, compelling description about who you are and what you do. This will appear on your homepage.",
     "profile_picture_url": "",
     "show_profile_picture": false,
-    "default_theme": "theme-blueprint",
+    "default_theme": "theme-field-notes-light",
     "logo": { "main": "YOUR", "highlight": ".DEV" },
     "status_panel": {
       "show": true,

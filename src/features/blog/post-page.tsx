@@ -16,7 +16,6 @@ import { isSupabaseConfigured } from "@/lib/config";
 import { safeImageUrl } from "@/lib/safe-url";
 import { sizedImageUrl } from "@/lib/image-size";
 import { Band } from "@/components/layout/band";
-import { Reveal } from "@/components/layout/motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
@@ -25,7 +24,11 @@ import { readTime } from "./post-meta";
 import { contentHash } from "./content-hash";
 import { loadPostContent } from "./post-content-loader";
 import { ReadingProgress } from "./reading-progress";
-import { TableOfContents, useHeadings } from "./table-of-contents";
+import {
+  TableOfContents,
+  TableOfContentsInline,
+  useHeadings,
+} from "./table-of-contents";
 
 const VIEW_COUNT_DELAY_MS = 5000;
 const ARTICLE_ID = "post-article";
@@ -52,7 +55,7 @@ const PostContent = dynamic(
 );
 
 const ICON_BUTTON =
-  "flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-colors duration-base hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+  "flex size-10 items-center justify-center rounded-control text-muted-foreground transition-colors duration-fast hover:bg-secondary hover:text-foreground focus-ring [@media(pointer:coarse)]:size-11";
 
 /** "status: 404 — post not found" was the v2 terminal voice. */
 function PostNotFound() {
@@ -66,7 +69,7 @@ function PostNotFound() {
         <p className="t-lead mt-4 text-pretty">
           It may have been unpublished, or the link may be mistyped.
         </p>
-        <Button asChild size="lg" className="mt-10 rounded-full px-7">
+        <Button asChild size="lg" className="mt-10">
           <Link href="/blog">
             <ArrowLeft className="mr-2 size-4" aria-hidden />
             All posts
@@ -195,90 +198,90 @@ export function PostPage({ slug, prerendered }: { slug: string; prerendered?: Pr
   return (
     <>
       <ReadingProgress />
-      <Band weight="content" width="wide">
+      <Band weight="content">
         {/*
-          Keyed on whether a table of contents will actually render, not on the
-          `show_toc` flag alone — a rail that returns null must not reserve a
-          column the article then never widens into.
+          One left edge (P1-13). The post sat in the wide band (84rem) while
+          the header and every other page use the content width, its body was
+          centred in its column, and the contents rail sat on the right: three
+          different left edges on one page. Now the band is the content width
+          and, from lg, a 12rem margin rail on the left holds the contents, as
+          the home page's rows hold their dates. The article reads at the
+          prose measure beside it.
         */}
-        <div
-          className={
-            hasToc
-              ? "grid gap-12 lg:grid-cols-[minmax(0,1fr)_14rem]"
-              : "mx-auto max-w-3xl"
-          }
-        >
-          <article id={ARTICLE_ID} className="min-w-0">
+        <div className="grid gap-x-12 lg:grid-cols-[12rem_minmax(0,1fr)]">
+          <div className="hidden lg:block">
+            {hasToc && (
+              <TableOfContents headings={headings} activeId={activeId} />
+            )}
+          </div>
+
+          <article id={ARTICLE_ID} className="min-w-0 max-w-prose">
             <header>
-              <Reveal>
-                <Link
-                  href="/blog"
-                  className="group inline-flex items-center gap-1.5 rounded-full text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <ArrowLeft
-                    className="size-4 transition-transform duration-base ease-enter group-hover:-translate-x-0.5 motion-reduce:transition-none"
-                    aria-hidden
-                  />
-                  All posts
-                </Link>
-              </Reveal>
+              <Link
+                href="/blog"
+                className="group inline-flex items-center gap-1.5 rounded-control text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-ring"
+              >
+                <ArrowLeft
+                  className="size-4 transition-transform duration-fast group-hover:-translate-x-0.5 motion-reduce:transition-none"
+                  aria-hidden
+                />
+                All writing
+              </Link>
 
-              <Reveal delay={0.05}>
-                {tags[0] && <p className="t-eyebrow mt-10">{tags[0]}</p>}
-                <h1
-                  className={cn(
-                    "t-title text-balance [overflow-wrap:anywhere]",
-                    tags[0] ? "mt-3" : "mt-10",
-                  )}
-                >
-                  {post.title}
-                </h1>
-                {post.excerpt && (
-                  <p className="t-lead mt-5 text-pretty">{post.excerpt}</p>
+              {tags[0] && <p className="t-eyebrow mt-10">{tags[0]}</p>}
+              <h1
+                className={cn(
+                  "t-title text-balance [overflow-wrap:anywhere]",
+                  tags[0] ? "mt-3" : "mt-10",
                 )}
-              </Reveal>
+              >
+                {post.title}
+              </h1>
+              {post.excerpt && (
+                <p className="t-lead mt-5 text-pretty">{post.excerpt}</p>
+              )}
 
-              <Reveal delay={0.1}>
-                <div className="mt-8 flex items-center gap-3">
-                  {avatar && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={sizedImageUrl(avatar, 40)}
-                      alt=""
-                      width={40}
-                      height={40}
-                      decoding="async"
-                      className="size-10 rounded-full object-cover shadow-e1"
-                    />
+              <div className="mt-8 flex items-center gap-3">
+                {avatar && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={sizedImageUrl(avatar, 40)}
+                    alt=""
+                    width={40}
+                    height={40}
+                    decoding="async"
+                    className="size-10 rounded-full object-cover"
+                  />
+                )}
+                <div className="min-w-0 text-sm">
+                  {author?.name && (
+                    <p className="font-semibold">{author.name}</p>
                   )}
-                  <div className="min-w-0 text-sm">
-                    {author?.name && (
-                      <p className="font-semibold">{author.name}</p>
+                  <p className="font-mono text-micro text-muted-foreground">
+                    {published && (
+                      <time dateTime={post.published_at ?? undefined}>
+                        {published}
+                      </time>
                     )}
-                    <p className="text-muted-foreground">
-                      {published && (
-                        <time dateTime={post.published_at ?? undefined}>
-                          {published}
-                        </time>
-                      )}
-                      {published && " · "}
-                      {readTime(post)} min read
-                    </p>
-                  </div>
+                    {published && " · "}
+                    {readTime(post)} min read
+                  </p>
                 </div>
-              </Reveal>
+              </div>
 
               {cover && (
-                <Reveal delay={0.15}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={cover}
-                    alt=""
-                    // Usually the largest thing above the fold (the LCP).
-                    fetchPriority="high"
-                    className="mt-10 w-full rounded-surface object-cover shadow-e2"
-                  />
-                </Reveal>
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cover}
+                  alt=""
+                  // Usually the largest thing above the fold (the LCP).
+                  fetchPriority="high"
+                  className="mt-10 w-full rounded-surface object-cover"
+                />
+              )}
+
+              {hasToc && (
+                <TableOfContentsInline headings={headings} activeId={activeId} />
               )}
             </header>
 
@@ -291,14 +294,14 @@ export function PostPage({ slug, prerendered }: { slug: string; prerendered?: Pr
             </div>
 
             <footer className="mt-16">
-              <div className="flex flex-wrap items-center justify-between gap-6 border-t border-border/60 pt-8">
+              <div className="flex flex-wrap items-center justify-between gap-6 border-t border-border pt-8">
                 {tags.length > 0 ? (
                   <ul className="flex flex-wrap gap-2" aria-label="Topics">
                     {tags.map((tag) => (
                       <li key={tag}>
                         <Link
                           href={`/blog?tag=${encodeURIComponent(tag)}`}
-                          className="inline-flex rounded-full bg-secondary px-3.5 py-1.5 text-sm font-medium text-secondary-foreground transition-colors duration-base hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="inline-flex min-h-6 items-center rounded-full border border-border px-3 py-1 font-mono text-micro text-muted-foreground transition-colors duration-fast hover:border-input hover:text-foreground focus-ring"
                         >
                           {tag}
                         </Link>
@@ -347,10 +350,6 @@ export function PostPage({ slug, prerendered }: { slug: string; prerendered?: Pr
               </div>
             </footer>
           </article>
-
-          {hasToc && (
-            <TableOfContents headings={headings} activeId={activeId} />
-          )}
         </div>
       </Band>
     </>

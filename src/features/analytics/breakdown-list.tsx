@@ -20,6 +20,7 @@ export function BreakdownList({
   empty,
   renderLabel,
   className,
+  bare = false,
 }: {
   title: string;
   slices: VisitorSlice[];
@@ -28,13 +29,21 @@ export function BreakdownList({
   empty: string;
   renderLabel?: (slice: VisitorSlice) => ReactNode;
   className?: string;
+  /** Inside another card (the tabbed one on phones): no frame, heading for AT only. */
+  bare?: boolean;
 }) {
   return (
     <section
-      className={cn("rounded-surface bg-card p-5 shadow-e1", className)}
+      className={cn(!bare && "rounded-surface border bg-card p-5", className)}
       aria-label={title}
     >
-      <h2 className="mb-4 text-sm font-semibold text-foreground">{title}</h2>
+      <h2
+        className={cn(
+          bare ? "sr-only" : "mb-4 text-sm font-semibold text-foreground",
+        )}
+      >
+        {title}
+      </h2>
 
       {slices.length === 0 ? (
         <p className="text-sm text-muted-foreground">{empty}</p>

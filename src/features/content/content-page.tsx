@@ -36,9 +36,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import {
   EmptyState,
+  LoadError,
   LoadingState,
   ManagerWrapper,
   PageHeader,
@@ -79,15 +80,18 @@ import { ItemEditorSheet } from "./item-editor-sheet";
  *    created.
  */
 export default function ContentPage() {
-  const confirm = useConfirm();
-
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [openSectionId, setOpenSectionId] = useState<string | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>(null);
   const [treeOpen, setTreeOpen] = useState(false);
   const [localSections, setLocalSections] = useState<PortfolioSection[]>([]);
 
-  const { data: sections, isLoading, error } = useGetPortfolioContentQuery();
+  const {
+    data: sections,
+    isLoading,
+    error,
+    refetch,
+  } = useGetPortfolioContentQuery();
   const { data: navLinks } = useGetNavLinksAdminQuery();
   const [saveSection] = useSaveSectionMutation();
   const [deleteSection] = useDeleteSectionMutation();
@@ -102,18 +106,69 @@ export default function ContentPage() {
     if (sections) setLocalSections(sections);
   }, [sections]);
 
+  // Deletes offer Undo instead of asking first (P1-10). Nothing is deleted
+  // until the toast closes, so a section's items, and the public page, stay
+  // as they were if you undo.
+  const { pending: deletingSections, remove: removeSection } =
+    useUndoableDelete<PortfolioSection>(async (section) => {
+      try {
+        await deleteSection(section.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the section", {
+          description: getErrorMessage(err),
+        });
+      }
+    });
+  const { pending: deletingItems, remove: removeItem } =
+    useUndoableDelete<PortfolioItem>(async (item) => {
+      try {
+        await deleteItem(item.id).unwrap();
+        // Asset usage is a nice-to-have; a failure here must not read as a
+        // failed delete.
+        rescanUsage()
+          .unwrap()
+          .catch(() => undefined);
+      } catch (err) {
+        toast.error("Couldn't delete the item", {
+          description: getErrorMessage(err),
+        });
+      }
+    });
+
+  /**
+   * What is drawn: the sections less any waiting to be deleted. The reorder
+   * handlers keep working on `localSections`, so an Undo puts a row back in
+   * its place.
+   */
+  const shownSections = useMemo(() => {
+    if (deletingSections.size === 0 && deletingItems.size === 0)
+      return localSections;
+    return localSections
+      .filter((s) => !deletingSections.has(s.id))
+      .map((s) =>
+        s.portfolio_items?.some((i) => deletingItems.has(i.id))
+          ? {
+              ...s,
+              portfolio_items: s.portfolio_items.filter(
+                (i) => !deletingItems.has(i.id),
+              ),
+            }
+          : s,
+      );
+  }, [localSections, deletingSections, deletingItems]);
+
   /** Every path that has content, or that a nav link points at. */
   const pages = useMemo(() => {
     const paths = new Set<string>(["/"]);
     navLinks?.forEach(
       (link) => link.href?.startsWith("/") && paths.add(link.href),
     );
-    localSections.forEach((s) => s.page_path && paths.add(s.page_path));
+    shownSections.forEach((s) => s.page_path && paths.add(s.page_path));
 
     return Array.from(paths)
       .sort((a, b) => (a === "/" ? -1 : b === "/" ? 1 : a.localeCompare(b)))
       .map((path) => {
-        const onPage = localSections.filter((s) => s.page_path === path);
+        const onPage = shownSections.filter((s) => s.page_path === path);
         return {
           path,
           label: path === "/" ? "Home" : path,
@@ -121,7 +176,7 @@ export default function ContentPage() {
           hiddenCount: onPage.filter((s) => s.is_visible === false).length,
         };
       });
-  }, [navLinks, localSections]);
+  }, [navLinks, shownSections]);
 
   const availablePaths: PathOption[] = useMemo(
     () =>
@@ -139,16 +194,16 @@ export default function ContentPage() {
     setSelectedPath((pages.find((p) => p.sectionCount > 0) ?? pages[0]).path);
   }, [pages, selectedPath]);
 
-  const openSection = localSections.find((s) => s.id === openSectionId) ?? null;
+  const openSection = shownSections.find((s) => s.id === openSectionId) ?? null;
 
   // Open on something rather than an empty editor pane.
   useEffect(() => {
-    if (openSectionId || localSections.length === 0) return;
-    const first = [...localSections].sort(
+    if (openSectionId || shownSections.length === 0) return;
+    const first = [...shownSections].sort(
       (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0),
     )[0];
     setOpenSectionId(first.id);
-  }, [localSections, openSectionId]);
+  }, [shownSections, openSectionId]);
 
   /* ── handlers ─────────────────────────────────────────────────────── */
 
@@ -268,30 +323,20 @@ export default function ContentPage() {
   );
 
   const handleDeleteSection = useCallback(
-    async (id: string) => {
+    (id: string) => {
       const target = localSections.find((s) => s.id === id);
-      const itemCount = target?.portfolio_items?.length ?? 0;
-      const ok = await confirm({
-        title: `Delete "${target?.title ?? "section"}"?`,
-        description:
-          itemCount > 0
-            ? `This permanently deletes the section and its ${itemCount} item${itemCount === 1 ? "" : "s"}.`
-            : "This permanently deletes the section.",
-        variant: "destructive",
-      });
-      if (!ok) return;
-
-      try {
-        await deleteSection(id).unwrap();
-        toast.success("Section deleted");
-        setOpenSectionId(null);
-      } catch (err) {
-        toast.error("Failed to delete section", {
-          description: getErrorMessage(err),
-        });
-      }
+      if (!target) return;
+      const itemCount = target.portfolio_items?.length ?? 0;
+      setOpenSectionId(null);
+      removeSection(
+        target,
+        `Deleted "${target.title || "Untitled section"}"`,
+        itemCount > 0
+          ? `With its ${itemCount} item${itemCount === 1 ? "" : "s"}. It comes off the site when this closes.`
+          : "It comes off the site when this closes.",
+      );
     },
-    [confirm, deleteSection, localSections],
+    [localSections, removeSection],
   );
 
   const handleSaveItem = useCallback(
@@ -315,27 +360,14 @@ export default function ContentPage() {
   );
 
   const handleDeleteItem = useCallback(
-    async (itemId: string) => {
-      const ok = await confirm({
-        title: "Delete item?",
-        description: "This action cannot be undone.",
-        variant: "destructive",
-      });
-      if (!ok) return;
-
-      try {
-        await deleteItem(itemId).unwrap();
-        toast.success("Item deleted");
-        rescanUsage()
-          .unwrap()
-          .catch(() => undefined);
-      } catch (err) {
-        toast.error("Failed to delete item", {
-          description: getErrorMessage(err),
-        });
-      }
+    (itemId: string) => {
+      const item = localSections
+        .flatMap((s) => s.portfolio_items ?? [])
+        .find((i) => i.id === itemId);
+      if (!item) return;
+      removeItem(item, `Deleted "${item.title || "Untitled item"}"`);
     },
-    [confirm, deleteItem, rescanUsage],
+    [localSections, removeItem],
   );
 
   /** Swap an item with its neighbour, optimistically, in one database call. */
@@ -429,11 +461,11 @@ export default function ContentPage() {
       pages.map((p) => ({
         path: p.path,
         label: p.label,
-        sections: localSections
+        sections: shownSections
           .filter((s) => s.page_path === p.path)
           .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)),
       })),
-    [pages, localSections],
+    [pages, shownSections],
   );
 
   const tree = (
@@ -458,14 +490,17 @@ export default function ContentPage() {
   );
 
   const previewSections = previewPath
-    ? localSections
+    ? shownSections
         .filter((s) => s.page_path === previewPath && s.is_visible !== false)
         .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
     : [];
 
   /** The whole page, as the site draws it — hidden sections left out. */
   const pagePreview = (
-    <Dialog open={!!previewPath} onOpenChange={(open) => !open && setPreviewPath(null)}>
+    <Dialog
+      open={!!previewPath}
+      onOpenChange={(open) => !open && setPreviewPath(null)}
+    >
       <DialogContent className="max-h-[88vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -491,7 +526,9 @@ export default function ContentPage() {
               No visible sections on this page yet.
             </p>
           ) : (
-            previewSections.map((s) => <SectionRenderer key={s.id} section={s} />)
+            previewSections.map((s) => (
+              <SectionRenderer key={s.id} section={s} />
+            ))
           )}
         </div>
       </DialogContent>
@@ -507,21 +544,18 @@ export default function ContentPage() {
     );
   }
 
-  if (error) {
+  // The shared error state, with the reason and a Retry, like every module.
+  // Only when there is nothing to show: a failed refetch keeps the last copy.
+  if (error && localSections.length === 0) {
     return (
       <ManagerWrapper>
         <PageHeader title="Pages" />
-        <EmptyState
-          variant="card"
-          icon={LayoutTemplate}
-          title="Couldn't load content"
-          description="The sections could not be fetched. Check your connection and try again."
-        />
+        <LoadError what="the pages" error={error} onRetry={refetch} />
       </ManagerWrapper>
     );
   }
 
-  if (localSections.length === 0) {
+  if (shownSections.length === 0) {
     return (
       <ManagerWrapper>
         <PageHeader
@@ -588,7 +622,7 @@ export default function ContentPage() {
         </div>
 
         <aside className="hidden lg:block">
-          <div className="sticky top-20 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-surface bg-card p-2 shadow-e1">
+          <div className="sticky top-20 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-surface border bg-card p-2">
             {tree}
           </div>
         </aside>

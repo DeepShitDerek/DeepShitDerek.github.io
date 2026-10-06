@@ -34,40 +34,65 @@ export interface NavGroup {
   items: NavItem[];
 }
 
-/** Personal OS navigation — grouped Overview → Content → Life → System. */
+/**
+ * Personal OS navigation, grouped by how often each module is opened
+ * (design-research/information-architecture.md §6, P1-12): what you look at
+ * every morning, what you do all day, what you study, money, the public
+ * site, what comes in from it, and the rare system screens.
+ *
+ * The old grouping (Overview / Content / Life / System) put Inbox and
+ * Discover among the authoring tools and Notes beside Inventory, so daily
+ * tools were scattered among monthly ones. Names and routes are unchanged;
+ * only the groups moved.
+ */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Overview",
+    label: "Today",
     items: [
       { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-      { name: "Analytics", href: "/admin/analytics", icon: LineChart },
+      { name: "Inbox", href: "/admin/inbox", icon: Inbox },
     ],
   },
   {
-    label: "Content",
+    label: "Plan & do",
+    items: [
+      { name: "Tasks", href: "/admin/tasks", icon: ListTodo },
+      { name: "Calendar", href: "/admin/calendar", icon: Calendar },
+      { name: "Habits", href: "/admin/habits", icon: CheckSquare },
+    ],
+  },
+  {
+    label: "Knowledge",
+    items: [
+      { name: "Notes", href: "/admin/notes", icon: StickyNote },
+      { name: "Learning", href: "/admin/learning", icon: BrainCircuit },
+      { name: "Library", href: "/admin/library", icon: BookMarked },
+      { name: "Maps", href: "/admin/maps", icon: Network },
+      { name: "Whiteboard", href: "/admin/whiteboard", icon: Presentation },
+    ],
+  },
+  {
+    label: "Money & property",
+    items: [
+      { name: "Money", href: "/admin/finance", icon: Banknote },
+      { name: "Inventory", href: "/admin/inventory", icon: Box },
+    ],
+  },
+  {
+    label: "Site",
     items: [
       { name: "Pages", href: "/admin/content", icon: LayoutTemplate },
       { name: "Blog", href: "/admin/blog", icon: BookText },
       { name: "Updates", href: "/admin/life-updates", icon: Megaphone },
       { name: "Navigation", href: "/admin/navigation", icon: NavigationIcon },
       { name: "Assets", href: "/admin/assets", icon: ImageIcon },
-      { name: "Inbox", href: "/admin/inbox", icon: Inbox },
-      { name: "Discover", href: "/admin/discover", icon: CloudSun },
     ],
   },
   {
-    label: "Life",
+    label: "Signals",
     items: [
-      { name: "Tasks", href: "/admin/tasks", icon: ListTodo },
-      { name: "Habits", href: "/admin/habits", icon: CheckSquare },
-      { name: "Learning", href: "/admin/learning", icon: BrainCircuit },
-      { name: "Library", href: "/admin/library", icon: BookMarked },
-      { name: "Calendar", href: "/admin/calendar", icon: Calendar },
-      { name: "Notes", href: "/admin/notes", icon: StickyNote },
-      { name: "Whiteboard", href: "/admin/whiteboard", icon: Presentation },
-      { name: "Maps", href: "/admin/maps", icon: Network },
-      { name: "Money", href: "/admin/finance", icon: Banknote },
-      { name: "Inventory", href: "/admin/inventory", icon: Box },
+      { name: "Analytics", href: "/admin/analytics", icon: LineChart },
+      { name: "Discover", href: "/admin/discover", icon: CloudSun },
     ],
   },
   {

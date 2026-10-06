@@ -1,11 +1,11 @@
 "use client";
 
+import { ReorderButtons } from "@/components/admin/shared";
 import { useState, type DragEvent } from "react";
 import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
   Eye,
   EyeOff,
   GripVertical,
@@ -108,7 +108,7 @@ export function ContentTree({
                 type="button"
                 onClick={() => toggle(page.path)}
                 aria-expanded={!isCollapsed}
-                className="flex min-w-0 flex-1 items-center gap-1.5 rounded-control px-2 py-1.5 text-left text-sm font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-w-0 flex-1 items-center gap-1.5 rounded-control px-2 py-1.5 text-left text-sm font-medium transition-colors hover:bg-secondary focus-ring"
               >
                 {isCollapsed ? (
                   <ChevronRight
@@ -131,7 +131,7 @@ export function ContentTree({
                 </span>
                 {emptyCount > 0 && (
                   <AlertTriangle
-                    className="size-3 shrink-0 text-chart-3"
+                    className="size-3 shrink-0 text-warning"
                     aria-label={`${emptyCount} empty section${emptyCount === 1 ? "" : "s"}`}
                   />
                 )}
@@ -170,8 +170,18 @@ export function ContentTree({
                       key={section.id}
                       section={section}
                       // Moving without dragging (WCAG 2.5.7, V2-060).
-                      onMoveUp={index > 0 ? () => onReorder(section.id, page.sections[index - 1].id) : undefined}
-                      onMoveDown={index < page.sections.length - 1 ? () => onReorder(section.id, page.sections[index + 1].id) : undefined}
+                      onMoveUp={
+                        index > 0
+                          ? () =>
+                              onReorder(section.id, page.sections[index - 1].id)
+                          : undefined
+                      }
+                      onMoveDown={
+                        index < page.sections.length - 1
+                          ? () =>
+                              onReorder(section.id, page.sections[index + 1].id)
+                          : undefined
+                      }
                       selected={section.id === selectedSectionId}
                       isDragging={draggedId === section.id}
                       isDropTarget={dropTarget === section.id}
@@ -251,7 +261,7 @@ function SectionTreeRow({
         aria-current={selected ? "true" : undefined}
         className={cn(
           "flex min-w-0 flex-1 items-center gap-1.5 rounded-control px-2 py-1.5 text-left text-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "focus-ring",
           selected
             ? "bg-primary/10 font-medium text-primary"
             : "text-muted-foreground hover:bg-secondary hover:text-foreground",
@@ -266,28 +276,16 @@ function SectionTreeRow({
         )}
         {empty && (
           <AlertTriangle
-            className="size-3 shrink-0 text-chart-3"
+            className="size-3 shrink-0 text-warning"
             aria-label="Empty — skipped on the public site"
           />
         )}
       </button>
-      <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-        {[
-          { label: "Move up", onClick: onMoveUp, Icon: ChevronUp },
-          { label: "Move down", onClick: onMoveDown, Icon: ChevronDown },
-        ].map(({ label, onClick, Icon }) => (
-          <button
-            key={label}
-            type="button"
-            onClick={onClick}
-            disabled={!onClick}
-            aria-label={`${label}: ${section.title}`}
-            className="inline-flex size-6 items-center justify-center rounded-control text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:invisible"
-          >
-            <Icon className="size-3.5" aria-hidden />
-          </button>
-        ))}
-      </span>
+      <ReorderButtons
+        name={section.title}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+      />
     </li>
   );
 }

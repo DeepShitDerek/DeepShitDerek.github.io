@@ -292,7 +292,7 @@ function PreviewFrame({
   return (
     <div
       ref={paneRef}
-      className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-surface bg-card shadow-e2"
+      className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-surface border bg-card"
     >
       <div style={{ height: box.height || undefined }}>
         <div

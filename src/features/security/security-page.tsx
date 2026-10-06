@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -41,21 +41,42 @@ import { assessPassword, passwordFormError } from "./password-strength";
 import { AddFactorDialog } from "./add-factor-dialog";
 import { exportWorkspace, parseBackup, restoreWorkspace } from "./workspace-export";
 import { downloadText } from "@/lib/download";
+import {
+  SecurityHealth,
+  healthRows,
+  readLastBackup,
+  recordBackup,
+} from "./security-health";
 
+/**
+ * A settings-style section (03-workspace-ui.md §2.15, P-form): what it is
+ * and why on the left, the controls on the right at `lg`. `scroll-mt` keeps
+ * the heading clear of the top bar when the status summary links here.
+ */
 function Section({
+  id,
   title,
   description,
   children,
 }: {
+  id: string;
   title: string;
   description: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-surface bg-card p-5 shadow-e1">
-      <h2 className="text-base font-medium">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className="mt-4">{children}</div>
+    <section
+      id={id}
+      aria-labelledby={`${id}-title`}
+      className="grid scroll-mt-20 gap-4 rounded-surface border bg-card p-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-8"
+    >
+      <div>
+        <h2 id={`${id}-title`} className="text-base font-medium">
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="min-w-0">{children}</div>
     </section>
   );
 }
@@ -119,6 +140,8 @@ export default function SecurityPage() {
         JSON.stringify(backup, null, 2),
         "application/json",
       );
+      recordBackup(backup.exported_at);
+      setLastBackup(backup.exported_at);
       const failed = Object.keys(backup.errors);
       if (failed.length > 0) {
         toast.warning("Backup saved, with gaps", {
@@ -137,7 +160,15 @@ export default function SecurityPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  const { data: security } = useGetSecuritySettingsQuery();
+  const {
+    data: security,
+    isLoading: isLoadingLevel,
+    error: levelError,
+  } = useGetSecuritySettingsQuery();
+  // Kept in this browser only; the summary says so rather than implying
+  // the server knows when you last took a copy.
+  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  useEffect(() => setLastBackup(readLastBackup()), []);
   const [updateLockdown, { isLoading: isLocking }] =
     useUpdateLockdownLevelMutation();
   const {
@@ -162,6 +193,16 @@ export default function SecurityPage() {
     [factors],
   );
   const assessment = useMemo(() => assessPassword(newPassword), [newPassword]);
+
+  const health = healthRows({
+    factors: {
+      loading: isLoadingFactors,
+      failed: !!factorsError,
+      verified: verified.length,
+    },
+    site: { loading: isLoadingLevel, failed: !!levelError, level },
+    lastBackup,
+  });
 
   const handleLockdown = async (target: number) => {
     if (target === level) return;
@@ -258,7 +299,9 @@ export default function SecurityPage() {
         description="Who can reach the site, and what protects the account that runs it."
       />
 
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <SecurityHealth rows={health} />
+
         {!!factorsError && (
           <Alert variant="destructive">
             <AlertCircle className="size-4" aria-hidden />
@@ -270,6 +313,7 @@ export default function SecurityPage() {
         )}
 
         <Section
+          id="site-availability"
           title="Site availability"
           description="Who can reach the public site, and whether the database will accept changes."
         >
@@ -291,8 +335,10 @@ export default function SecurityPage() {
                   disabled={isLocking}
                   onClick={() => handleLockdown(option.level)}
                   className={cn(
-                    "flex items-start gap-3 rounded-surface p-3 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    active ? "bg-secondary shadow-e1" : "hover:bg-secondary/50",
+                    "flex items-start gap-3 rounded-surface border p-3 text-left transition-colors focus-ring",
+                    active
+                      ? "border-primary bg-secondary/40"
+                      : "border-transparent hover:bg-secondary/50",
                   )}
                 >
                   <Icon
@@ -302,8 +348,8 @@ export default function SecurityPage() {
                       option.tone === "critical" &&
                         active &&
                         "text-destructive",
-                      option.tone === "warning" && active && "text-chart-3",
-                      option.tone === "normal" && active && "text-chart-2",
+                      option.tone === "warning" && active && "text-warning",
+                      option.tone === "normal" && active && "text-success",
                       !active && "text-muted-foreground",
                     )}
                   />
@@ -369,6 +415,7 @@ export default function SecurityPage() {
         </Section>
 
         <Section
+          id="two-factor"
           title="Two-factor authentication"
           description="Required. Admin access is granted by the database only at AAL2, so this is the boundary rather than a convenience."
         >
@@ -404,7 +451,7 @@ export default function SecurityPage() {
                         : "—"}
                     </span>
                   </span>
-                  <span className="inline-flex items-center gap-1 text-xs text-chart-2">
+                  <span className="inline-flex items-center gap-1 text-xs text-success">
                     <ShieldCheck aria-hidden className="size-3.5" />
                     Verified
                   </span>
@@ -450,6 +497,7 @@ export default function SecurityPage() {
         </Section>
 
         <Section
+          id="your-data"
           title="Your data"
           description="Everything you have written here, in one JSON file you keep. Secrets and visitor analytics are left out."
         >
@@ -499,6 +547,7 @@ export default function SecurityPage() {
         </Section>
 
         <Section
+          id="password"
           title="Password"
           description="The one account that can change anything on this site."
         >
@@ -541,8 +590,8 @@ export default function SecurityPage() {
                           "h-full flex-1 rounded-full",
                           i < assessment.score
                             ? assessment.score >= 3
-                              ? "bg-chart-2"
-                              : "bg-chart-3"
+                              ? "bg-success"
+                              : "bg-warning"
                             : "bg-secondary",
                         )}
                       />
@@ -595,6 +644,7 @@ export default function SecurityPage() {
         </Section>
 
         <Section
+          id="sessions"
           title="Sessions"
           description="Sign out everywhere if you think someone else has access, or you signed in on a device you no longer have."
         >

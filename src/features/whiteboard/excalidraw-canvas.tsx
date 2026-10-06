@@ -1,6 +1,6 @@
 "use client";
 
-import { Excalidraw, Footer } from "@excalidraw/excalidraw";
+import { Excalidraw } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
 import type { ExcalidrawTheme } from "./whiteboard-theme";
@@ -20,18 +20,6 @@ interface ExcalidrawCanvasProps {
    * board open into an unsaved-changes prompt.
    */
   onChange: (elements: readonly unknown[]) => void;
-  /**
-   * Board actions, rendered into Excalidraw's own top-right slot.
-   *
-   * Not absolutely positioned over the canvas: the library already owns the
-   * top-left (menu), top-centre (toolbar) and top-right (library) of its own
-   * surface, and anything floated there collides with one of them at some
-   * viewport width. These two props are the supported way in, so the chrome
-   * moves with Excalidraw's layout instead of guessing at it.
-   */
-  topRight?: React.ReactNode;
-  /** Title and save state, rendered into Excalidraw's footer. */
-  footer?: React.ReactNode;
 }
 
 /**
@@ -45,8 +33,6 @@ export function ExcalidrawCanvas({
   theme,
   onApiReady,
   onChange,
-  topRight,
-  footer,
 }: ExcalidrawCanvasProps) {
   return (
     // Full-bleed: the canvas is the screen. A bordered, rounded box inside a
@@ -67,10 +53,7 @@ export function ExcalidrawCanvas({
             loadScene: false,
           },
         }}
-        renderTopRightUI={topRight ? () => <>{topRight}</> : undefined}
-      >
-        {footer ? <Footer>{footer}</Footer> : null}
-      </Excalidraw>
+      />
     </div>
   );
 }

@@ -91,7 +91,8 @@ const q = (s) => JSON.stringify(s);
 async function clickEl(elExpr, label) {
   await waitFor(`!!(${elExpr})`, label);
   // A closing Radix menu leaves pointer-events: none on the body for a moment.
-  await waitFor(`getComputedStyle(document.body).pointerEvents !== "none" || !!document.querySelector('[role="dialog"], [role="listbox"]')`, "pointer events", 3000);
+  // An open menu sets it too, deliberately, and its items are still clickable.
+  await waitFor(`getComputedStyle(document.body).pointerEvents !== "none" || !!document.querySelector('[role="dialog"], [role="listbox"], [role="menu"]')`, "pointer events", 3000);
   // Sheets and popovers slide in: wait until the target stops moving.
   let last = "";
   for (let i = 0; i < 40; i += 1) {
@@ -296,7 +297,7 @@ try {
 
   // ── Transactions ──
   await area("Transactions");
-  await button("Add");
+  await buttonExact("Transaction");
   await type("txn-date", "2026-02-03");
   await type("txn-payee", "Loblaws");
   await evaluate(`document.querySelector('input[aria-label^="Amount"]').focus()`);
@@ -307,7 +308,7 @@ try {
   check("an expense saves and shows with its category", (await bodyHas("Loblaws")) && (await bodyHas("Groceries")) && (await bodyHas("−$45.20")));
 
   // Refused: empty amount
-  await button("Add");
+  await buttonExact("Transaction");
   await type("txn-description", "Nothing");
   await saveSheet();
   await waitFor(`!!document.querySelector('[role="dialog"] [role="alert"]')`, "form problems");
@@ -317,7 +318,7 @@ try {
   await sheetGone();
 
   // Income
-  await button("Add");
+  await buttonExact("Transaction");
   await clickEl(byExactText('[role="dialog"] [role="radio"], [role="dialog"] button', "Income"), "Income toggle");
   await type("txn-date", "2026-02-15");
   await type("txn-payee", "Acme Corp");
@@ -328,7 +329,7 @@ try {
   await sheetGone();
 
   // Card purchase split in two
-  await button("Add");
+  await buttonExact("Transaction");
   await type("txn-date", "2026-02-04");
   await type("txn-description", "Costco");
   await pick("txn-account", "Visa");
@@ -342,7 +343,7 @@ try {
   await sheetGone();
 
   // Pay the card
-  await button("Add");
+  await buttonExact("Transaction");
   await clickEl(byExactText('[role="dialog"] [role="radio"], [role="dialog"] button', "Transfer"), "Transfer toggle");
   await type("txn-date", "2026-02-16");
   await type("txn-description", "Pay the Visa");
@@ -353,7 +354,7 @@ try {
   await sheetGone();
 
   // Send money home
-  await button("Add");
+  await buttonExact("Transaction");
   await clickEl(byExactText('[role="dialog"] [role="radio"], [role="dialog"] button', "Transfer"), "Transfer toggle");
   await type("txn-date", "2026-02-20");
   await type("txn-description", "Money for parents");
@@ -430,7 +431,9 @@ try {
 
   // ── Reconcile ──
   await area("Accounts");
-  await clickEl(`document.querySelector('[aria-label="Reconcile RBC Chequing"]')`, "reconcile");
+  // Reconcile lives in the account row's ⋯ menu.
+  await clickEl(`document.querySelector('[aria-label="Actions: RBC Chequing"]')`, "account menu");
+  await clickEl(byExactText('[role="menuitem"]', "Check against a statement"), "reconcile");
   await type("rec-date", "2026-02-28");
   await type("rec-balance", "2340.21");
   await waitFor(`document.body.innerText.includes("None — it matches")`, "reconcile matches");
@@ -497,7 +500,9 @@ try {
   await area("Plan");
   const payDue = await evaluate(`document.querySelectorAll('[aria-label^="Record Paycheque due"]').length`);
   if (payDue > 0) {
-    await clickEl(`document.querySelector('[aria-label^="Skip Paycheque due"]')`, "skip pay");
+    // Skip lives in the row's ⋯ menu.
+    await clickEl(`document.querySelector('[aria-label^="More actions: Paycheque due"]')`, "pay menu");
+    await clickEl(byExactText('[role="menuitem"]', "Skip this one"), "skip pay");
     await sleep(500);
     check("skipping removes an occurrence from the queue", (await evaluate(`document.querySelectorAll('[aria-label^="Record Paycheque due"]').length`)) === payDue - 1);
   } else {

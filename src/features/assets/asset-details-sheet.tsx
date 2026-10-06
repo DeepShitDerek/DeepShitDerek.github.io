@@ -172,7 +172,7 @@ export function AssetDetailsSheet({
                   {asset.used_in.map((use, i) => (
                     <li
                       key={`${use.type}-${use.id}-${i}`}
-                      className="rounded-surface bg-card p-3 text-sm shadow-e1"
+                      className="rounded-surface border bg-card p-3 text-sm"
                     >
                       <span className="font-medium">{use.type}</span>
                     </li>

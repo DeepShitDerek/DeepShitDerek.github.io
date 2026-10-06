@@ -58,14 +58,14 @@ export function GoalsPanel() {
                 <button
                   type="button"
                   onClick={() => setEditing(goal)}
-                  className="block w-full rounded-surface border bg-card p-5 text-left transition-shadow hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block w-full rounded-surface border bg-card p-5 text-left transition-shadow hover:shadow-e2 focus-ring"
                 >
                   <span className="flex items-baseline justify-between gap-3">
                     <span className="font-heading text-base font-semibold">{goal.name}</span>
                     <span className="text-sm text-muted-foreground">{Math.round(p.ratio * 100)}%</span>
                   </span>
                   <span className="mt-3 block h-2 overflow-hidden rounded-full bg-secondary" aria-hidden>
-                    <span className={cn("block h-full", p.ratio >= 1 ? "bg-emerald-600" : "bg-primary")} style={{ width: `${p.ratio * 100}%` }} />
+                    <span className={cn("block h-full", p.ratio >= 1 ? "bg-success" : "bg-primary")} style={{ width: `${p.ratio * 100}%` }} />
                   </span>
                   <span className="mt-3 block text-sm">
                     <Amount minor={p.savedMinor} currency={goal.currency} className="font-semibold" /> of{" "}
@@ -79,7 +79,7 @@ export function GoalsPanel() {
                         : null}
                     {p.remainingMinor > 0 &&
                       (p.pacePerMonthMinor > 0 ? (
-                        <span className={cn(!onPace && "text-amber-700 dark:text-amber-400")}>
+                        <span className={cn(!onPace && "text-warning")}>
                           At the last 3 months&apos; pace (<Amount minor={p.pacePerMonthMinor} currency={goal.currency} />/month) you get there around {p.projectedDate}.
                         </span>
                       ) : (

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -35,7 +36,7 @@ export function FilterChip({
       aria-pressed={active}
       className={cn(
         "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "focus-ring",
         active
           ? "bg-primary text-primary-foreground"
           : "bg-secondary text-secondary-foreground hover:bg-secondary/70",
@@ -78,5 +79,35 @@ export function FilterBar({
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * An active filter, shown under a toolbar, that clears itself when pressed
+ * (workspace contract: one list grammar). An action, not a toggle, so it has
+ * no `aria-pressed`, and its name says what pressing it does.
+ */
+export function RemovableChip({
+  label,
+  onRemove,
+  className,
+}: {
+  label: string;
+  onRemove: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remove filter: ${label}`}
+      className={cn(
+        "inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border border-input py-0.5 pl-3 pr-2 text-sm font-medium text-foreground transition-colors duration-fast hover:bg-secondary focus-ring",
+        className,
+      )}
+    >
+      <span className="truncate">{label}</span>
+      <X aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+    </button>
   );
 }

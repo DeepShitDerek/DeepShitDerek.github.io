@@ -12,7 +12,7 @@ export interface WarrantyStatus {
 export function getWarrantyStatus(expiryDate?: string | null): WarrantyStatus {
   if (!expiryDate)
     return {
-      label: "No Warranty",
+      label: "No warranty",
       color: "text-muted-foreground",
       bg: "bg-secondary",
       icon: X,
@@ -23,24 +23,26 @@ export function getWarrantyStatus(expiryDate?: string | null): WarrantyStatus {
 
   if (isAfter(now, expiry)) {
     return {
+      // A lapsed warranty is a fact, not an alarm: nothing can be done
+      // about it now. The danger colour is for things that need you.
       label: "Expired",
-      color: "text-destructive",
-      bg: "bg-destructive/10",
+      color: "text-muted-foreground",
+      bg: "bg-secondary",
       icon: AlertCircle,
     };
   }
   if (isAfter(warningZone, expiry)) {
     return {
-      label: "Expiring Soon",
-      color: "text-chart-3",
-      bg: "bg-chart-3/10",
+      label: "Expiring soon",
+      color: "text-warning",
+      bg: "bg-warning/10",
       icon: AlertCircle,
     };
   }
   return {
     label: "Active",
-    color: "text-chart-2",
-    bg: "bg-chart-2/10",
+    color: "text-success",
+    bg: "bg-success/10",
     icon: CheckCircle2,
   };
 }

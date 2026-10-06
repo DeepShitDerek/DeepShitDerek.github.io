@@ -77,7 +77,13 @@ export function insights(f: InsightFacts): Insight[] {
     const prior = f.priorAverage?.savingsRate;
     const compare = prior != null ? ` (the three months before: ${pct(prior)})` : "";
     if (r < 0) {
-      out.push({ id: "savings", tone: "warn", title: `${f.lastMonth.label}: spent ${m(f.lastMonth.spendingMinor - f.lastMonth.incomeMinor)} more than came in`, detail: `Kept ${pct(r)} of income${compare}.`, area: "reports" });
+      out.push({ id: "savings", tone: "warn", title: `${f.lastMonth.label}: spent ${m(f.lastMonth.spendingMinor - f.lastMonth.incomeMinor)} more than came in`, detail:
+          // Past −100% (more than twice what came in went out) a percentage says nothing a
+          // reader can use: "kept −12648%". The two amounts do.
+          r < -1
+            ? `${m(f.lastMonth.spendingMinor)} went out against ${m(f.lastMonth.incomeMinor)} in${compare}.`
+            : `Kept ${pct(r)} of income${compare}.`,
+        area: "reports" });
     } else {
       out.push({ id: "savings", tone: r >= 0.2 ? "good" : "info", title: `${f.lastMonth.label}: kept ${pct(r)} of what came in`, detail: `${m(f.lastMonth.incomeMinor - f.lastMonth.spendingMinor)} saved${compare}. 20% or more is a strong rate.`, area: "reports" });
     }

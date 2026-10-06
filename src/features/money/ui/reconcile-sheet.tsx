@@ -134,7 +134,7 @@ export function ReconcileSheet({
           {difference !== null && (
             <>
               <dt className="text-muted-foreground">Difference</dt>
-              <dd className={difference === 0 ? "text-right font-semibold text-emerald-700 dark:text-emerald-400" : "text-right font-semibold text-destructive"}>
+              <dd className={difference === 0 ? "text-right font-semibold text-success" : "text-right font-semibold text-destructive"}>
                 {difference === 0 ? "None — it matches" : <Amount minor={shown(difference)} currency={account.currency} signed />}
               </dd>
             </>
@@ -166,7 +166,7 @@ export function ReconcileSheet({
                   <li key={r.id} className="flex items-center gap-3 px-3 py-2">
                     <span className="flex-1">{r.asOf}</span>
                     <Amount minor={shown(r.statementBalanceMinor)} currency={account.currency} />
-                    <span className={gap === 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
+                    <span className={gap === 0 ? "text-success" : "text-destructive"}>
                       {gap === 0 ? "matches" : <>off by <Amount minor={Math.abs(gap)} currency={account.currency} /></>}
                     </span>
                     <Button variant="ghost" size="icon" aria-label={`Delete checkpoint ${r.asOf}`} onClick={() => remove(r.id)}>

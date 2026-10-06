@@ -138,7 +138,7 @@ export function WatchlistAddForm({
             value={kind}
             onChange={(event) => setKind(event.target.value as InstrumentKind)}
             aria-label="Kind"
-            className="h-8 rounded-control bg-card px-2 text-sm shadow-e1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-8 rounded-control border border-input bg-background px-2 text-sm focus-ring"
           >
             {INSTRUMENT_KINDS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -190,11 +190,11 @@ export function WatchlistAddForm({
           </div>
 
           {searching && (
-            <p className="mt-2 text-[11px] text-muted-foreground">Searching…</p>
+            <p className="mt-2 text-micro text-muted-foreground">Searching…</p>
           )}
 
           {!searching && query.trim().length >= 2 && results.length === 0 && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-micro text-muted-foreground">
               Nothing found —{" "}
               <button
                 type="button"
@@ -222,12 +222,12 @@ export function WatchlistAddForm({
                         currency: result.currency,
                       })
                     }
-                    className="flex w-full items-baseline gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex w-full items-baseline gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-card focus-ring"
                   >
                     <span className="shrink-0 text-sm font-medium tabular-nums">
                       {result.symbol}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                    <span className="min-w-0 flex-1 truncate text-micro text-muted-foreground">
                       {result.name}
                     </span>
                     {/*
@@ -235,7 +235,7 @@ export function WatchlistAddForm({
                       company is a different ticker at a different price on each
                       one, so a result without them would not be choosable.
                     */}
-                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                    <span className="shrink-0 text-micro text-muted-foreground">
                       {[result.exchange, result.currency]
                         .filter(Boolean)
                         .join(" · ") ||
@@ -281,7 +281,7 @@ export function WatchlistAddForm({
       </div>
 
       {problem && (
-        <p className="mt-1.5 text-[11px] text-destructive">{problem}</p>
+        <p className="mt-1.5 text-micro text-destructive">{problem}</p>
       )}
     </div>
   );

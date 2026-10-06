@@ -123,7 +123,7 @@ export function BubbleToolbar({
               }}
               placeholder="Paste or type a link"
               className={cn(
-                "h-8 w-56 rounded-control bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "h-8 w-56 rounded-control bg-background px-2 text-sm focus-ring",
                 badLink && "ring-2 ring-destructive",
               )}
             />
@@ -151,7 +151,7 @@ export function BubbleToolbar({
                 aria-label={`Turn into — now ${current.title}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => setPanel((p) => (p === "turn" ? null : "turn"))}
-                className="flex h-8 items-center gap-1 whitespace-nowrap rounded-control px-2 text-sm font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-8 items-center gap-1 whitespace-nowrap rounded-control px-2 text-sm font-medium transition-colors hover:bg-secondary focus-ring"
               >
                 {current.title}
                 <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
@@ -202,7 +202,7 @@ export function BubbleToolbar({
                         b.run(editor);
                         setPanel(null);
                       }}
-                      className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary focus-ring"
                     >
                       <Icon className="size-4 text-muted-foreground" aria-hidden />
                       <span className="flex-1">{b.title}</span>
@@ -243,7 +243,7 @@ function ToolButton({
       onClick={onClick}
       className={cn(
         "flex size-8 items-center justify-center rounded-control transition-colors [&_svg]:size-4",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "focus-ring",
         active
           ? "bg-secondary text-foreground"
           : "text-muted-foreground hover:bg-secondary hover:text-foreground",

@@ -458,3 +458,128 @@ export function parseHistoricEvents(body: unknown, limit = 3): HistoricEvent[] {
     .sort((a, b) => b.year - a.year)
     .slice(0, limit);
 }
+
+/* ── Place search ────────────────────────────────────────────────────────── */
+
+/** A place found by name: what a forecast needs, and enough to tell two apart. */
+export interface PlaceMatch {
+  id: number;
+  name: string;
+  /** "Maharashtra, India": the region and country, for telling Londons apart. */
+  where: string;
+  latitude: number;
+  longitude: number;
+  timezone: string | null;
+}
+
+/**
+ * Open-Meteo's place search, the same provider as the forecast: free, no
+ * key. "Add a place" asked for latitude and longitude, which nobody knows
+ * for their own city (03-workspace-ui.md §2.18).
+ */
+export function placeSearchUrl(name: string, count = 5): string {
+  const params = new URLSearchParams({
+    name: name.trim(),
+    count: String(count),
+    language: "en",
+    format: "json",
+  });
+  return `https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`;
+}
+
+interface GeocodingResponse {
+  results?: {
+    id?: number;
+    name?: string;
+    latitude?: number;
+    longitude?: number;
+    timezone?: string;
+    admin1?: string;
+    country?: string;
+  }[];
+}
+
+/** Results with usable coordinates; nothing found is an empty list. */
+export function parsePlaces(body: unknown): PlaceMatch[] {
+  const results = (body as GeocodingResponse | null)?.results ?? [];
+  return results
+    .filter(
+      (r): r is Required<Pick<NonNullable<typeof r>, "id" | "name" | "latitude" | "longitude">> & typeof r =>
+        typeof r?.id === "number" &&
+        typeof r.name === "string" &&
+        Number.isFinite(r.latitude) &&
+        Number.isFinite(r.longitude),
+    )
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      where: [r.admin1, r.country].filter(Boolean).join(", "),
+      latitude: r.latitude,
+      longitude: r.longitude,
+      timezone: r.timezone ?? null,
+    }));
+}
+
+/* ── Most read, for a week or a month ────────────────────────────────────── */
+
+const TOP_API = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access";
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * What to fetch for "most read" in a window. The featured feed above is per
+ * day; for longer windows Wikimedia publishes top-article lists per day and
+ * per calendar month (browser-reachable, no key):
+ *  - `week`: the last seven complete days, one list each, to be summed;
+ *  - `month`: the last complete calendar month, published once it ends.
+ * The panel followed only "24 hours" before, so choosing a week left it
+ * unchanged and the window control looked broken.
+ */
+export function mostReadSource(window: Window, now = new Date()): { urls: string[]; label: string } {
+  if (window === "day") return { urls: [mostReadUrl(now)], label: "Wikipedia, yesterday" };
+  if (window === "week") {
+    const urls = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1 - i);
+      return `${TOP_API}/${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
+    });
+    return { urls, label: "Wikipedia, the last seven days" };
+  }
+  const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const name = last.toLocaleDateString("en-CA", { month: "long", year: "numeric" });
+  return {
+    urls: [`${TOP_API}/${last.getFullYear()}/${pad2(last.getMonth() + 1)}/all-days`],
+    label: `Wikipedia, ${name} (the last full month)`,
+  };
+}
+
+/** Not an article: the front page, searches, and the project's own pages. */
+function isArticle(title: string): boolean {
+  if (title === "Main_Page" || title === "-") return false;
+  return !/^(Special|Wikipedia|File|Portal|Help|Talk|Category|Template|User|Draft|Module|MediaWiki):/.test(title);
+}
+
+/**
+ * Wikimedia's top-article lists, summed across the bodies (one per day for a
+ * week, one for a month), most viewed first. Nothing usable is an empty list.
+ */
+export function parseTopArticles(bodies: unknown[], limit = 6): ReadArticle[] {
+  const views = new Map<string, number>();
+  for (const body of bodies) {
+    const articles = (body as { items?: { articles?: { article?: unknown; views?: unknown }[] }[] } | null)?.items?.[0]
+      ?.articles;
+    if (!Array.isArray(articles)) continue;
+    for (const row of articles) {
+      if (typeof row?.article !== "string" || typeof row.views !== "number") continue;
+      if (!isArticle(row.article)) continue;
+      views.set(row.article, (views.get(row.article) ?? 0) + row.views);
+    }
+  }
+  return [...views]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([article, count]) => ({
+      title: article.replace(/_/g, " "),
+      views: count,
+      url: "https://en.wikipedia.org/wiki/" + encodeURIComponent(article),
+    }));
+}

@@ -16,7 +16,11 @@ import { FormSheet } from "@/components/admin/shared";
 import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/cn";
 import type { PathOption } from "./content-types";
-import { LAYOUT_GROUPS, LAYOUT_OPTIONS, LayoutPreview } from "./layout-registry";
+import {
+  LAYOUT_GROUPS,
+  LAYOUT_OPTIONS,
+  LayoutPreview,
+} from "./layout-registry";
 
 export interface SectionEditorSheetProps {
   section: Partial<PortfolioSection> | null;
@@ -94,12 +98,19 @@ export function SectionEditorSheet({
       onOpenChange={(open) => !open && onClose()}
       title={section?.id ? "Section settings" : "New section"}
       description="Where it goes, what it holds, and how it looks."
-      className="sm:max-w-xl"
+      wide
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="flex-1 space-y-6 overflow-y-auto pb-2">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex-1 space-y-6 overflow-y-auto pb-2"
+      >
         <div className="space-y-1.5">
           <Label htmlFor="title">Title</Label>
-          <Input id="title" {...register("title")} placeholder="e.g. What I do" />
+          <Input
+            id="title"
+            {...register("title")}
+            placeholder="e.g. What I do"
+          />
           {errors.title && (
             <p className="text-xs text-destructive">{errors.title.message}</p>
           )}
@@ -145,13 +156,19 @@ export function SectionEditorSheet({
             )}
           />
           {errors.page_path && (
-            <p className="text-xs text-destructive">{errors.page_path.message}</p>
+            <p className="text-xs text-destructive">
+              {errors.page_path.message}
+            </p>
           )}
         </div>
 
         <fieldset className="space-y-2">
           <legend className="mb-2 text-sm font-medium">What it holds</legend>
-          <div role="radiogroup" aria-label="What it holds" className="grid gap-2 sm:grid-cols-2">
+          <div
+            role="radiogroup"
+            aria-label="What it holds"
+            className="grid gap-2 sm:grid-cols-2"
+          >
             {TYPES.map((type) => {
               const selected = selectedType === type.value;
               const Icon = type.icon;
@@ -161,19 +178,28 @@ export function SectionEditorSheet({
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  onClick={() => setValue("type", type.value, { shouldDirty: true })}
+                  onClick={() =>
+                    setValue("type", type.value, { shouldDirty: true })
+                  }
                   className={cn(
-                    "flex items-start gap-3 rounded-surface bg-card p-3.5 text-left transition-shadow",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selected ? "shadow-e2 ring-2 ring-primary" : "shadow-e1 hover:shadow-e2",
+                    "flex items-start gap-3 rounded-surface border bg-card p-3.5 text-left transition-colors",
+                    "focus-ring",
+                    selected
+                      ? "border-primary ring-1 ring-primary"
+                      : "hover:border-input hover:bg-secondary/40",
                   )}
                 >
                   <Icon
-                    className={cn("mt-0.5 size-4 shrink-0", selected ? "text-primary" : "text-muted-foreground")}
+                    className={cn(
+                      "mt-0.5 size-4 shrink-0",
+                      selected ? "text-primary" : "text-muted-foreground",
+                    )}
                     aria-hidden
                   />
                   <span>
-                    <span className="block text-sm font-medium">{type.label}</span>
+                    <span className="block text-sm font-medium">
+                      {type.label}
+                    </span>
                     <span className="block text-xs text-muted-foreground">
                       {type.description}
                     </span>
@@ -189,47 +215,62 @@ export function SectionEditorSheet({
             <legend className="text-sm font-medium">Layout</legend>
             {LAYOUT_GROUPS.map((group) => (
               <div key={group} className="mt-4">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">{group}</p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  {group}
+                </p>
                 <div
                   role="radiogroup"
                   aria-label={`${group} layouts`}
-                  className="grid grid-cols-2 gap-2"
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-3"
                 >
-                  {LAYOUT_OPTIONS.filter((o) => o.group === group).map((option) => {
-                    const selected = selectedLayout === option.value;
-                    const Icon = option.icon;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        title={option.description}
-                        onClick={() =>
-                          setValue("layout_style", option.value, { shouldDirty: true })
-                        }
-                        className={cn(
-                          "min-w-0 rounded-surface bg-card p-2.5 text-left transition-shadow",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          selected ? "shadow-e2 ring-2 ring-primary" : "shadow-e1 hover:shadow-e2",
-                        )}
-                      >
-                        <span
-                          aria-hidden
-                          className="pointer-events-none block h-[4.5rem] overflow-hidden rounded-control bg-background/60 p-2"
+                  {LAYOUT_OPTIONS.filter((o) => o.group === group).map(
+                    (option) => {
+                      const selected = selectedLayout === option.value;
+                      const Icon = option.icon;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          title={option.description}
+                          onClick={() =>
+                            setValue("layout_style", option.value, {
+                              shouldDirty: true,
+                            })
+                          }
+                          className={cn(
+                            "min-w-0 rounded-surface border bg-card p-2 text-left transition-colors",
+                            "focus-ring",
+                            selected
+                              ? "border-primary ring-1 ring-primary"
+                              : "hover:border-input hover:bg-secondary/40",
+                          )}
                         >
-                          <LayoutPreview layout={option.value} />
-                        </span>
-                        <span className="mt-2 flex items-center gap-1.5 text-xs font-medium">
-                          <Icon
-                            className={cn("size-3.5 shrink-0", selected ? "text-primary" : "text-muted-foreground")}
+                          <span
                             aria-hidden
-                          />
-                          <span className="truncate">{option.label}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
+                            className="pointer-events-none block h-[7.5rem] overflow-hidden rounded-control bg-background/60 p-2"
+                          >
+                            <LayoutPreview layout={option.value} />
+                          </span>
+                          <span className="mt-2 flex items-start gap-1.5 text-xs font-medium leading-snug">
+                            <Icon
+                              className={cn(
+                                "mt-px size-3.5 shrink-0",
+                                selected
+                                  ? "text-primary"
+                                  : "text-muted-foreground",
+                              )}
+                              aria-hidden
+                            />
+                            <span className="min-w-0 break-words">
+                              {option.label}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    },
+                  )}
                 </div>
               </div>
             ))}

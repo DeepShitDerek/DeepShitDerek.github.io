@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Page() {
-  const data = await pagePreload({ sections: ["/", "/showcase"], posts: true });
+  const data = await pagePreload({ sections: ["/", "/work"], posts: true });
   const builtSlugs = (data.posts ?? []).map((post) => post.slug);
   return (
     <PublicPreload data={data}>

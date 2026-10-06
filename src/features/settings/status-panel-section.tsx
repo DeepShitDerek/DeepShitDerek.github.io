@@ -198,7 +198,7 @@ export function StatusPanelSection({ form }: { form: SettingsForm }) {
             <FormItem>
               <FormLabel className="text-xs">Destination</FormLabel>
               <FormControl>
-                <Input {...field} className="h-9" placeholder="/projects" />
+                <Input {...field} className="h-9" placeholder="/work" />
               </FormControl>
               <FormDescription>
                 A path on this site, or a full URL.

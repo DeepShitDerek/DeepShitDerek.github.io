@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Folder, Link as LinkIcon, Trash2 } from "lucide-react";
+import {
+  Check,
+  Download,
+  Folder,
+  Link as LinkIcon,
+  Trash2,
+} from "lucide-react";
 import {
   ASSET_MOVE_TYPE,
   decodeAssetMove,
@@ -79,12 +85,7 @@ export function FolderGrid({
                 "border-primary bg-primary/10 ring-2 ring-primary/40",
             )}
           >
-            <Folder
-              className={cn(
-                "size-10 fill-chart-1/20 text-chart-1 transition-transform group-hover:scale-110",
-                overFolder === folder && "scale-110",
-              )}
-            />
+            <Folder className={cn("size-10 fill-primary/10 text-primary")} />
             <span className="w-full truncate text-center text-xs font-medium">
               {folder}
             </span>
@@ -143,84 +144,98 @@ export function AssetGrid({
             event.dataTransfer.effectAllowed = "move";
           }}
           className={cn(
-            "group relative aspect-square cursor-pointer overflow-hidden rounded-md border bg-card transition-all hover:ring-2 hover:ring-primary/50",
+            "group relative overflow-hidden rounded-surface border bg-card transition-colors hover:border-input",
             isBulkSelectMode &&
               bulkSelectedIds.has(asset.id) &&
-              "bg-primary/10 ring-2 ring-primary",
+              "border-primary bg-primary/10",
           )}
-          onClick={() => {
-            if (isBulkSelectMode) onToggleSelect(asset.id);
-            else onSelect(asset);
-          }}
         >
-          {isBulkSelectMode && (
-            <div className="absolute left-2 top-2 z-raised">
-              <Checkbox
-                checked={bulkSelectedIds.has(asset.id)}
-                className="border-primary bg-background/80 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-              />
-            </div>
-          )}
-
-          <AssetThumbnail asset={asset} />
-
-          <div
-            className={cn(
-              "absolute inset-x-0 bottom-0 flex flex-col justify-end bg-gradient-to-t from-black/80 to-transparent p-2 text-white opacity-0 transition-opacity",
-              !isBulkSelectMode && "group-hover:opacity-100",
-            )}
+          {/* The tile's one action (open, or select in select mode) is a real
+              button, so Tab reaches it and Enter or Space runs it: the tile
+              was a clickable div. The download and delete buttons sit beside
+              it in the tile, not inside it. */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isBulkSelectMode) onToggleSelect(asset.id);
+              else onSelect(asset);
+            }}
+            aria-pressed={
+              isBulkSelectMode ? bulkSelectedIds.has(asset.id) : undefined
+            }
+            className="block w-full text-left focus-ring"
           >
-            <p className="truncate text-[10px] font-medium">
-              {asset.file_name}
-            </p>
-            <p className="text-[9px] uppercase opacity-80">
-              {asset.mime_type?.split("/")[1] || "File"}
-            </p>
-          </div>
+            <span className="relative block aspect-square overflow-hidden bg-secondary">
+              {isBulkSelectMode && (
+                // Drawn, not a second control: the tile's button is pressed or
+                // not (aria-pressed), and says so.
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute left-2 top-2 z-raised flex size-5 items-center justify-center rounded-control border border-primary bg-background/80",
+                    bulkSelectedIds.has(asset.id) &&
+                      "bg-primary text-primary-foreground",
+                  )}
+                >
+                  {bulkSelectedIds.has(asset.id) && (
+                    <Check className="size-3.5" />
+                  )}
+                </span>
+              )}
+
+              <AssetThumbnail asset={asset} decorative />
+            </span>
+            {/* The name and whether pages use it, always visible: they were a
+              9-10px caption in a dark gradient on hover, unreadable on touch,
+              and "in use" was a 10px icon. Usage is the fact that matters
+              before a delete (03-workspace-ui.md §2.17). */}
+            <span className="block min-w-0 px-2.5 py-2">
+              <span className="block truncate text-sm font-medium">
+                {asset.file_name}
+              </span>
+              <span className="mt-0.5 flex items-center gap-1.5 text-micro text-muted-foreground">
+                <span className="uppercase">
+                  {asset.mime_type?.split("/")[1] || "File"}
+                </span>
+                <span aria-hidden>·</span>
+                {asset.used_in && asset.used_in.length > 0 ? (
+                  <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                    <LinkIcon aria-hidden className="size-3" />
+                    Used on {asset.used_in.length}
+                  </span>
+                ) : (
+                  <span>Unused</span>
+                )}
+              </span>
+            </span>
+          </button>
 
           {!isBulkSelectMode && (
-            <div className="absolute right-1.5 top-1.5 z-sticky flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <div className="absolute right-1.5 top-1.5 z-sticky flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
               <Button
                 variant="secondary"
                 size="icon"
                 aria-label={`Download ${asset.file_name}`}
-                className="h-7 w-7 rounded-full shadow-e2"
+                className="size-8"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDownload(asset);
                 }}
               >
-                <Download className="size-3.5" aria-hidden />
+                <Download className="size-4" aria-hidden />
               </Button>
               <Button
                 variant="secondary"
                 size="icon"
                 aria-label={`Delete ${asset.file_name}`}
-                className="h-7 w-7 rounded-full shadow-e2 hover:bg-destructive hover:text-destructive-foreground"
+                className="size-8 hover:bg-destructive hover:text-destructive-foreground"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(asset);
                 }}
               >
-                <Trash2 className="size-3.5" aria-hidden />
+                <Trash2 className="size-4" aria-hidden />
               </Button>
-            </div>
-          )}
-
-          {asset.used_in && asset.used_in.length > 0 && (
-            // Announced, not just drawn: this marker is the only warning that
-            // deleting or moving the asset will break a published page.
-            <div
-              className="absolute left-1.5 top-1.5 z-raised rounded-full bg-primary/90 p-1 shadow-e1"
-              title={`In use in ${asset.used_in.length} place(s)`}
-            >
-              <LinkIcon
-                className="size-2.5 text-primary-foreground"
-                aria-hidden
-              />
-              <span className="sr-only">
-                In use in {asset.used_in.length} place(s)
-              </span>
             </div>
           )}
         </div>

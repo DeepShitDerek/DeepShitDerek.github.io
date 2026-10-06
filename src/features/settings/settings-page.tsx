@@ -1,11 +1,16 @@
 "use client";
 
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { type ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
 import { Eye, Loader2, RotateCcw, Save } from "lucide-react";
 import {
   useGetSiteSettingsQuery,
@@ -18,7 +23,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   siteSettingsDefaultValues,
@@ -28,9 +32,13 @@ import {
 import { normalizeSiteContent } from "@/lib/site-identity";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
-import { LoadError, ManagerWrapper } from "@/components/admin/shared";
+import {
+  LoadError,
+  ManagerWrapper,
+  PageHeader,
+} from "@/components/admin/shared";
 import { SettingsSkeleton } from "./settings-skeleton";
-import { SettingsNav } from "./settings-nav";
+import { SettingsGroupSwitcher, SettingsNav } from "./settings-nav";
 import { SettingsPreviewLazy } from "./settings-preview-lazy";
 import {
   DEFAULT_GROUP_ID,
@@ -94,7 +102,12 @@ const SECTION_BY_GROUP: Record<
 };
 
 export default function SettingsPage() {
-  const { data: settingsData, isLoading, error: loadError, refetch } = useGetSiteSettingsQuery();
+  const {
+    data: settingsData,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetSiteSettingsQuery();
   const [updateSiteSettings, { isLoading: isSaving }] =
     useUpdateSiteSettingsMutation();
 
@@ -102,6 +115,10 @@ export default function SettingsPage() {
   const [search, setSearch] = useState("");
   const [previewPage, setPreviewPage] = useState<PreviewPage>("home");
   const [invalidIds, setInvalidIds] = useState<ReadonlySet<string>>(new Set());
+  /** At `xl`, whether the preview takes half the screen. */
+  const [splitPreview, setSplitPreview] = useState(true);
+  /** Below `xl`, the preview opens in a sheet instead. */
+  const [previewSheet, setPreviewSheet] = useState(false);
 
   const form = useForm<SiteSettingsFormValues>({
     resolver: zodResolver(siteSettingsSchema),
@@ -291,28 +308,33 @@ export default function SettingsPage() {
     [revertGroups, dirtyGroups],
   );
 
+  const header = (actions?: ReactElement) => (
+    <PageHeader
+      title="Settings"
+      description="How the public site looks and reads. Each group saves on its own."
+      actions={actions}
+    />
+  );
+
   // Without this a failed read left the skeleton up for good (V2-051).
   if (loadError && !settingsData) {
     return (
       <ManagerWrapper>
+        {header()}
         <LoadError what="your settings" error={loadError} onRetry={refetch} />
       </ManagerWrapper>
     );
   }
-  if (isLoading || !serverState) return <SettingsSkeleton />;
+  if (isLoading || !serverState)
+    return (
+      <ManagerWrapper>
+        {header()}
+        <SettingsSkeleton />
+      </ManagerWrapper>
+    );
 
   const Section = SECTION_BY_GROUP[group.id];
-
-  const nav = (
-    <SettingsNav
-      activeId={activeId}
-      onSelect={setActiveId}
-      dirtyIds={dirtyIds}
-      invalidIds={invalidIds}
-      search={search}
-      onSearchChange={setSearch}
-    />
-  );
+  const split = splitPreview && !!group.preview;
 
   const preview = group.preview ? (
     <SettingsPreviewLazy
@@ -321,230 +343,200 @@ export default function SettingsPage() {
       onPageChange={setPreviewPage}
       className="h-full"
     />
-  ) : (
-    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-surface bg-card p-8 text-center shadow-e1">
-      <Eye className="size-5 text-muted-foreground" aria-hidden />
-      <p className="text-sm font-medium">Nothing to preview</p>
-      <p className="max-w-[24ch] text-xs text-muted-foreground">
-        {group.label} changes route structure rather than what a page looks
-        like.
-      </p>
-    </div>
-  );
+  ) : null;
 
   return (
-    <ManagerWrapper className="pb-4">
+    <ManagerWrapper>
+      {header(
+        group.preview ? (
+          <>
+            {/* At xl the preview splits the screen with the form, so a public
+                layout is judged at a real width, not in a 24rem strip. */}
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={splitPreview}
+              onClick={() => setSplitPreview((on) => !on)}
+              className="hidden xl:inline-flex"
+            >
+              <Eye className="mr-2 size-4" aria-hidden />
+              {splitPreview ? "Hide preview" : "Preview"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPreviewSheet(true)}
+              className="xl:hidden"
+            >
+              <Eye className="mr-2 size-4" aria-hidden />
+              Preview
+            </Button>
+          </>
+        ) : undefined,
+      )}
+
       <Form {...form}>
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void saveGroup();
           }}
-          className="grid gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_24rem]"
+          className={cn(
+            "grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]",
+            split && "xl:grid-cols-[15rem_minmax(0,1fr)_minmax(0,1fr)]",
+          )}
         >
-          <aside className="hidden lg:block">{nav}</aside>
+          <aside className="hidden lg:block">
+            <div className="sticky top-20 max-h-[calc(100dvh-7rem)] overflow-y-auto p-0.5">
+              <SettingsNav
+                activeId={activeId}
+                onSelect={setActiveId}
+                dirtyIds={dirtyIds}
+                invalidIds={invalidIds}
+                search={search}
+                onSearchChange={setSearch}
+              />
+            </div>
+          </aside>
 
           <div className="min-w-0">
-            <GroupHeader
-              title={group.label}
-              description={group.description}
-              dirty={isDirty}
-              saving={isSaving}
-              onRevert={revertGroup}
-              mobileNav={nav}
-              previewPane={group.preview ? preview : null}
-            />
+            <div className={cn("w-full", !split && "max-w-2xl")}>
+              <SettingsGroupSwitcher
+                activeId={activeId}
+                onSelect={setActiveId}
+                dirtyIds={dirtyIds}
+                invalidIds={invalidIds}
+                className="mb-5 lg:hidden"
+              />
 
-            <div className="mt-6">{Section && <Section form={form} />}</div>
-          </div>
-
-          <aside
-            className={cn(
-              "hidden xl:sticky xl:top-24 xl:flex xl:flex-col",
-              anyDirty
-                ? "xl:h-[calc(100vh-16rem)]"
-                : "xl:h-[calc(100vh-11rem)]",
-            )}
-          >
-            {preview}
-          </aside>
-        </form>
-      </Form>
-
-      {/*
-        Reserve the bar's height rather than adding padding to the wrapper.
-        `ManagerWrapper` sets `pb-20 md:pb-0`, and a `pb-28` passed in loses to
-        `md:pb-0` at every width above `md` — tailwind-merge treats a variant as
-        a separate group, so the class was silently doing nothing on desktop and
-        the bar sat on top of the last field. A spacer cannot be overridden by
-        whatever a parent decides about padding.
-      */}
-      {anyDirty && <div aria-hidden className="h-24" />}
-
-      <AnimatePresence>
-        {/*
-          Any group, not the one on screen. Gating this on the active group
-          meant navigating away from an edit hid the only control that would
-          save it, so the edit could only be saved by finding your way back to
-          where you made it.
-        */}
-        {anyDirty && (
-          <motion.div
-            initial={{ y: 72, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 72, opacity: 0 }}
-            transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-overlay bg-card/95 shadow-e3 backdrop-blur"
-          >
-            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-              <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-                Unsaved changes in{" "}
-                <span className="font-medium text-foreground">
-                  {dirtyGroups.map((entry) => entry.label).join(", ")}
-                </span>
-              </p>
-
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={revertAll}
-                  disabled={isSaving}
-                >
-                  <RotateCcw className="mr-1.5 size-3.5" />
-                  {dirtyIds.size > 1 ? "Discard all" : "Revert"}
-                </Button>
-
-                {/*
-                  Two save buttons only when they mean different things. With a
-                  single dirty group "Save all" and "Save this" are the same
-                  write, and offering both would be a choice with no content.
-                */}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    {group.label}
+                  </h2>
+                  <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+                    {group.description}
+                  </p>
+                </div>
+                {/* With one dirty group the save bar's Discard is this. */}
                 {isDirty && dirtyIds.size > 1 && (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => void saveGroup()}
+                    onClick={revertGroup}
                     disabled={isSaving}
                   >
-                    Save {group.label.toLowerCase()}
+                    <RotateCcw className="mr-1.5 size-4" aria-hidden />
+                    Revert {group.label.toLowerCase()}
                   </Button>
                 )}
-
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void saveGroups(dirtyGroups)}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                  ) : (
-                    <Save className="mr-1.5 size-3.5" />
-                  )}
-                  {dirtyIds.size > 1
-                    ? `Save all (${dirtyIds.size})`
-                    : `Save ${dirtyGroups[0]?.label.toLowerCase() ?? "changes"}`}
-                </Button>
               </div>
+
+              <div className="mt-6">{Section && <Section form={form} />}</div>
+
+              {/*
+                The save bar belongs to the form, not the window
+                (03-workspace-ui.md §2.14). Sticky to the bottom of this
+                column, it rides along while the form is longer than the
+                screen and comes to rest after the last field, so it can
+                never cover it; and it sits on the sticky layer, under
+                dialogs, not on theirs.
+
+                Any group, not the one on screen: navigating away from an
+                edit must not hide the only control that would save it.
+              */}
+              {anyDirty && (
+                <div className="sticky bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+0.75rem)] z-sticky mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-surface border bg-card px-4 py-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 lg:bottom-4">
+                  <p
+                    className="w-full text-sm text-muted-foreground sm:w-auto sm:min-w-0 sm:flex-1"
+                    aria-live="polite"
+                  >
+                    <span
+                      aria-hidden
+                      className="mr-2 inline-block size-1.5 rounded-full bg-warning align-middle"
+                    />
+                    Unsaved changes in{" "}
+                    <span className="font-medium text-foreground">
+                      {dirtyGroups.map((entry) => entry.label).join(", ")}
+                    </span>
+                  </p>
+
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={revertAll}
+                      disabled={isSaving}
+                    >
+                      {dirtyIds.size > 1 ? "Discard all" : "Discard"}
+                    </Button>
+
+                    {/*
+                      Two save buttons only when they mean different things.
+                      With a single dirty group "Save all" and "Save this" are
+                      the same write.
+                    */}
+                    {isDirty && dirtyIds.size > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void saveGroup()}
+                        disabled={isSaving}
+                      >
+                        Save {group.label.toLowerCase()}
+                      </Button>
+                    )}
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void saveGroups(dirtyGroups)}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <Loader2
+                          className="mr-1.5 size-4 animate-spin"
+                          aria-hidden
+                        />
+                      ) : (
+                        <Save className="mr-1.5 size-4" aria-hidden />
+                      )}
+                      {dirtyIds.size > 1
+                        ? `Save all (${dirtyIds.size})`
+                        : `Save ${dirtyGroups[0]?.label.toLowerCase() ?? "changes"}`}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </ManagerWrapper>
-  );
-}
+          </div>
 
-/**
- * The pane heading, plus the two controls that only exist below `xl`: the group
- * picker and the preview. Both are the same components the wide layout renders
- * in columns — a drawer is a different container, not a different feature.
- */
-function GroupHeader({
-  title,
-  description,
-  dirty,
-  saving,
-  onRevert,
-  mobileNav,
-  previewPane,
-}: {
-  title: string;
-  description: string;
-  dirty: boolean;
-  saving: boolean;
-  onRevert: () => void;
-  mobileNav: ReactElement;
-  previewPane: ReactElement | null;
-}) {
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-          {description}
-        </p>
-      </div>
+          {split && (
+            <aside className="hidden xl:block">
+              <div className="sticky top-20 flex h-[calc(100dvh-7rem)] flex-col">
+                {preview}
+              </div>
+            </aside>
+          )}
+        </form>
+      </Form>
 
-      <div className="flex shrink-0 items-center gap-2">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="lg:hidden"
-            >
-              All settings
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 overflow-y-auto">
+      {preview && (
+        <Sheet open={previewSheet} onOpenChange={setPreviewSheet}>
+          <SheetContent
+            side="right"
+            className="flex w-full flex-col sm:max-w-2xl"
+          >
             <SheetHeader>
-              <SheetTitle>Settings</SheetTitle>
+              <SheetTitle>Preview</SheetTitle>
             </SheetHeader>
-            <div className="mt-4">{mobileNav}</div>
+            <div className="mt-4 min-h-0 flex-1">{preview}</div>
           </SheetContent>
         </Sheet>
-
-        {previewPane && (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="xl:hidden"
-              >
-                <Eye className="mr-1.5 size-3.5" />
-                Preview
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="flex w-full flex-col sm:max-w-xl"
-            >
-              <SheetHeader>
-                <SheetTitle>Preview</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 min-h-0 flex-1">{previewPane}</div>
-            </SheetContent>
-          </Sheet>
-        )}
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onRevert}
-          disabled={!dirty || saving}
-          className={cn(!dirty && "opacity-0")}
-          aria-hidden={!dirty}
-        >
-          Revert
-        </Button>
-      </div>
-    </div>
+      )}
+    </ManagerWrapper>
   );
 }

@@ -827,7 +827,7 @@ export const siteSettingsSchema = z.object({
       latestProject: z.object({
         name: z.string().max(LIMITS.TITLE, "Project name is too long"),
         linkText: z.string().max(LIMITS.TITLE, "Link text is too long"),
-        // A path such as "/projects", not an absolute URL — safeLinkUrl allows
+        // A path such as "/work", not an absolute URL — safeLinkUrl allows
         // both and the renderer decides whether to open a new tab.
         href: z.string().max(LIMITS.URL, "Project URL is too long"),
       }),

@@ -4,15 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Loader2,
-  MoreHorizontal,
-  Network,
-  Pin,
-  PinOff,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Loader2, Network, Pin, PinOff, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { ThinkingMapSummary } from "@/types";
 import {
@@ -27,18 +19,19 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
+  DocumentCard,
   EmptyState,
+  LoadError,
   LoadingState,
   ManagerWrapper,
+  NewDocumentCard,
   PageHeader,
 } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import { getErrorMessage } from "@/lib/utils";
 import { emptyDocument } from "../domain/serialize";
 import type { SaveOutcome, SaveRequest } from "../state/autosave";
@@ -50,18 +43,43 @@ import { MapEditor } from "./map-editor";
  * The open map lives in the URL (`?map=<id>`), so a reload reopens it and
  * Back closes it. The editor covers the viewport like the whiteboard's.
  */
+/** One empty list for every render while the query has none (see Navigation). */
+const NO_MAPS: ThinkingMapSummary[] = [];
+
 export default function MapsPage() {
   const router = useRouter();
   const params = useSearchParams();
   const openId = params?.get("map") ?? null;
-  const confirm = useConfirm();
   const [search, setSearch] = useState("");
 
-  const { data: maps = [], isLoading } = useGetMapsQuery();
+  const {
+    data: allMaps = NO_MAPS,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetMapsQuery();
   const [createMap, { isLoading: creating }] = useCreateMapMutation();
   const [deleteMap] = useDeleteMapMutation();
   const [updateMeta] = useUpdateMapMetaMutation();
 
+  // Delete offers Undo instead of asking first (P1-10); nothing is removed
+  // until the toast closes.
+  const { pending: deleting, remove: removeMap } =
+    useUndoableDelete<ThinkingMapSummary>(async (map) => {
+      try {
+        await deleteMap(map.id).unwrap();
+      } catch (error) {
+        toast.error("Couldn't delete the map", {
+          description: getErrorMessage(error),
+        });
+      }
+    });
+
+  const maps = useMemo(
+    () =>
+      deleting.size ? allMaps.filter((m) => !deleting.has(m.id)) : allMaps,
+    [allMaps, deleting],
+  );
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return term
@@ -86,126 +104,137 @@ export default function MapsPage() {
     }
   };
 
-  const handleDelete = async (map: ThinkingMapSummary) => {
-    const ok = await confirm({
-      title: `Delete “${map.name}”?`,
-      description: `Its ${map.node_count} nodes and ${map.edge_count} connections are removed permanently. Export it first if you might want it back.`,
-      confirmText: "Delete",
-      variant: "destructive",
-    });
-    if (!ok) return;
+  const handleRename = async (map: ThinkingMapSummary, name: string) => {
     try {
-      await deleteMap(map.id).unwrap();
+      await updateMeta({ id: map.id, name }).unwrap();
     } catch (error) {
-      toast.error("Couldn't delete the map", {
+      toast.error("Couldn't rename the map", {
         description: getErrorMessage(error),
       });
     }
   };
 
-  if (isLoading && maps.length === 0) return <LoadingState />;
+  const header = (
+    <PageHeader
+      title="Maps"
+      description="Map a problem: what’s happening, why, what depends on what, and what to do."
+      actions={
+        <Button onClick={handleCreate} disabled={creating}>
+          {creating ? (
+            <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+          ) : (
+            <Plus className="mr-2 size-4" aria-hidden />
+          )}
+          New map
+        </Button>
+      }
+      searchValue={search}
+      onSearch={setSearch}
+      searchPlaceholder="Search maps…"
+    />
+  );
+
+  // A failed read used to say "No maps yet".
+  if (loadError && allMaps.length === 0) {
+    return (
+      <ManagerWrapper>
+        {header}
+        <LoadError what="your maps" error={loadError} onRetry={refetch} />
+      </ManagerWrapper>
+    );
+  }
+
+  if (isLoading && allMaps.length === 0) {
+    return (
+      <ManagerWrapper>
+        {header}
+        <LoadingState label="Loading your maps" />
+      </ManagerWrapper>
+    );
+  }
 
   return (
     <ManagerWrapper>
-      <PageHeader
-        title="Maps"
-        description="Map a problem: what's happening, why, what depends on what, and what to do."
-        actions={
-          <Button onClick={handleCreate} disabled={creating}>
-            {creating ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <Plus className="mr-2 size-4" />
-            )}
-            New map
-          </Button>
-        }
-        searchValue={search}
-        onSearch={setSearch}
-        searchPlaceholder="Search maps…"
-      />
+      {header}
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && (search || maps.length > 0) ? (
         <EmptyState
           icon={Network}
-          title={search ? "No map matches" : "No maps yet"}
-          description={
-            search
-              ? "Try another name."
-              : "Start with one question in the middle, then branch out: problems, causes, decisions, actions."
-          }
-          action={
-            search
-              ? undefined
-              : { label: "New map", onClick: handleCreate, icon: Plus }
-          }
+          variant="bordered"
+          title="No map matches"
+          description="Try another name."
+        />
+      ) : maps.length === 0 ? (
+        <EmptyState
+          icon={Network}
+          variant="card"
+          title="No maps yet"
+          description="Start with one question in the middle, then branch out: problems, causes, decisions, actions."
+          action={{ label: "New map", onClick: handleCreate, icon: Plus }}
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {!search && (
+            <li>
+              <NewDocumentCard
+                label="New map"
+                onClick={handleCreate}
+                disabled={creating}
+              />
+            </li>
+          )}
           {filtered.map((map) => (
-            <li
-              key={map.id}
-              className="group relative rounded-surface border bg-card shadow-e1 transition-shadow hover:shadow-e2"
-            >
-              <button
-                type="button"
-                onClick={() => open(map.id)}
-                className="block w-full rounded-surface p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="flex items-center gap-2 pr-8">
-                  {map.is_pinned && (
-                    <Pin
-                      aria-label="Pinned"
-                      className="size-3.5 shrink-0 text-primary"
-                    />
-                  )}
-                  <span className="truncate font-semibold">{map.name}</span>
-                </span>
-                <span className="mt-2 block text-sm text-muted-foreground">
-                  {map.node_count} node{map.node_count === 1 ? "" : "s"} ·{" "}
-                  {map.edge_count} connection
-                  {map.edge_count === 1 ? "" : "s"}
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  Edited{" "}
-                  {formatDistanceToNow(new Date(map.updated_at), {
-                    addSuffix: true,
-                  })}
-                </span>
-              </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`More for ${map.name}`}
-                    className="absolute right-2 top-2"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() =>
-                      void updateMeta({ id: map.id, is_pinned: !map.is_pinned })
-                    }
-                  >
-                    {map.is_pinned ? (
-                      <PinOff className="mr-2 size-4" />
-                    ) : (
-                      <Pin className="mr-2 size-4" />
-                    )}
-                    {map.is_pinned ? "Unpin" : "Pin"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onSelect={() => void handleDelete(map)}
-                  >
-                    <Trash2 className="mr-2 size-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <li key={map.id}>
+              <DocumentCard
+                title={map.name}
+                untitled="Untitled map"
+                thumbnail={
+                  <span className="flex size-full flex-col items-center justify-center gap-1 text-muted-foreground">
+                    <Network className="size-6" aria-hidden />
+                    <span className="text-xs tabular-nums">
+                      {map.node_count} node{map.node_count === 1 ? "" : "s"} ·{" "}
+                      {map.edge_count} connection
+                      {map.edge_count === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                }
+                meta={`Edited ${formatDistanceToNow(new Date(map.updated_at), { addSuffix: true })}`}
+                pinned={map.is_pinned}
+                onOpen={() => open(map.id)}
+                onRename={(name) => void handleRename(map, name)}
+                menuItems={
+                  <>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        void updateMeta({
+                          id: map.id,
+                          is_pinned: !map.is_pinned,
+                        })
+                      }
+                    >
+                      {map.is_pinned ? (
+                        <PinOff className="mr-2 size-4" aria-hidden />
+                      ) : (
+                        <Pin className="mr-2 size-4" aria-hidden />
+                      )}
+                      {map.is_pinned ? "Unpin" : "Pin"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={() =>
+                        removeMap(
+                          map,
+                          `Deleted "${map.name}"`,
+                          `${map.node_count} node${map.node_count === 1 ? "" : "s"} and ${map.edge_count} connection${map.edge_count === 1 ? "" : "s"} go when this closes.`,
+                        )
+                      }
+                    >
+                      <Trash2 className="mr-2 size-4" aria-hidden /> Delete
+                    </DropdownMenuItem>
+                  </>
+                }
+              />
             </li>
           ))}
         </ul>

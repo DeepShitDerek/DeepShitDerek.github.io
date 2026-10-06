@@ -34,7 +34,7 @@ function RailItem({ label, count, color, active, onClick }: RailItemProps) {
         onClick={onClick}
         aria-current={active ? "true" : undefined}
         className={cn(
-          "flex w-full min-w-0 items-center gap-2 whitespace-nowrap rounded-control px-2.5 py-1.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex w-full min-w-0 items-center gap-2 whitespace-nowrap rounded-control px-2.5 py-1.5 text-left text-sm transition-colors focus-ring",
           active
             ? "bg-secondary font-medium text-foreground"
             : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",

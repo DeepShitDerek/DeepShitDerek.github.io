@@ -3,23 +3,15 @@
 import { useCreateIntent } from "@/features/admin-shell/create-intent";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  CalendarRange,
-  HandCoins,
-  LineChart,
-  PieChart,
-  BookOpenCheck,
-  Landmark,
-  LayoutDashboard,
-  Plus,
-  Receipt,
-  Settings2,
-  Upload,
-  type LucideIcon,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LoadingState, ManagerWrapper, PageHeader } from "@/components/admin/shared";
-import { cn } from "@/lib/cn";
+import {
+  LoadingState,
+  ManagerWrapper,
+  ModuleTabs,
+  PageHeader,
+  type ModuleTab,
+} from "@/components/admin/shared";
 import { getErrorMessage } from "@/lib/utils";
 import { AccountsArea } from "./accounts-area";
 import { BorrowingArea } from "./borrowing-area";
@@ -34,18 +26,25 @@ import { SettingsArea } from "./settings-area";
 import { TransactionSheet } from "./transaction-sheet";
 import { TransactionsArea } from "./transactions-area";
 
-const AREAS: { id: AreaId; label: string; icon: LucideIcon; question: string }[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard, question: "Where do I stand?" },
-  { id: "accounts", label: "Accounts", icon: Landmark, question: "What does each account hold?" },
-  { id: "transactions", label: "Transactions", icon: Receipt, question: "Where did the money go?" },
-  { id: "plan", label: "Plan", icon: CalendarRange, question: "What's due, what's budgeted, what you're saving for." },
-  { id: "investing", label: "Investing", icon: LineChart, question: "What your investments are worth, and the room left to add." },
-  { id: "borrowing", label: "Borrowing", icon: HandCoins, question: "Loans, credit, and applying for more." },
-  { id: "reports", label: "Reports", icon: PieChart, question: "How the months went, net worth over time, the cost of sending money, the tax year." },
-  { id: "import", label: "Import", icon: Upload, question: "Bring in a bank statement." },
-  { id: "rules", label: "Rules", icon: BookOpenCheck, question: "Sort transactions automatically." },
-  { id: "settings", label: "Settings", icon: Settings2, question: "Currencies, categories and rates." },
+/**
+ * The ten areas, in three groups by how often they are opened: the everyday
+ * register, the periodic reviews, and setup (03-workspace-ui.md §2.22).
+ */
+const AREAS: (ModuleTab<AreaId> & { question: string })[] = [
+  { id: "overview", label: "Overview", group: 0, question: "Where do I stand?" },
+  { id: "accounts", label: "Accounts", group: 0, question: "What does each account hold?" },
+  { id: "transactions", label: "Transactions", group: 0, question: "Where did the money go?" },
+  { id: "plan", label: "Plan", group: 0, question: "What's due, what's budgeted, what you're saving for." },
+  { id: "investing", label: "Investing", group: 1, question: "What your investments are worth, and the room left to add." },
+  { id: "borrowing", label: "Borrowing", group: 1, question: "Loans, credit, and applying for more." },
+  { id: "reports", label: "Reports", group: 1, question: "How the months went, net worth over time, the cost of sending money, the tax year." },
+  { id: "import", label: "Import", group: 2, question: "Bring in a bank statement." },
+  { id: "rules", label: "Rules", group: 2, question: "Sort transactions automatically." },
+  { id: "settings", label: "Settings", group: 2, question: "Currencies, categories and rates." },
 ];
+
+/** Where the header's "Transaction" is the screen's one primary action. */
+const TRANSACTION_AREAS: readonly AreaId[] = ["overview", "transactions"];
 
 const isArea = (value: string | null): value is AreaId => AREAS.some((a) => a.id === value);
 
@@ -82,38 +81,29 @@ function MoneyShell({ basePath }: { basePath: string }) {
 
   return (
     <ManagerWrapper>
+      {/*
+        One primary action per screen (G7). The header offers a transaction
+        where recording one is the point of the screen; other areas carry
+        their own single create action (account, schedule, rule) in place.
+      */}
       <PageHeader
         title="Money"
         description={current.question}
         actions={
-          data && data.openAccounts.length > 0 ? (
+          data && data.openAccounts.length > 0 && TRANSACTION_AREAS.includes(area) ? (
             <Button onClick={() => setAdding(true)}>
-              <Plus className="mr-2 size-4" /> Transaction
+              <Plus className="mr-2 size-4" aria-hidden /> Transaction
             </Button>
           ) : undefined
         }
       />
 
-      <nav aria-label="Money sections" className="-mx-1 mb-6 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <ul className="flex min-w-max gap-1 px-1">
-          {AREAS.map((a) => (
-            <li key={a.id}>
-              <button
-                type="button"
-                onClick={() => go(a.id)}
-                aria-current={a.id === area ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  a.id === area ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                )}
-              >
-                <a.icon aria-hidden className="size-4" />
-                {a.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <ModuleTabs
+        label="Money sections"
+        tabs={AREAS}
+        current={area}
+        onSelect={(next) => go(next)}
+      />
 
       {error ? (
         <div role="alert" className="rounded-surface border border-destructive/40 bg-destructive/5 p-5 text-sm">

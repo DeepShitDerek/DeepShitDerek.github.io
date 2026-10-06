@@ -90,7 +90,7 @@ export function AdminTopbar({
           type="button"
           onClick={onOpenSidebar}
           aria-label="Open navigation"
-          className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+          className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-ring lg:hidden"
         >
           <Menu className="size-5" aria-hidden />
         </button>
@@ -115,7 +115,7 @@ export function AdminTopbar({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/70 focus-ring"
             >
               <Plus className="size-4" aria-hidden />
               <span className="hidden sm:inline">Quick add</span>
@@ -146,7 +146,7 @@ export function AdminTopbar({
             <button
               type="button"
               aria-label="Account menu"
-              className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-full transition-opacity hover:opacity-80 focus-ring"
             >
               <Avatar className="size-8">
                 <AvatarFallback className="bg-primary text-xs text-primary-foreground">

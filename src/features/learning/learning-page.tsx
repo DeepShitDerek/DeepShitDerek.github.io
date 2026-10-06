@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookOpen, Layers, Plus, Sparkles } from "lucide-react";
+import { BookOpen, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { LearningSubject, LearningTopic } from "@/types";
 import {
@@ -11,15 +11,17 @@ import {
   useGetLearningDataQuery,
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
   EmptyState,
   FormSheet,
   LoadingState,
   ManagerWrapper,
+  ModuleTabs,
   PageHeader,
   LoadError,
 } from "@/components/admin/shared";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
+import { useUrlTab } from "@/hooks/use-url-tab";
 import { getErrorMessage } from "@/lib/utils";
 import { ModuleCard } from "./module-card";
 import { TopicEditor } from "./topic-editor";
@@ -37,16 +39,26 @@ type SheetState =
   | { type: "edit-topic"; data: LearningTopic }
   | null;
 
+const TABS = ["today", "topics"] as const;
+type Tab = (typeof TABS)[number];
+
 export default function LearningPage() {
-  const confirm = useConfirm();
   const [sheetState, setSheetState] = useState<SheetState>(null);
   const [selectedTopic, setSelectedTopic] = useState<LearningTopic | null>(
     null,
   );
   const [isReviewing, setIsReviewing] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
+  // Today · Topics as views with a URL (03-workspace-ui.md §2.7). The
+  // catalogue was a "Modules" toggle that expanded a section headed
+  // "Library" at the bottom of the page, the name of another module.
+  const [tab, setTab] = useUrlTab<Tab>("today", TABS);
 
-  const { data, isLoading, error: loadError, refetch } = useGetLearningDataQuery();
+  const {
+    data,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetLearningDataQuery();
   const [deleteSubject] = useDeleteSubjectMutation();
   const [deleteTopic] = useDeleteTopicMutation();
   const [archiveTopic] = useArchiveTopicMutation();
@@ -81,41 +93,95 @@ export default function LearningPage() {
   const reviews = useMemo(() => data?.reviews ?? [], [data]);
 
   const today = todayIso();
-  const queue = useMemo(() => buildQueue(topics, { today }), [topics, today]);
+
+  // Deletes offer Undo instead of asking first (P1-10). Nothing is deleted
+  // until the toast closes, so a module's topics and their review history
+  // are all still there if you undo. Archiving remains the way to keep them.
+  const { pending: deletingTopics, remove: removeTopicLater } =
+    useUndoableDelete<LearningTopic>(async (topic) => {
+      try {
+        await deleteTopic(topic.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the topic", {
+          description: getErrorMessage(err),
+        });
+      }
+    });
+  const { pending: deletingSubjects, remove: removeSubjectLater } =
+    useUndoableDelete<LearningSubject>(async (subject) => {
+      try {
+        await deleteSubject(subject.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the module", {
+          description: getErrorMessage(err),
+        });
+      }
+    });
+
+  const shownSubjects = useMemo(
+    () =>
+      deletingSubjects.size
+        ? subjects.filter((s) => !deletingSubjects.has(s.id))
+        : subjects,
+    [subjects, deletingSubjects],
+  );
+  const shownTopics = useMemo(
+    () =>
+      deletingTopics.size || deletingSubjects.size
+        ? topics.filter(
+            (t) =>
+              !deletingTopics.has(t.id) &&
+              !(t.subject_id && deletingSubjects.has(t.subject_id)),
+          )
+        : topics,
+    [topics, deletingTopics, deletingSubjects],
+  );
+
+  const queue = useMemo(
+    () => buildQueue(shownTopics, { today }),
+    [shownTopics, today],
+  );
 
   // Due first, then new: finishing what you started beats starting more.
   const sessionQueue = useMemo(() => [...queue.due, ...queue.fresh], [queue]);
 
-  const handleDelete = async (kind: "subject" | "topic", id: string) => {
-    const isSubject = kind === "subject";
-    const affected = isSubject
-      ? topics.filter((t) => t.subject_id === id).length
-      : 0;
-
-    const ok = await confirm({
-      title: isSubject ? "Delete this module?" : "Delete this topic?",
-      description: isSubject
-        ? `${affected > 0 ? `Its ${affected} topic${affected === 1 ? "" : "s"}, their notes and review history go with it. ` : ""}This cannot be undone.`
-        : "Its notes and review history go with it. Archiving keeps them instead.",
-      variant: "destructive",
-      confirmText: "Delete",
-    });
-    if (!ok) return;
-
-    try {
-      if (isSubject) await deleteSubject(id).unwrap();
-      else await deleteTopic(id).unwrap();
-      toast.success("Deleted.");
-    } catch (err) {
-      toast.error("Couldn't delete that", {
-        description: getErrorMessage(err),
-      });
-    }
+  const deleteTopicWithUndo = (id: string) => {
+    const topic = topics.find((t) => t.id === id);
+    if (!topic) return;
+    removeTopicLater(
+      topic,
+      `Deleted "${topic.title}"`,
+      "Its notes and review history go with it when this closes.",
+    );
   };
+
+  const deleteSubjectWithUndo = (subject: LearningSubject) => {
+    const affected = topics.filter((t) => t.subject_id === subject.id).length;
+    removeSubjectLater(
+      subject,
+      `Deleted "${subject.name}"`,
+      affected > 0
+        ? `With its ${affected} topic${affected === 1 ? "" : "s"} and their history, when this closes.`
+        : undefined,
+    );
+  };
+
+  const header = (
+    <PageHeader
+      title="Learning"
+      description="What's worth going over today."
+      actions={
+        <Button onClick={() => setSheetState({ type: "create-topic" })}>
+          <Plus className="mr-2 size-4" aria-hidden /> Add topic
+        </Button>
+      }
+    />
+  );
 
   if (loadError && !data) {
     return (
       <ManagerWrapper>
+        {header}
         <LoadError what="your learning" error={loadError} onRetry={refetch} />
       </ManagerWrapper>
     );
@@ -124,7 +190,8 @@ export default function LearningPage() {
   if (isLoading) {
     return (
       <ManagerWrapper>
-        <LoadingState label="Loading" />
+        {header}
+        <LoadingState label="Loading your learning" />
       </ManagerWrapper>
     );
   }
@@ -162,95 +229,92 @@ export default function LearningPage() {
 
   return (
     <ManagerWrapper>
-      <PageHeader
-        title="Learning"
-        description="What's worth going over today."
-        actions={
-          <Button
-            variant="outline"
-            onClick={() => setShowLibrary((v) => !v)}
-            className="w-full sm:w-auto"
-          >
-            <Layers className="mr-2 size-4" aria-hidden />
-            {showLibrary ? "Hide modules" : "Modules"}
-          </Button>
-        }
+      {header}
+
+      <ModuleTabs
+        label="Learning"
+        tabs={[
+          { id: "today", label: "Today" },
+          {
+            id: "topics",
+            label: `Topics ${shownTopics.filter((t) => !t.archived_at).length}`,
+          },
+        ]}
+        current={tab}
+        onSelect={setTab}
       />
 
-      {topics.length === 0 ? (
-        <EmptyState
-          icon={Sparkles}
-          variant="card"
-          title="Start with one topic"
-          description="Not a syllabus — one thing you want to remember. Add notes when you have them; the schedule brings it back before you forget it."
-          action={{
-            label: "Add a topic",
-            onClick: () => setSheetState({ type: "create-topic" }),
-            icon: Plus,
-          }}
-        />
+      {tab === "today" ? (
+        shownTopics.length === 0 ? (
+          <EmptyState
+            icon={Sparkles}
+            variant="card"
+            title="Start with one topic"
+            description="Not a syllabus — one thing you want to remember. Add notes when you have them; the schedule brings it back before you forget it."
+            action={{
+              label: "Add a topic",
+              onClick: () => setSheetState({ type: "create-topic" }),
+              icon: Plus,
+            }}
+          />
+        ) : (
+          <>
+            <StudyToday
+              queue={queue}
+              topics={shownTopics}
+              subjects={shownSubjects}
+              sessions={sessions}
+              reviews={reviews}
+              today={today}
+              onStart={() => setIsReviewing(true)}
+              onAddTopic={() => setSheetState({ type: "create-topic" })}
+            />
+            <WeakAreas
+              topics={shownTopics}
+              onOpen={(topic) =>
+                setSheetState({ type: "edit-topic", data: topic })
+              }
+            />
+          </>
+        )
       ) : (
-        <StudyToday
-          queue={queue}
-          topics={topics}
-          subjects={subjects}
-          sessions={sessions}
-          reviews={reviews}
-          today={today}
-          onStart={() => setIsReviewing(true)}
-          onAddTopic={() => setSheetState({ type: "create-topic" })}
-        />
-      )}
-
-      {!isReviewing && (
-        <WeakAreas
-          topics={topics}
-          onOpen={(topic) => setSheetState({ type: "edit-topic", data: topic })}
-        />
-      )}
-
-      {showLibrary && (
-        <section className="mt-8 space-y-4 border-t pt-6">
+        <section aria-label="Topics" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-medium">Library</h2>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSheetState({ type: "create-topic" })}
-              >
-                <Plus className="mr-2 size-4" aria-hidden /> Topic
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSheetState({ type: "create-subject" })}
-              >
-                <Plus className="mr-2 size-4" aria-hidden /> Module
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Modules group related topics. They are optional — a topic works
+              fine on its own.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSheetState({ type: "create-subject" })}
+            >
+              <Plus className="mr-2 size-4" aria-hidden /> New module
+            </Button>
           </div>
 
-          {subjects.length === 0 && topics.length === 0 ? (
+          {shownSubjects.length === 0 && shownTopics.length === 0 ? (
             <EmptyState
               icon={BookOpen}
               variant="bordered"
               title="Nothing filed yet"
-              description="Modules are optional — a topic works fine on its own."
+              description="Add a topic, and a module if you want to group a few."
             />
           ) : (
             <div className="space-y-3">
-              {subjects.map((subject) => (
+              {shownSubjects.map((subject) => (
                 <ModuleCard
                   key={subject.id}
                   subject={subject}
-                  topics={topics.filter((t) => t.subject_id === subject.id)}
+                  topics={shownTopics.filter(
+                    (t) => t.subject_id === subject.id,
+                  )}
                   today={today}
                   onTopicClick={setSelectedTopic}
                   onEditSubject={() =>
                     setSheetState({ type: "edit-subject", data: subject })
                   }
-                  onDeleteSubject={() => handleDelete("subject", subject.id)}
+                  onDeleteSubject={() => deleteSubjectWithUndo(subject)}
                   onAddTopic={() =>
                     setSheetState({
                       type: "create-topic",
@@ -260,24 +324,24 @@ export default function LearningPage() {
                   onEditTopic={(topic) =>
                     setSheetState({ type: "edit-topic", data: topic })
                   }
-                  onDeleteTopic={(id) => handleDelete("topic", id)}
+                  onDeleteTopic={deleteTopicWithUndo}
                   onArchiveTopic={(topic) => void handleArchiveTopic(topic)}
                 />
               ))}
 
               {/* A topic does not need a module. Hiding the unfiled ones is
-                  what made the library feel like it demanded a curriculum. */}
-              {topics.some((t) => !t.subject_id) && (
+                  what made the catalogue feel like it demanded a curriculum. */}
+              {shownTopics.some((t) => !t.subject_id) && (
                 <ModuleCard
                   subject={null}
-                  topics={topics.filter((t) => !t.subject_id)}
+                  topics={shownTopics.filter((t) => !t.subject_id)}
                   today={today}
                   onTopicClick={setSelectedTopic}
                   onAddTopic={() => setSheetState({ type: "create-topic" })}
                   onEditTopic={(topic) =>
                     setSheetState({ type: "edit-topic", data: topic })
                   }
-                  onDeleteTopic={(id) => handleDelete("topic", id)}
+                  onDeleteTopic={deleteTopicWithUndo}
                   onArchiveTopic={(topic) => void handleArchiveTopic(topic)}
                 />
               )}

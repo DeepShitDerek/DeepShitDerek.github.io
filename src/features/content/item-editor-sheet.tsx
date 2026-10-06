@@ -465,7 +465,9 @@ export function ItemEditorSheet({
   // is kept on save rather than dropped.
   const [tags, setTags] = useState<string[]>(() => item?.tags ?? []);
   const [tagDraft, setTagDraft] = useState("");
-  const layoutLabel = LAYOUT_OPTIONS.find((o) => o.value === layoutStyle)?.label;
+  const layoutLabel = LAYOUT_OPTIONS.find(
+    (o) => o.value === layoutStyle,
+  )?.label;
   const previewImage = safeImageUrl(formData.image_url);
 
   const [notesOpen, setNotesOpen] = useState(!!item?.internal_notes);
@@ -523,7 +525,7 @@ export function ItemEditorSheet({
 
   return (
     <Sheet open={true} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-2xl">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b p-6">
           <SheetHeader className="text-left">
@@ -753,7 +755,7 @@ export function ItemEditorSheet({
                       merged_into_id: event.target.value,
                     }))
                   }
-                  className="h-9 w-full rounded-control bg-card px-2 text-sm shadow-e1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-9 w-full rounded-control border border-input bg-background px-2 text-sm focus-ring"
                 >
                   {/*
                     A native select, so "nothing" is the empty string rather
@@ -839,7 +841,10 @@ export function ItemEditorSheet({
                       From title
                     </Button>
                   </div>
-                  <p id="item-slug-hint" className="text-xs text-muted-foreground">
+                  <p
+                    id="item-slug-hint"
+                    className="text-xs text-muted-foreground"
+                  >
                     Lower-case letters, numbers and hyphens. Changing it breaks
                     links already shared.
                   </p>

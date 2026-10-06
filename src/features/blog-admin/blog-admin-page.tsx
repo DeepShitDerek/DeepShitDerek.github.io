@@ -15,12 +15,12 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import {
   EmptyState,
   LoadingState,
   ManagerWrapper,
+  ModuleTabs,
   PageHeader,
   LoadError,
 } from "@/components/admin/shared";
@@ -52,20 +52,46 @@ const time = (iso?: string | null) => (iso ? new Date(iso).getTime() || 0 : 0);
  * apart — one is work in progress, the other is a record with readers — and a
  * published row carries its views in a column of its own.
  */
+/** One empty list for every render while the query has none (see Navigation). */
+const NO_POSTS: BlogPost[] = [];
+
 export default function BlogAdminPage() {
-  const confirm = useConfirm();
-  const { data: posts = [], isLoading, error: loadError, refetch } = useGetAdminBlogPostsQuery();
+  const {
+    data: allPosts = NO_POSTS,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetAdminBlogPostsQuery();
   const [updateBlogPost] = useUpdateBlogPostMutation();
   const [deleteBlogPost] = useDeleteBlogPostMutation();
+  // Delete offers Undo instead of asking first (P1-10): a published post
+  // stays on the blog until the toast closes.
+  const { pending: deleting, remove: removePost } = useUndoableDelete<BlogPost>(
+    async (post) => {
+      try {
+        await deleteBlogPost(post).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the post", {
+          description: getErrorMessage(err),
+        });
+      }
+    },
+  );
+  const posts = useMemo(
+    () =>
+      deleting.size ? allPosts.filter((p) => !deleting.has(p.id)) : allPosts,
+    [allPosts, deleting],
+  );
 
   /**
    * The open editor. Keyed once when opened, not by post id, so a new post's
    * first save — which gives it an id — does not remount the editor under
    * the person typing in it.
    */
-  const [session, setSession] = useState<{ key: number; id: string | null } | null>(
-    null,
-  );
+  const [session, setSession] = useState<{
+    key: number;
+    id: string | null;
+  } | null>(null);
   const [status, setStatus] = useState<Status>("all");
   const [search, setSearch] = useState("");
 
@@ -82,31 +108,22 @@ export default function BlogAdminPage() {
   useEffect(() => {
     if (session || !postParam) return;
     if (postParam === "new") setSession({ key: Date.now(), id: null });
-    else if (posts.some((p) => p.id === postParam)) setSession({ key: Date.now(), id: postParam });
+    else if (posts.some((p) => p.id === postParam))
+      setSession({ key: Date.now(), id: postParam });
     // Once the posts have loaded; after that `session` is the source of truth.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postParam, posts]);
   useCreateIntent("post", () => open(null));
 
-  const handleDelete = async (post: BlogPost) => {
-    const ok = await confirm({
-      title: `Delete "${post.title || "Untitled"}"?`,
-      description: post.published
-        ? "It comes off the blog straight away, with its views. This can't be undone — unpublishing keeps it instead."
-        : "This can't be undone.",
-      variant: "destructive",
-      confirmText: "Delete",
-    });
-    if (!ok) return;
-    try {
-      await deleteBlogPost(post).unwrap();
-      if (session?.id === post.id) close();
-      toast.success("Post deleted.");
-    } catch (err) {
-      toast.error("Couldn't delete the post", {
-        description: getErrorMessage(err),
-      });
-    }
+  const handleDelete = (post: BlogPost) => {
+    if (session?.id === post.id) close();
+    removePost(
+      post,
+      `Deleted "${post.title || "Untitled"}"`,
+      post.published
+        ? "It comes off the blog, with its views, when this closes."
+        : undefined,
+    );
   };
 
   /** Publishing from the list follows the editor's rules: a post needs a body. */
@@ -176,7 +193,10 @@ export default function BlogAdminPage() {
 
   const drafts = matching
     .filter((p) => !p.published)
-    .sort((a, b) => time(b.updated_at ?? b.created_at) - time(a.updated_at ?? a.created_at));
+    .sort(
+      (a, b) =>
+        time(b.updated_at ?? b.created_at) - time(a.updated_at ?? a.created_at),
+    );
   const live = matching
     .filter((p) => p.published)
     .sort((a, b) => time(b.published_at) - time(a.published_at));
@@ -234,31 +254,23 @@ export default function BlogAdminPage() {
             <ContinueWriting post={featured} onOpen={() => open(featured)} />
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <FilterBar label="Filter by status" className="min-w-0">
-              <FilterChip
-                active={status === "all"}
-                count={counts.all}
-                onClick={() => setStatus("all")}
-              >
-                All
-              </FilterChip>
-              <FilterChip
-                active={status === "draft"}
-                count={counts.draft}
-                onClick={() => setStatus("draft")}
-              >
-                Drafts
-              </FilterChip>
-              <FilterChip
-                active={status === "published"}
-                count={counts.published}
-                onClick={() => setStatus("published")}
-              >
-                Published
-              </FilterChip>
-            </FilterBar>
-            <div className="relative w-full shrink-0 sm:w-64">
+          {/* Status as tabs with their counts, above one search row. */}
+          <ModuleTabs
+            label="Post status"
+            className="mb-0"
+            tabs={[
+              { id: "all" as Status, label: `All ${counts.all}` },
+              { id: "draft" as Status, label: `Drafts ${counts.draft}` },
+              {
+                id: "published" as Status,
+                label: `Published ${counts.published}`,
+              },
+            ]}
+            current={status}
+            onSelect={setStatus}
+          />
+          <div className="flex items-center">
+            <div className="relative w-full sm:max-w-sm">
               <Search
                 className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden

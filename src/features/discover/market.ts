@@ -211,6 +211,10 @@ export function parseIndicator(body: unknown): Indicator | null {
 }
 
 /** `2.0723…` → `2.1%`. Six decimal places is not a fact anyone needs. */
-export function formatPercent(value: number, digits = 1): string {
-  return `${value >= 0 ? "" : ""}${value.toFixed(digits)}%`;
+/**
+ * A percentage. A change carries its "+", so its direction never rests on
+ * colour (1.4.1); a level (unemployment, inflation) is `signed: false`.
+ */
+export function formatPercent(value: number, digits = 1, signed = true): string {
+  return `${signed && value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
 }

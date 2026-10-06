@@ -92,7 +92,16 @@ export function TaskBoard({
   };
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    // One row of columns, always. A 2-up grid below xl put "In review" and
+    // "Done" under the first two; where four don't fit, the board scrolls
+    // sideways and snaps column by column, as kanban boards do. Focusable so
+    // the keyboard can scroll it even when no column holds a card.
+    <div
+      role="region"
+      aria-label="Task board"
+      tabIndex={0}
+      className="-mx-1 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-1 pb-3 focus-ring"
+    >
       {TASK_STATUSES.map((status) => {
         const meta = TASK_STATUS_META[status];
         const columnTasks = tasks.filter(
@@ -107,7 +116,7 @@ export function TaskBoard({
             onDragLeave={() => setOverStatus(null)}
             onDrop={() => handleDrop(status)}
             className={cn(
-              "flex flex-col gap-2 rounded-surface bg-secondary/30 p-2 transition-colors",
+              "flex w-[85vw] max-w-[20rem] shrink-0 snap-start flex-col gap-2 rounded-surface bg-secondary/30 p-2 transition-colors sm:w-auto sm:min-w-[15rem] sm:max-w-none sm:flex-1",
               overStatus === status && "bg-primary/10 ring-2 ring-primary/40",
             )}
           >

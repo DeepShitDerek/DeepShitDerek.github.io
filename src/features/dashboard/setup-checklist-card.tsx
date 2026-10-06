@@ -67,7 +67,10 @@ export function SetupChecklist() {
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 id="setup-heading" className="text-base font-semibold text-foreground">
+          <h2
+            id="setup-heading"
+            className="text-base font-semibold text-foreground"
+          >
             Get your site ready
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -98,7 +101,10 @@ export function SetupChecklist() {
           <li key={item.id}>
             {item.done ? (
               <div className="flex items-start gap-3 rounded-control px-3 py-2.5">
-                <CircleCheck className="mt-0.5 size-4 shrink-0 text-chart-2" aria-hidden />
+                <CircleCheck
+                  className="mt-0.5 size-4 shrink-0 text-chart-2"
+                  aria-hidden
+                />
                 <span className="text-sm text-muted-foreground">
                   {item.title}
                   <span className="sr-only"> — done</span>
@@ -109,10 +115,13 @@ export function SetupChecklist() {
                 href={item.href}
                 className={cn(
                   "group flex items-start gap-3 rounded-control px-3 py-2.5 transition-colors hover:bg-secondary/60",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "focus-ring",
                 )}
               >
-                <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <Circle
+                  className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-foreground">
                     {item.title}

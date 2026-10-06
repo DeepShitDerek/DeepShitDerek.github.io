@@ -280,7 +280,9 @@ export function dayPulse(data: DashboardData, now = new Date()): Pulse {
   // Tasks: today's include the finished ones, so ticking one off moves the
   // ring (ADM-013). Overdue counts against the day too — it is work that was
   // owed before it — and leaves the list once done.
-  const tasksDone = data.tasksDueToday.filter((task) => task.status === "done").length;
+  const tasksDone = data.tasksDueToday.filter(
+    (task) => task.status === "done",
+  ).length;
   const tasksTotal = data.tasksDueToday.length + data.overdueTasks.length;
 
   const segments = [
@@ -292,4 +294,25 @@ export function dayPulse(data: DashboardData, now = new Date()): Pulse {
   const done = segments.reduce((sum, segment) => sum + segment.done, 0);
 
   return { percent: total === 0 ? 100 : (done / total) * 100, segments };
+}
+
+/**
+ * The next few hours of the working day, for the timeline when it is not
+ * showing the whole day: from the current hour (or the start of the day,
+ * before it begins), `span` hours long, kept inside [startHour, endHour).
+ * After the day ends it shows the last `span` hours, so it is never empty.
+ */
+export function windowHours(
+  now: Date,
+  startHour: number,
+  endHour: number,
+  span: number,
+): number[] {
+  const last = Math.max(startHour + 1, endHour);
+  const from = Math.min(
+    Math.max(now.getHours(), startHour),
+    Math.max(startHour, last - span),
+  );
+  const to = Math.min(last, from + span);
+  return Array.from({ length: Math.max(0, to - from) }, (_, i) => from + i);
 }

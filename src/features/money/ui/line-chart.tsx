@@ -86,7 +86,7 @@ export function LineChart({
         onPointerLeave={() => setActive(null)}
         onKeyDown={keys}
         onBlur={() => setActive(null)}
-        className="relative touch-none rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative touch-none rounded-control focus-ring"
       >
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-44 w-full overflow-visible" aria-hidden>
           {ticks.map((t) => (

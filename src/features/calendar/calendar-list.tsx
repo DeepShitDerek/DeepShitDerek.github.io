@@ -195,7 +195,7 @@ export function CalendarList({
       </div>
 
       {active.length === 0 ? (
-        <div className="rounded-surface bg-card p-3 shadow-e1">
+        <div className="rounded-surface border bg-card p-3">
           <p className="text-xs text-muted-foreground">
             No calendars yet. Four starters — Personal, Work, Family, Health —
             take a second to create.
@@ -330,7 +330,7 @@ function CalendarRowEditor({
   const [draft, setDraft] = useState(calendar.name);
 
   return (
-    <div className="space-y-2 rounded-surface bg-card p-2 shadow-e1">
+    <div className="space-y-2 rounded-surface border bg-card p-2">
       <div className="flex items-center gap-1">
         <Input
           value={draft}
@@ -499,7 +499,7 @@ function CalendarSettingsForm({
         either side of the part you use.
       </p>
 
-      <div className="rounded-surface bg-card p-4 shadow-e1">
+      <div className="rounded-surface border bg-card p-4">
         <p className="text-sm font-medium text-foreground">Starter calendars</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           Personal, Work, Family and Health, each with its own colour. Any

@@ -212,12 +212,15 @@ function firstChild(dir) {
 
 try {
   // ── Public pages, both themes ──
-  const pages = ["/", "/about/", "/work/", "/contact/", "/updates/", "/blog/", "/kit/", "/showcase/", "/projects/", firstChild("blog"), firstChild("work"), "/no-such-page/"]
+  const pages = ["/", "/about/", "/work/", "/contact/", "/updates/", "/blog/", "/kit/", firstChild("blog"), firstChild("work"), "/no-such-page/"]
     .filter(Boolean)
     .filter((p) => p === "/no-such-page/" || existsSync(path.join(OUT, p, "index.html")) || existsSync(path.join(OUT, `${p.replace(/\/$/, "")}.html`)));
-  for (const theme of ["theme-ink-light", "theme-ink-dark"]) {
+  // The owner's theme is applied after hydration and wins over the cached
+  // `site-theme`, so the dark pass sets the visitor's scheme too: that is
+  // what puts a dark theme on a public page. Field Notes is the default pair.
+  for (const [theme, scheme] of [["theme-field-notes-light", "light"], ["theme-field-notes-dark", "dark"]]) {
     for (const page of pages) {
-      await open(page, { "site-theme": theme });
+      await open(page, { "site-theme": theme, "visitor-scheme": scheme });
       await scan(`${page} (${theme.replace("theme-", "")})`);
     }
   }
@@ -297,7 +300,7 @@ try {
 
   // ── Component state matrix (V2-032): every primitive in every state ──
   if (existsSync(path.join(OUT, "dev", "ui"))) {
-    for (const theme of ["theme-ink-light", "theme-ink-dark", "theme-hc-light", "theme-hc-dark"]) {
+    for (const theme of ["theme-field-notes-light", "theme-field-notes-dark", "theme-ink-light", "theme-ink-dark", "theme-hc-light", "theme-hc-dark"]) {
       await open("/dev/ui/", { "site-theme": theme });
       await scan(`component states (${theme.replace("theme-", "")})`);
     }
@@ -310,6 +313,29 @@ try {
     await open("/dev/maps/", { "site-theme": "theme-ink-light" });
     await sleep(800);
     await scan("maps editor (ink-light)");
+  }
+
+  // ── Dashboard: the day, light and dark ──
+  if (existsSync(path.join(OUT, "dev", "dashboard"))) {
+    for (const theme of ["theme-field-notes-light", "theme-field-notes-dark"]) {
+      await open("/dev/dashboard/", { "site-theme": theme });
+      await sleep(900);
+      await scan(`dashboard (${theme.replace("theme-", "")})`);
+    }
+  }
+
+  // ── Calendar (rebuilt natively): the views, light and dark ──
+  if (existsSync(path.join(OUT, "dev", "calendar"))) {
+    for (const [view, theme] of [
+      ["week", "theme-field-notes-light"],
+      ["week", "theme-field-notes-dark"],
+      ["month", "theme-field-notes-light"],
+      ["agenda", "theme-field-notes-light"],
+    ]) {
+      await open("/dev/calendar/", { "site-theme": theme, "admin-view:calendar": view });
+      await sleep(900);
+      await scan(`calendar ${view} (${theme.replace("theme-", "")})`);
+    }
   }
 } catch (error) {
   failures.push({ label: "script", violations: [{ id: "crash", help: error.message }] });

@@ -1,15 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { List } from "lucide-react";
+import { ChevronDown, List } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 export interface Heading {
   id: string;
@@ -316,11 +309,9 @@ function TocList({
 }
 
 /**
- * Sticky rail on desktop, sheet on mobile. Renders nothing without headings.
- *
- * Headings are supplied by the page rather than scanned here, because the page
- * has to know whether a rail will appear *before* it lays out — otherwise it
- * reserves a column for a TOC that never renders and the article never widens.
+ * The contents of a post, in the margin rail on a wide screen. Renders
+ * nothing without headings; the page decides whether the rail exists, so it
+ * never reserves a column for a list that is empty.
  */
 export function TableOfContents({
   headings,
@@ -329,71 +320,77 @@ export function TableOfContents({
   headings: Heading[];
   activeId: string;
 }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
   const railRef = useRef<HTMLDivElement>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
 
   if (headings.length === 0) return null;
 
   return (
-    <>
-      {/* Desktop rail */}
-      <nav aria-label="Table of contents" className="hidden lg:block">
-        {/*
-          `sticky` alone was the bug. With no height bound the rail extended
-          past the bottom of the viewport and stayed pinned there, so on a long
-          post the last entries were unreachable — scrolling the page moved the
-          article, never the rail.
+    // h-full: the sticky list can only travel inside this nav, so the nav
+    // has to be as tall as the article. Sized to its own list, it gave the
+    // list nowhere to stick, and it scrolled away with the page.
+    <nav aria-label="Table of contents" className="hidden h-full lg:block">
+      {/*
+        `sticky` alone was the bug. With no height bound the rail extended
+        past the bottom of the viewport and stayed pinned there, so on a long
+        post the last entries were unreachable — scrolling the page moved the
+        article, never the rail.
 
-          `flex` + `min-h-0` is what lets the list shrink inside the bounded
-          column; without it the list keeps its intrinsic height and overflows
-          again. `overscroll-contain` stops a flick at the end of the rail from
-          chaining into the page.
-        */}
-        <div className="sticky top-24 flex max-h-[calc(100dvh-8rem)] flex-col">
-          <p className="t-eyebrow mb-4 shrink-0">On this page</p>
-          <div
-            ref={railRef}
-            className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
-          >
-            <TocList
-              headings={headings}
-              activeId={activeId}
-              scrollRef={railRef}
-            />
-          </div>
+        `flex` + `min-h-0` is what lets the list shrink inside the bounded
+        column; without it the list keeps its intrinsic height and overflows
+        again. `overscroll-contain` stops a flick at the end of the rail from
+        chaining into the page.
+      */}
+      <div className="sticky top-24 flex max-h-[calc(100dvh-8rem)] flex-col">
+        <p className="t-eyebrow mb-4 shrink-0">On this page</p>
+        <div
+          ref={railRef}
+          className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
+          <TocList headings={headings} activeId={activeId} scrollRef={railRef} />
         </div>
-      </nav>
-
-      {/* Mobile trigger */}
-      <div className="fixed bottom-5 right-5 z-chrome lg:hidden">
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center gap-2 rounded-full bg-card px-4 py-2.5 text-sm font-medium shadow-e3 transition-transform duration-base ease-enter active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
-            >
-              <List className="size-4" aria-hidden />
-              On this page
-            </button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="max-h-[70dvh] overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle className="t-eyebrow text-left">
-                On this page
-              </SheetTitle>
-            </SheetHeader>
-            <div ref={sheetRef} className="mt-4">
-              <TocList
-                headings={headings}
-                activeId={activeId}
-                scrollRef={sheetRef}
-                onNavigate={() => setSheetOpen(false)}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
       </div>
-    </>
+    </nav>
+  );
+}
+
+/**
+ * The same contents on a phone, as a closed disclosure at the head of the
+ * post (P2-16). It was a floating "On this page" button pinned over the
+ * bottom-right of the text, covering a line of every screen; here it costs
+ * one row and opens in place. Choosing an entry closes it.
+ */
+export function TableOfContentsInline({
+  headings,
+  activeId,
+}: {
+  headings: Heading[];
+  activeId: string;
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  if (headings.length === 0) return null;
+
+  return (
+    <details ref={ref} className="group mt-8 border-y border-border lg:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-control py-3 text-sm font-medium focus-ring [&::-webkit-details-marker]:hidden">
+        <span className="inline-flex items-center gap-2">
+          <List className="size-4 text-muted-foreground" aria-hidden />
+          On this page
+          <span className="font-mono text-micro text-muted-foreground">
+            {headings.length}
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden
+          className="size-4 text-muted-foreground transition-transform duration-fast group-open:rotate-180 motion-reduce:transition-none"
+        />
+      </summary>
+      <nav aria-label="Table of contents" className="pb-4">
+        <TocList
+          headings={headings}
+          activeId={activeId}
+          onNavigate={() => ref.current?.removeAttribute("open")}
+        />
+      </nav>
+    </details>
   );
 }

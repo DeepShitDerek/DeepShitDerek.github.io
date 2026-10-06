@@ -42,8 +42,12 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /**
- * Long-form proof of work: a wide hero, then the story beside a rail of facts
- * — when, the stack, and the way in.
+ * Long-form proof of work: a wide hero, then the story beside a margin rail
+ * of facts — when, the stack, and the way in.
+ *
+ * Ruled entries, not cards (north star §3.4): a card is for something that is
+ * one link, and only the "Read the case study" line here is. The rail sits on
+ * the left, as on the home page's rows and in a post.
  *
  * The hero renders only for a real image. A case study without one reads fine
  * as text, and a placeholder would waste the top of the card. The project link
@@ -56,7 +60,7 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
 export function CaseStudyLayout({ items }: LayoutProps) {
   const built = useBuiltCaseStudySlugs();
   return (
-    <div className="space-y-10">
+    <div className="space-y-12 border-b border-border pb-12">
       {items.map((item) => {
         const tags = cleanTags(item.tags);
         const hasDates = !!(item.date_from?.trim() || item.date_to?.trim());
@@ -71,19 +75,19 @@ export function CaseStudyLayout({ items }: LayoutProps) {
           <Reveal
             key={item.id}
             as="article"
-            className={cn(CARD, "overflow-hidden")}
+            className="border-t border-border pt-8"
           >
             {safeImageUrl(item.image_url) && (
               <ItemImage
                 src={item.image_url}
                 alt={item.title}
-                className="aspect-[21/9] w-full object-cover"
+                className="mb-8 aspect-[21/9] w-full rounded-surface object-cover"
               />
             )}
             <div
               className={cn(
-                "grid gap-8 p-6 sm:p-8 lg:p-10",
-                hasRail && "md:grid-cols-[minmax(0,1fr)_14rem] md:gap-12",
+                "grid gap-6",
+                hasRail && "lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8",
               )}
             >
               <div className="min-w-0">
@@ -99,7 +103,7 @@ export function CaseStudyLayout({ items }: LayoutProps) {
               </div>
 
               {hasRail && (
-                <aside className="min-w-0 space-y-6 md:border-l md:border-border/60 md:pl-8">
+                <aside className="min-w-0 space-y-5 lg:order-first">
                   {hasDates && (
                     <Meta label="When">
                       <ItemDates
@@ -117,7 +121,7 @@ export function CaseStudyLayout({ items }: LayoutProps) {
                   {story && (
                     <Link
                       href={story}
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-control bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity duration-base hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      className="inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-control text-sm font-semibold text-primary underline-offset-4 hover:underline focus-ring"
                     >
                       Read case study
                       <span className="sr-only">: {item.title}</span>
@@ -129,9 +133,10 @@ export function CaseStudyLayout({ items }: LayoutProps) {
                       href={item.link_url}
                       className={cn(
                         "inline-flex items-center gap-1.5 text-sm font-semibold",
-                        story
-                          ? "w-fit text-primary hover:underline"
-                          : "rounded-control bg-primary px-4 py-2 text-primary-foreground transition-opacity duration-base hover:opacity-90",
+                        // A text link, never a filled button: a page of
+                        // rows each with its own filled button had a dozen
+                        // primaries competing in one viewport (X7).
+                        "w-fit text-primary underline-offset-4 hover:underline",
                       )}
                     >
                       View project
@@ -162,8 +167,9 @@ export function ServicesLayout({ items }: LayoutProps) {
             key={item.id}
             className={cn(CARD, "flex min-w-0 flex-col p-6 sm:p-7")}
           >
-            <Monogram text={item.title} className="size-11 rounded-control text-lg" />
-            <h3 className="mt-5 font-heading text-lg font-semibold [overflow-wrap:anywhere]">
+            {/* No letter tile in place of an icon: a tile repeating the
+                title's first letter is a placeholder (X1). */}
+            <h3 className="font-heading text-lg font-semibold [overflow-wrap:anywhere]">
               <TextLink
                 href={item.link_url}
                 className="transition-colors hover:text-primary"
@@ -214,19 +220,16 @@ export function WorkExperienceLayout({ items }: LayoutProps) {
             key={item.id}
             className={cn(
               CARD,
-              "grid gap-4 p-5 sm:grid-cols-[3.5rem_minmax(0,1fr)] sm:gap-5 sm:p-6",
+              "grid gap-4 p-5 sm:gap-5 sm:p-6",
+              // The logo column exists only when there is a logo (X1).
+              safeImageUrl(item.image_url) && "sm:grid-cols-[3.5rem_minmax(0,1fr)]",
             )}
           >
-            {safeImageUrl(item.image_url) ? (
+            {safeImageUrl(item.image_url) && (
               <ItemImage
                 src={item.image_url}
                 alt=""
                 className="hidden size-14 rounded-control object-cover sm:block"
-              />
-            ) : (
-              <Monogram
-                text={item.subtitle || item.title}
-                className="hidden size-14 rounded-control text-xl sm:flex"
               />
             )}
             <div className="min-w-0">

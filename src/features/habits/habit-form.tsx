@@ -138,7 +138,7 @@ export function HabitForm({ habit, onSuccess, onCancel }: HabitFormProps) {
                     aria-pressed={field.value === option.value}
                     onClick={() => field.onChange(option.value)}
                     className={cn(
-                      "rounded-surface border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "rounded-surface border p-3 text-left transition-colors focus-ring",
                       field.value === option.value
                         ? "border-primary bg-primary/10"
                         : "hover:bg-secondary/60",
@@ -199,7 +199,7 @@ export function HabitForm({ habit, onSuccess, onCancel }: HabitFormProps) {
                       aria-pressed={selectedDays.includes(day.value)}
                       onClick={() => toggleDay(day.value)}
                       className={cn(
-                        "size-9 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "size-9 rounded-full text-xs font-medium transition-colors focus-ring",
                         selectedDays.includes(day.value)
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary text-muted-foreground hover:bg-secondary/70",
@@ -348,7 +348,7 @@ export function HabitForm({ habit, onSuccess, onCancel }: HabitFormProps) {
                     onClick={() => field.onChange(swatch)}
                     style={{ backgroundColor: swatch }}
                     className={cn(
-                      "size-7 rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "size-7 rounded-full ring-offset-2 ring-offset-background transition-shadow duration-fast hover:ring-2 hover:ring-border focus-ring",
                       color === swatch && "ring-2 ring-ring ring-offset-2",
                     )}
                   />

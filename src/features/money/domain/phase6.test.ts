@@ -257,6 +257,15 @@ describe("insights", () => {
     forecastBelowZero: null,
   };
 
+  it("states the amounts, not a meaningless rate, when far more went out than came in", () => {
+    const far = insights({ ...facts, lastMonth: { label: "September", incomeMinor: 1_000, spendingMinor: 157_081, savingsRate: -156.08 } });
+    const detail = far.find((i) => i.id === "savings")?.detail ?? "";
+    expect(detail).not.toMatch(/-\d{3,}%/);
+    expect(detail).toMatch(/went out against/);
+    const near = insights({ ...facts, lastMonth: { label: "September", incomeMinor: 100_000, spendingMinor: 120_000, savingsRate: -0.2 } });
+    expect(near.find((i) => i.id === "savings")?.detail).toMatch(/^Kept -20% of income/);
+  });
+
   it("says how many months of spending are set aside, with a tone to match", () => {
     expect(insights(facts).find((i) => i.id === "runway")).toMatchObject({ tone: "warn", title: "2 months of spending set aside" });
     expect(insights({ ...facts, liquidMinor: 100_000 }).find((i) => i.id === "runway")?.tone).toBe("alert");

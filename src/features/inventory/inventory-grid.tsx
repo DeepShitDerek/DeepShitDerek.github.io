@@ -3,11 +3,10 @@
 import { Box, MapPin } from "lucide-react";
 import type { InventoryItem } from "@/types";
 import { cn } from "@/lib/cn";
-import { getWarrantyStatus } from "./warranty";
 import { currentValue, formatValue, itemCurrency } from "./item-value";
 import type { ArchiveReason } from "./item-actions";
-import { daysUntilExpiry, warrantyBucket } from "./inventory-filters";
 import { ItemActions } from "./item-actions";
+import { WarrantyBadge } from "./warranty-badge";
 
 interface InventoryGridProps {
   items: InventoryItem[];
@@ -35,9 +34,6 @@ export function InventoryGrid({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => {
-        const warranty = getWarrantyStatus(item.warranty_expiry);
-        const bucket = warrantyBucket(item, today);
-        const days = daysUntilExpiry(item, today);
         const quantity = item.quantity ?? 1;
 
         return (
@@ -73,13 +69,13 @@ export function InventoryGrid({
                   {item.name}
                 </h3>
                 {quantity > 1 && (
-                  <span className="shrink-0 rounded-full bg-secondary px-1.5 text-[11px] tabular-nums text-muted-foreground">
+                  <span className="shrink-0 rounded-full bg-secondary px-1.5 text-micro tabular-nums text-muted-foreground">
                     ×{quantity}
                   </span>
                 )}
               </div>
 
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-micro text-muted-foreground">
                 {item.location ? (
                   <span className="inline-flex min-w-0 items-center gap-1">
                     <MapPin aria-hidden className="size-3 shrink-0" />
@@ -101,19 +97,7 @@ export function InventoryGrid({
                   same label whether there are 29 days left or one, and the
                   difference is the whole point of showing it.
                 */}
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                    warranty.bg,
-                    warranty.color,
-                  )}
-                >
-                  {bucket === "expiring" && days !== null
-                    ? days === 0
-                      ? "Ends today"
-                      : `${days}d left`
-                    : warranty.label}
-                </span>
+                <WarrantyBadge item={item} today={today} />
               </div>
             </div>
 

@@ -172,10 +172,10 @@ function MoneySummary({
         <span
           className={cn(
             "text-sm font-semibold tabular-nums",
-            // chart-2 is the success accent and chart-3 the warning accent;
+            // success and warning are the status tokens;
             // literal palette classes would not move with the presets.
-            money.net > 0 && "text-chart-2",
-            money.net < 0 && "text-chart-3",
+            money.net > 0 && "text-success",
+            money.net < 0 && "text-warning",
           )}
         >
           {formatMoney({ amount: money.net, currency }, { signed: true })}
@@ -204,13 +204,13 @@ function Figure({
   tone: "positive" | "negative" | "neutral";
 }) {
   return (
-    <div className="rounded-surface bg-card p-3 shadow-e1">
+    <div className="rounded-surface border bg-card p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={cn(
           "mt-0.5 text-sm font-semibold tabular-nums",
-          tone === "positive" && "text-chart-2",
-          tone === "negative" && "text-chart-3",
+          tone === "positive" && "text-success",
+          tone === "negative" && "text-warning",
           tone === "neutral" && "text-muted-foreground",
         )}
       >

@@ -55,6 +55,15 @@ export function ContactForm() {
     if (sentTo) sentHeading.current?.focus();
   }, [sentTo]);
 
+  // A link can choose the topic (P1-16): the home page's "Have a project?"
+  // goes to /contact?topic=project. Read after mount, since the page is
+  // prerendered without a query string; an unknown value is ignored.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("topic");
+    const match = CONTACT_TOPICS.find((option) => option.value === wanted);
+    if (match) form.setValue("topic", match.value);
+  }, [form]);
+
   const email = identity?.social_links.find(
     (social) => social.id.toLowerCase() === "email" && social.is_visible,
   );
@@ -89,7 +98,7 @@ export function ContactForm() {
         <Button
           type="button"
           variant="outline"
-          className="mt-5 rounded-full"
+          className="mt-5"
           onClick={() => setSentTo(null)}
         >
           Send another message
@@ -203,7 +212,7 @@ export function ContactForm() {
               className={cn(
                 "flex min-h-11 cursor-pointer items-center justify-center rounded-control border bg-background px-4 text-sm font-medium",
                 "transition-[border-color,background-color,color] duration-base ease-enter",
-                "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-card",
+                "has-[:focus-visible]:outline has-[:focus-visible]:outline-[length:var(--focus-width)] has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
                 "has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-foreground",
                 errors.topic
                   ? "border-destructive/60 text-muted-foreground"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   ArrowLeft,
@@ -16,7 +16,6 @@ import {
   Send,
   Trash2,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { BlogPost } from "@/types";
@@ -29,10 +28,12 @@ import type { NovelEditorHandle } from "@/components/admin/novel-editor/novel-ed
 import { supabase } from "@/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -55,8 +56,14 @@ import {
   slugify,
   type PostDraft,
 } from "./post-draft";
-import { clearRecovery, keepRecovery, readRecovery, type Recovery, recoveryKey } from "./post-recovery";
-import { livePath } from "./post-list";
+import {
+  clearRecovery,
+  keepRecovery,
+  readRecovery,
+  type Recovery,
+  recoveryKey,
+} from "./post-recovery";
+import { livePath, PostStatusBadge } from "./post-list";
 import { PostSettingsPanel } from "./post-settings-panel";
 import { useBlogImageUpload } from "./use-blog-image-upload";
 
@@ -129,7 +136,9 @@ export default function BlogEditor({
   // public — an address readers may have shared is never changed by retitling.
   const slugLocked = useRef(
     !!post &&
-      (!!post.published || !!post.published_at || post.slug !== slugify(post.title)),
+      (!!post.published ||
+        !!post.published_at ||
+        post.slug !== slugify(post.title)),
   );
 
   const [saving, setSaving] = useState(false);
@@ -139,7 +148,6 @@ export default function BlogEditor({
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const coverInput = useRef<HTMLInputElement>(null);
   const subtitleRef = useRef<HTMLTextAreaElement>(null);
   const editorHandle = useRef<NovelEditorHandle | null>(null);
@@ -150,7 +158,9 @@ export default function BlogEditor({
   const dirty = !sameDraft(draft, savedDraft.current);
 
   // Unsaved edits kept from the last time this post was open (ADM-001).
-  const [recovery, setRecovery] = useState<Recovery | null>(() => readRecovery(post));
+  const [recovery, setRecovery] = useState<Recovery | null>(() =>
+    readRecovery(post),
+  );
   /** Set when the owner chose to discard; closing then keeps nothing. */
   const discarded = useRef(false);
   const words = countWords(draft.content);
@@ -267,7 +277,11 @@ export default function BlogEditor({
       if (discarded.current || sameDraft(unsaved, savedDraft.current)) return;
       const key = recoveryKey(currentRef.current);
       keepRecovery(key, unsaved);
-      if (!currentRef.current?.published && unsaved.title.trim() && !savingRef.current) {
+      if (
+        !currentRef.current?.published &&
+        unsaved.title.trim() &&
+        !savingRef.current
+      ) {
         void saveRef.current({ publish: false, quiet: true }).then((ok) => {
           if (ok) clearRecovery(key);
         });
@@ -318,7 +332,8 @@ export default function BlogEditor({
       return;
     }
     if (!draft.title.trim()) {
-      if (!draft.content.trim() && !draft.excerpt.trim()) return discardAndClose();
+      if (!draft.content.trim() && !draft.excerpt.trim())
+        return discardAndClose();
       const ok = await confirm({
         title: "Discard this draft?",
         description: "It has no title yet, so it can't be saved.",
@@ -331,7 +346,8 @@ export default function BlogEditor({
     if (await save({ publish: false, quiet: true })) return onClose();
     const ok = await confirm({
       title: "Leave without saving?",
-      description: "This draft couldn't be saved, so your latest changes would be lost.",
+      description:
+        "This draft couldn't be saved, so your latest changes would be lost.",
       confirmText: "Leave anyway",
       variant: "destructive",
     });
@@ -379,47 +395,63 @@ export default function BlogEditor({
       className={cn(
         // Focus mode covers the admin chrome, which this page does not own,
         // rather than reaching up into the shell to hide it.
-        focusMode && "fixed inset-0 z-rail overflow-y-auto bg-background px-4 sm:px-6",
+        focusMode &&
+          "fixed inset-0 z-rail overflow-y-auto bg-background px-4 sm:px-6",
       )}
       onKeyDown={(event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === "s"
+        ) {
           event.preventDefault();
           void save({ publish: published, quiet: false });
         }
       }}
     >
-      {/* Pinned under the admin topbar (h-14), in the same fill. */}
+      {/* Pinned under the admin topbar (h-14), in the same fill. -mt-6
+          cancels the shell's py-6, which left a strip of page background
+          between the two bars until the page was scrolled. */}
       <div
         className={cn(
-          "sticky top-14 z-sticky -mx-4 flex h-14 items-center gap-2 border-b bg-card px-4 sm:-mx-6 sm:px-6",
+          "sticky top-14 z-sticky -mx-4 -mt-6 flex h-14 items-center gap-2 border-b bg-card px-4 sm:-mx-6 sm:px-6",
           focusMode && "hidden",
         )}
+        // Full-bleed fill and rule. The bar stops at the page column (84rem at
+        // most); with the app launcher on a wide screen that column is
+        // narrower than the window, and the page ground showed beside the bar.
+        // A border image with a horizontal outset paints the card fill and the
+        // 1px rule out to the window's edges; paint outside the box is ink
+        // overflow, so it adds no scrolling and moves nothing. Under the
+        // sidebar rail the extra lies behind the rail.
+        style={{
+          borderImage:
+            "linear-gradient(to bottom, hsl(var(--card)) calc(100% - 1px), hsl(var(--border)) calc(100% - 1px)) fill 0 / 0 / 0 100vmax",
+        }}
       >
-        <Button variant="ghost" size="sm" onClick={leave} className="-ml-2 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={leave}
+          className="-ml-2 shrink-0"
+        >
           <ArrowLeft className="mr-1.5 size-4" aria-hidden /> Posts
         </Button>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium",
-            published
-              ? "bg-chart-2/15 text-chart-2"
-              : "bg-secondary text-secondary-foreground",
-          )}
-        >
-          {published ? "Published" : "Draft"}
-        </span>
+        <PostStatusBadge published={published} />
         <span
           aria-live="polite"
           className={cn(
             "min-w-0 truncate text-xs",
-            saveError || needsAttention ? "text-destructive" : "text-muted-foreground",
+            saveError || needsAttention
+              ? "text-destructive"
+              : "text-muted-foreground",
           )}
         >
           {status}
         </span>
 
         <span className="ml-auto hidden shrink-0 text-xs tabular-nums text-muted-foreground lg:inline">
-          {words.toLocaleString()} words · {readTimeFromWordCount(words)} min read
+          {words.toLocaleString()} words · {readTimeFromWordCount(words)} min
+          read
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-2">
           <Button
@@ -447,8 +479,8 @@ export default function BlogEditor({
           </Button>
 
           {current?.id && (
-            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-              <PopoverTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
                   variant="ghost"
@@ -458,26 +490,28 @@ export default function BlogEditor({
                 >
                   <MoreHorizontal className="size-4" aria-hidden />
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-52 p-1">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
                 {published && (
                   <>
-                    <a
-                      href={livePath(current)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <ExternalLink className="size-4 opacity-70" aria-hidden />
-                      View live
-                    </a>
-                    <MenuButton
-                      icon={Copy}
-                      onClick={async () => {
-                        setMenuOpen(false);
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={livePath(current)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="mr-2 size-4" aria-hidden />{" "}
+                        View live
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={async () => {
                         try {
                           await navigator.clipboard.writeText(
-                            new URL(livePath(current), window.location.origin).toString(),
+                            new URL(
+                              livePath(current),
+                              window.location.origin,
+                            ).toString(),
                           );
                           toast.success("Link copied.");
                         } catch {
@@ -485,32 +519,26 @@ export default function BlogEditor({
                         }
                       }}
                     >
-                      Copy link
-                    </MenuButton>
-                    <MenuButton
-                      icon={EyeOff}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        void save({ publish: false, quiet: false });
-                      }}
+                      <Copy className="mr-2 size-4" aria-hidden /> Copy link
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        void save({ publish: false, quiet: false })
+                      }
                     >
-                      Unpublish
-                    </MenuButton>
-                    <div className="my-1 h-px bg-border" aria-hidden />
+                      <EyeOff className="mr-2 size-4" aria-hidden /> Unpublish
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                   </>
                 )}
-                <MenuButton
-                  icon={Trash2}
-                  destructive
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onDelete(current);
-                  }}
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={() => onDelete(current)}
                 >
-                  Delete post
-                </MenuButton>
-              </PopoverContent>
-            </Popover>
+                  <Trash2 className="mr-2 size-4" aria-hidden /> Delete post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {published ? (
@@ -518,7 +546,9 @@ export default function BlogEditor({
               onClick={() => void save({ publish: true, quiet: false })}
               disabled={!dirty || saving || isUploading}
             >
-              {saving && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
+              {saving && (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              )}
               Update
             </Button>
           ) : (
@@ -548,7 +578,7 @@ export default function BlogEditor({
         >
           <Minimize2 className="mr-1.5 size-3.5" aria-hidden />
           Done
-          <kbd className="ml-2 hidden text-[10px] text-muted-foreground sm:inline">
+          <kbd className="ml-2 hidden text-micro text-muted-foreground sm:inline">
             Esc
           </kbd>
         </Button>
@@ -563,10 +593,18 @@ export default function BlogEditor({
         <div className="min-w-0 flex-1 pb-32 pt-8 sm:pt-12">
           <div className="mx-auto max-w-[46rem]">
             {recovery && (
-              <div role="status" className="mb-6 flex flex-wrap items-center gap-3 rounded-surface border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+              <div
+                role="status"
+                className="mb-6 flex flex-wrap items-center gap-3 rounded-surface border border-primary/30 bg-primary/5 px-4 py-3 text-sm"
+              >
                 <span className="min-w-0 flex-1">
-                  Changes you hadn&apos;t saved were kept when you left this post on{" "}
-                  {new Date(recovery.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.
+                  Changes you hadn&apos;t saved were kept when you left this
+                  post on{" "}
+                  {new Date(recovery.at).toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                  .
                 </span>
                 <Button
                   type="button"
@@ -594,7 +632,11 @@ export default function BlogEditor({
             {cover ? (
               <div className="group relative mb-8 overflow-hidden rounded-surface bg-secondary">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={cover} alt="" className="aspect-[2/1] w-full object-cover" />
+                <img
+                  src={cover}
+                  alt=""
+                  className="aspect-[2/1] w-full object-cover"
+                />
                 <div className="absolute right-3 top-3 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                   <Button
                     type="button"
@@ -618,7 +660,7 @@ export default function BlogEditor({
               <button
                 type="button"
                 onClick={() => coverInput.current?.click()}
-                className="-ml-2 mb-4 inline-flex items-center gap-1.5 rounded-control px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="-ml-2 mb-4 inline-flex items-center gap-1.5 rounded-control px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-ring"
               >
                 {isUploading ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -702,7 +744,10 @@ export default function BlogEditor({
             />
           </div>
           {errors.content && (
-            <p role="alert" className="mx-auto mt-3 max-w-[46rem] text-sm text-destructive">
+            <p
+              role="alert"
+              className="mx-auto mt-3 max-w-[46rem] text-sm text-destructive"
+            >
               {errors.content}
             </p>
           )}
@@ -711,7 +756,7 @@ export default function BlogEditor({
         {settingsOpen && isWide && !focusMode && (
           <aside
             aria-label="Post settings"
-            className="sticky top-32 mt-8 max-h-[calc(100dvh-9rem)] w-80 shrink-0 overflow-y-auto rounded-surface bg-card p-5 shadow-e1"
+            className="sticky top-32 mt-8 max-h-[calc(100dvh-9rem)] w-80 shrink-0 overflow-y-auto rounded-surface border bg-card p-5"
           >
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Post settings</h2>
@@ -745,34 +790,5 @@ export default function BlogEditor({
         </Sheet>
       )}
     </div>
-  );
-}
-
-function MenuButton({
-  icon: Icon,
-  destructive,
-  onClick,
-  children,
-}: {
-  icon: LucideIcon;
-  destructive?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        destructive
-          ? "text-destructive hover:bg-destructive/10"
-          : "hover:bg-secondary",
-      )}
-    >
-      <Icon className="size-4 shrink-0 opacity-70" aria-hidden />
-      {children}
-    </button>
   );
 }

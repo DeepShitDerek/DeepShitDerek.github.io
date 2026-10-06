@@ -112,7 +112,7 @@ export function InsightsPanel({ onGo }: { onGo: (area: AreaId) => void }) {
   return (
     <section aria-labelledby="insights-heading">
       <h2 id="insights-heading" className="mb-3 font-heading text-base font-semibold">What stands out</h2>
-      <ul className="grid gap-3 md:grid-cols-2">
+      <ul className="grid gap-3">
         {cards.map((card) => {
           const Icon = ICON[card.tone];
           return (
@@ -121,9 +121,9 @@ export function InsightsPanel({ onGo }: { onGo: (area: AreaId) => void }) {
                 type="button"
                 onClick={() => onGo(card.area as AreaId)}
                 className={cn(
-                  "group flex h-full w-full gap-3 rounded-surface border bg-card p-4 text-left transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "group flex h-full w-full gap-3 rounded-surface border bg-card p-4 text-left transition-colors hover:bg-secondary/40 focus-ring",
                   card.tone === "alert" && "border-destructive/50",
-                  card.tone === "warn" && "border-amber-500/50",
+                  card.tone === "warn" && "border-warning/50",
                 )}
               >
                 <Icon
@@ -131,8 +131,8 @@ export function InsightsPanel({ onGo }: { onGo: (area: AreaId) => void }) {
                   className={cn(
                     "mt-0.5 size-5 shrink-0",
                     card.tone === "alert" && "text-destructive",
-                    card.tone === "warn" && "text-amber-600 dark:text-amber-400",
-                    card.tone === "good" && "text-emerald-600 dark:text-emerald-400",
+                    card.tone === "warn" && "text-warning",
+                    card.tone === "good" && "text-success",
                     card.tone === "info" && "text-muted-foreground",
                   )}
                 />

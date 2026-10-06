@@ -1,91 +1,121 @@
 "use client";
 
-import { CheckSquare, Coins, Flame } from "lucide-react";
+import { CheckSquare, ChevronDown, Coins, Flame, Layers } from "lucide-react";
 import type { CalendarSettings } from "@/types";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/cn";
 
 /**
- * Which of the three overlays the grid is drawing.
+ * Which of the three overlays the grid is drawing (03-workspace-ui.md §2.3).
  *
- * The calendar shows four kinds of thing — events, tasks due, habits done and
- * money — and only events come from the calendars themselves. The other three
- * were toggled from the bottom of the right-hand panel, which is hidden below
- * 1280px behind an unlabelled icon button. Two of them ship **off**, so on a
- * laptop the honest description was: two features exist, are fetched on every
- * view, and cannot be found.
+ * The calendar shows four kinds of thing: events, tasks due, habits done and
+ * money. Only events come from the calendars themselves. The other three were
+ * a row of filled chips in the header, which wrapped the header onto a second
+ * line on a laptop and said nothing about which colour on the grid was which.
  *
- * They belong in the header instead, where the state is readable without
- * opening anything and the cost of trying one is a single click. That is also
- * what makes the off state legible — a chip that is plainly *not* filled says
- * "there is something here you are not seeing", which an absent checkbox in a
- * closed panel never could.
+ * Now one "Overlays" menu: a checkbox each, and beside each the swatch the
+ * grid draws it in, so the menu is also the legend. The trigger says how
+ * many are on, so the off state stays legible without opening it.
  *
- * Events are deliberately not a chip: they are toggled per calendar, and a
- * fourth chip would imply a single switch that does not exist.
+ * Events are not in it: they are toggled per calendar, in the panel.
  */
-
-const OVERLAYS = [
+export const OVERLAYS = [
   {
     key: "show_tasks" as const,
     label: "Tasks",
     icon: CheckSquare,
-    hint: "Tasks on the day they are due",
+    hint: "on the day they are due",
+    // Matches entry-color.ts: the grid draws tasks in chart-4.
+    swatch: "bg-chart-4",
   },
   {
     key: "show_habits" as const,
     label: "Habits",
     icon: Flame,
-    hint: "What you completed each day",
+    hint: "what you completed each day",
+    swatch: "bg-chart-2",
   },
   {
     key: "show_finance" as const,
     label: "Money",
     icon: Coins,
-    hint: "What came in and went out each day",
+    hint: "in and out, and what is due",
+    swatch: "bg-chart-3",
   },
 ];
 
-export function OverlayChips({
+export function OverlaysMenu({
   settings,
   onChange,
 }: {
   settings: CalendarSettings | undefined;
   onChange: (patch: Partial<CalendarSettings>) => void;
 }) {
-  return (
-    <div className="flex items-center gap-1" role="group" aria-label="Overlays">
-      {OVERLAYS.map((overlay) => {
-        // Undefined settings mean the row has not loaded yet. Tasks are on by
-        // default and the other two are not, which mirrors the columns.
-        const on = settings
-          ? Boolean(settings[overlay.key])
-          : overlay.key === "show_tasks";
-        const Icon = overlay.icon;
+  const isOn = (key: (typeof OVERLAYS)[number]["key"]) =>
+    settings ? Boolean(settings[key]) : key === "show_tasks";
+  const count = OVERLAYS.filter((o) => isOn(o.key)).length;
 
-        return (
-          <button
-            key={overlay.key}
-            type="button"
-            aria-pressed={on}
-            title={overlay.hint}
-            disabled={!settings}
-            onClick={() => onChange({ [overlay.key]: !on })}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-control px-2 py-1 text-xs font-medium transition-[box-shadow,color,background-color] duration-base ease-enter",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
-              // Filled when on, so "off" reads as a deliberate empty state
-              // rather than as a control nobody has noticed. Same treatment the
-              // admin nav uses for the same reason.
-              on
-                ? "bg-primary text-primary-foreground shadow-e1 hover:bg-primary/90"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            <Icon className="size-3.5 shrink-0" aria-hidden />
-            {overlay.label}
-          </button>
-        );
-      })}
-    </div>
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9"
+          disabled={!settings}
+          aria-label={`Overlays, ${count} of ${OVERLAYS.length} on`}
+        >
+          <Layers className="size-4 sm:mr-1.5" aria-hidden />
+          <span className="hidden sm:inline">Overlays</span>
+          <span className="ml-1 tabular-nums text-muted-foreground">
+            {count}
+          </span>
+          <ChevronDown className="ml-1 hidden size-3.5 sm:block" aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          Show on the calendar
+        </DropdownMenuLabel>
+        {OVERLAYS.map((overlay) => {
+          const Icon = overlay.icon;
+          return (
+            <DropdownMenuCheckboxItem
+              key={overlay.key}
+              checked={isOn(overlay.key)}
+              // Keep the menu open: trying two overlays is one gesture.
+              onSelect={(event) => event.preventDefault()}
+              onCheckedChange={(on) => onChange({ [overlay.key]: on })}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "mr-2 size-2.5 shrink-0 rounded-full",
+                  overlay.swatch,
+                )}
+              />
+              <Icon
+                className="mr-1.5 size-4 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+              <span className="min-w-0">
+                {overlay.label}
+                <span className="block text-xs text-muted-foreground">
+                  {overlay.hint}
+                </span>
+              </span>
+            </DropdownMenuCheckboxItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

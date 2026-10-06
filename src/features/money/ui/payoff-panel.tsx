@@ -77,7 +77,7 @@ export function PayoffPanel() {
         ))}
       </ul>
       {debts.some((d) => !d.rateKnown) && (
-        <p className="text-xs text-amber-700 dark:text-amber-400">Set each card&apos;s interest rate on its account (or the loan&apos;s terms) — without it the plan treats that debt as interest-free.</p>
+        <p className="text-xs text-warning">Set each card&apos;s interest rate on its account (or the loan&apos;s terms) — without it the plan treats that debt as interest-free.</p>
       )}
 
       <div className="flex flex-wrap items-end gap-3">

@@ -52,8 +52,8 @@ interface ModuleCardProps {
 const statusConfig = {
   "To Learn": { icon: Circle, color: "text-muted-foreground" },
   Learning: { icon: PlayCircle, color: "text-primary" },
-  Practicing: { icon: BookOpen, color: "text-chart-3" },
-  Mastered: { icon: CheckCircle2, color: "text-chart-2" },
+  Practicing: { icon: BookOpen, color: "text-info" },
+  Mastered: { icon: CheckCircle2, color: "text-success" },
 };
 
 export function ModuleCard({
@@ -76,7 +76,7 @@ export function ModuleCard({
   const progress = total > 0 ? (completed / total) * 100 : 0;
 
   return (
-    <Card className="overflow-hidden shadow-e1">
+    <Card className="overflow-hidden shadow-none">
       <CardHeader
         className="cursor-pointer p-3 transition-colors hover:bg-muted/50 sm:p-4"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -186,9 +186,9 @@ export function ModuleCard({
                     {isActive && (
                       <Badge
                         variant="secondary"
-                        className="animate-pulse bg-primary/20 text-[9px] text-primary"
+                        className="bg-primary/15 text-micro text-primary"
                       >
-                        ACTIVE
+                        Active
                       </Badge>
                     )}
                     <DropdownMenu>

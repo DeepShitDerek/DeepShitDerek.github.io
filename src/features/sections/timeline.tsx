@@ -6,7 +6,6 @@ import {
   useReducedMotion,
   useScroll,
   useSpring,
-  type MotionProps,
 } from "framer-motion";
 import { ArrowUpRight, GitBranch, GitMerge } from "lucide-react";
 import type { PortfolioItem } from "@/types";
@@ -54,10 +53,11 @@ import { ItemImage, ItemTags, Markdown, PlainText, TextLink } from "./shared";
  *
  * Tokens only, so every preset — dark ones included — restyles it with no
  * special case. Nodes are hollow on a card fill rather than ringed in a "gap"
- * colour, because a band's fill is not something a node can know. Under
- * reduced motion nothing moves: the rail shows no progress, nodes are simply
- * filled, and cards are present from the start — `whileInView` with an opacity
- * of 0 would otherwise leave content invisible if the observer never fired.
+ * colour, because a band's fill is not something a node can know. Cards are
+ * present from the first paint for everyone (they used to fade in on scroll,
+ * and an observer that never fired left them invisible). Only the rail's
+ * progress and the nodes' fill move, both transforms, and under reduced motion
+ * neither does.
  */
 
 /** The house curve — the same one as `--m-enter`. */
@@ -207,16 +207,6 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
 
   if (graph.rows.length === 0) return null;
 
-  const reveal = (delay = 0): MotionProps =>
-    reduceMotion
-      ? {}
-      : {
-          initial: { opacity: 0, y: 20 },
-          whileInView: { opacity: 1, y: 0 },
-          viewport: { once: true, margin: "0px 0px -12% 0px" },
-          transition: { duration: 0.55, ease: EASE, delay },
-        };
-
   return (
     <div className="relative">
       {/* The track, fading out below the oldest entry. */}
@@ -266,12 +256,11 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
               className="relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-4 md:grid-cols-[9.5rem_1.5rem_minmax(0,1fr)] md:gap-x-6"
             >
               {/* When — its own column from md up, sticky beside a long card. */}
-              <motion.div
-                {...reveal()}
+              <div
                 className="hidden md:col-start-1 md:row-start-1 md:block md:self-start md:pt-5 md:sticky md:top-28"
               >
                 <Period item={item} duration={duration} ongoing={ongoing} />
-              </motion.div>
+              </div>
 
               {/* The rail cell. */}
               <div className="col-start-1 row-start-1 flex justify-center md:col-start-2">
@@ -283,8 +272,7 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
               </div>
 
               {/* What. */}
-              <motion.div
-                {...reveal(0.06)}
+              <div
                 className={cn(
                   "col-start-2 row-start-1 min-w-0 md:col-start-3",
                   branch && "md:ml-8",
@@ -367,7 +355,7 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
                     </div>
                   )}
                 </article>
-              </motion.div>
+              </div>
             </li>
           );
         })}

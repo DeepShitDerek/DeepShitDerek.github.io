@@ -33,6 +33,7 @@ import { NOTE_COLORS } from "@/lib/constants";
 import { noteSchema } from "@/lib/schemas";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
+import { SaveStatus, type SaveState as StatusState } from "@/components/admin/shared";
 import { NoteConnections } from "./note-connections";
 import { indexByTitle, normalizeTitle } from "./note-links";
 import { noteLabel } from "./note-title";
@@ -221,16 +222,16 @@ export function NoteDocument({
 
   const label = noteLabel({ title: draft.title, content: draft.content });
 
-  const status =
+  const status: { state: StatusState; text?: string } | null =
     saveState === "error"
       ? null
       : saveState === "pending" || saveState === "saving"
-        ? "Saving…"
+        ? { state: "saving" }
         : savedThisVisit
-          ? "Saved"
+          ? { state: "saved" }
           : note.updated_at
-            ? `Edited ${formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}`
-            : "";
+            ? { state: "idle", text: `Edited ${formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}` }
+            : null;
 
   const edited = savedThisVisit
     ? "Just now"
@@ -254,7 +255,7 @@ export function NoteDocument({
           type="button"
           onClick={onBack}
           aria-label="All notes"
-          className="-ml-2 inline-flex items-center gap-1 rounded-control px-2 py-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+          className="-ml-2 inline-flex items-center gap-1 rounded-control px-2 py-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-ring md:hidden"
         >
           <ArrowLeft className="size-4" aria-hidden />
           Notes
@@ -266,11 +267,7 @@ export function NoteDocument({
         </span>
 
         <div className="ml-auto flex min-w-0 items-center gap-1">
-          {status && (
-            <p aria-live="polite" className="mr-1 truncate text-xs text-muted-foreground">
-              {status}
-            </p>
-          )}
+          {status && <SaveStatus state={status.state} text={status.text} className="mr-1" />}
           {saveState === "error" && error && (
             <p role="alert" className="mr-1 truncate text-xs text-destructive">
               Not saved: {error}{" "}
@@ -329,7 +326,7 @@ export function NoteDocument({
                   onClick={() => change({ color: null })}
                   aria-label="No colour"
                   aria-pressed={draft.color === null}
-                  className="flex size-6 items-center justify-center rounded-full border border-dashed hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex size-6 items-center justify-center rounded-full border border-dashed hover:bg-muted focus-ring"
                 >
                   <X className="size-3 text-muted-foreground" aria-hidden />
                 </button>
@@ -341,7 +338,7 @@ export function NoteDocument({
                     aria-label={`Use colour ${swatch}`}
                     aria-pressed={draft.color === swatch}
                     style={{ backgroundColor: swatch }}
-                    className="flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                    className="flex size-6 items-center justify-center rounded-full ring-offset-2 ring-offset-popover transition-shadow duration-fast hover:ring-2 hover:ring-border focus-ring"
                   >
                     {draft.color === swatch && (
                       <Check className="size-3.5 text-white" aria-hidden />
@@ -378,11 +375,13 @@ export function NoteDocument({
         <div
           aria-hidden
           data-testid="note-cover"
-          className="mt-2 h-20 rounded-surface sm:h-28"
+          // A rule in the note's colour, not a gradient cover: the colour
+          // marks the note, the page stays text (north star: no gradients).
+          className="mt-2 h-1 rounded-full"
           // Per-note user data, not a theme token, so it cannot be a class.
-          // Mixed toward the theme's own surfaces so it sits in any preset.
+          // Mixed toward the theme's ground so it sits in any preset.
           style={{
-            background: `linear-gradient(135deg, color-mix(in srgb, ${draft.color} 45%, hsl(var(--card))), color-mix(in srgb, ${draft.color} 15%, hsl(var(--background))))`,
+            background: `color-mix(in srgb, ${draft.color} 75%, hsl(var(--background)))`,
           }}
         />
       )}
@@ -509,7 +508,7 @@ function MenuButton({
       onClick={onClick}
       className={cn(
         "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "focus-ring",
         destructive
           ? "text-destructive hover:bg-destructive/10"
           : "hover:bg-secondary",

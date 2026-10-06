@@ -17,6 +17,8 @@ import { cn } from "@/lib/cn";
  */
 export type BandWeight = "feature" | "content" | "accent";
 export type BandWidth = "default" | "wide" | "prose";
+/** `tight` joins a band to the one before it as one group (48px). */
+export type BandRhythm = "normal" | "tight";
 
 const WEIGHT_CLASS: Record<BandWeight, string> = {
   feature: "band band-feature",
@@ -34,6 +36,7 @@ export interface BandProps {
   children: ReactNode;
   weight?: BandWeight;
   width?: BandWidth;
+  rhythm?: BandRhythm;
   /** Rendered as a landmark when the band is a titled region of the page. */
   as?: "section" | "div" | "header" | "footer";
   id?: string;
@@ -47,6 +50,7 @@ export function Band({
   children,
   weight = "content",
   width = "default",
+  rhythm = "normal",
   as: Tag = "section",
   id,
   className,
@@ -54,7 +58,11 @@ export function Band({
   ...rest
 }: BandProps) {
   return (
-    <Tag id={id} className={cn(WEIGHT_CLASS[weight], className)} {...rest}>
+    <Tag id={id} className={cn(
+        WEIGHT_CLASS[weight],
+        rhythm === "tight" && "band-tight",
+        className,
+      )} {...rest}>
       <div className={cn(WIDTH_CLASS[width], innerClassName)}>{children}</div>
     </Tag>
   );
@@ -63,9 +71,8 @@ export function Band({
 /**
  * The heading block that opens a band.
  *
- * Deliberately not a numbered mono label over a dotted rule — that is the v2
- * grammar. Here the hierarchy is carried by size and an optional coloured
- * eyebrow, with no separator line at all.
+ * Hierarchy is carried by size: an optional eyebrow in the meta voice, then
+ * the title. A band that wants a rule draws it on itself.
  */
 export function BandHeading({
   eyebrow,
@@ -94,7 +101,9 @@ export function BandHeading({
     >
       <div className="max-w-prose">
         {eyebrow && <p className="t-eyebrow mb-2">{eyebrow}</p>}
-        <Heading id={id} className={level === 1 ? "t-title" : "t-heading"}>
+        {/* Section titles at the title size (P1-4): the scale used to jump
+            from the 68px display straight to 28px, so sections read flat. */}
+        <Heading id={id} className="t-title text-balance">
           {title}
         </Heading>
         {lead && <p className="t-lead mt-3">{lead}</p>}

@@ -1,72 +1,31 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Pause, Play } from "lucide-react";
 import { useGetSiteIdentityQuery } from "@/store/api/publicApi";
 import type { SiteContent } from "@/types";
 import { Markdown } from "@/components/ui/markdown";
 import { Button } from "@/components/ui/button";
-import { socialIcon } from "@/lib/social-icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Band } from "@/components/layout/band";
-import { CountUp, EASE } from "@/components/layout/motion";
-import { isInternalUrl, safeImageUrl, safeLinkUrl } from "@/lib/safe-url";
+import { safeImageUrl } from "@/lib/safe-url";
 import { sizedImageUrl } from "@/lib/image-size";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/cn";
-import { StatusPanel } from "./status-panel";
+import { ProofStrip } from "./proof-strip";
 
 const ROTATE_MS = 3200;
-
-/** The largest type on the site, for the one centred composition. */
-const CENTERED_NAME =
-  "font-heading text-[clamp(2.75rem,1.6rem+5vw,6rem)] font-bold leading-[1.02] tracking-tighter";
-/** A headline is a sentence, not a name, so it runs a step smaller. */
-const CENTERED_HEADLINE =
-  "font-heading text-[clamp(2.25rem,1.3rem+3.8vw,4.75rem)] font-bold leading-[1.04] tracking-tight";
-
-/**
- * The name, rising word by word out of a mask. The words stay real text
- * separated by real spaces, so the heading's accessible name is the name.
- */
-function AnimatedName({ name }: { name: string }) {
-  const reduceMotion = useReducedMotion();
-  const words = name.split(/\s+/).filter(Boolean);
-  if (reduceMotion) return <>{name}</>;
-
-  return (
-    <>
-      {words.map((word, index) => (
-        <Fragment key={`${word}-${index}`}>
-          {index > 0 && " "}
-          <span className="inline-block overflow-hidden pb-[0.1em] align-bottom">
-            <motion.span
-              className="inline-block"
-              initial={{ y: "105%" }}
-              animate={{ y: 0 }}
-              transition={{
-                duration: 0.85,
-                ease: EASE,
-                delay: 0.1 + index * 0.08,
-              }}
-            >
-              {word}
-            </motion.span>
-          </span>
-        </Fragment>
-      ))}
-    </>
-  );
-}
 
 /**
  * Cycles through `title` parts separated by `|`; static when only one.
  *
- * WCAG 2.2.2 (V2-060): auto-updating content needs a way to stop it. It goes
- * round once and settles on the first part, never moves under reduced
- * motion, and a small button pauses it or plays it again. Screen readers get
- * every part once, in order, instead of whichever one is showing.
+ * The one piece of text on the site that moves, kept because it stops by
+ * itself (WCAG 2.2.2, V2-060): it goes round once and settles on the first
+ * part, never moves under reduced motion, and a small button pauses it or
+ * plays it again. Screen readers get every part once, in order, instead of
+ * whichever one is showing. Each part fades in by CSS; there is no animation
+ * library in the hero.
  */
 function RotatingTitle({ title }: { title: string }) {
   const parts = title
@@ -75,13 +34,13 @@ function RotatingTitle({ title }: { title: string }) {
     .filter(Boolean);
   const [steps, setSteps] = useState(0);
   const index = parts.length ? steps % parts.length : 0;
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const [running, setRunning] = useState(false);
 
   // Start once mounted (and not under reduced motion); the server render
   // and the first paint show the first part, still.
   useEffect(() => {
-    if (parts.length > 1 && !reduceMotion) setRunning(true);
+    setRunning(parts.length > 1 && !reduceMotion);
   }, [parts.length, reduceMotion]);
 
   useEffect(() => {
@@ -92,103 +51,55 @@ function RotatingTitle({ title }: { title: string }) {
 
   // Back at the first part: a full cycle, so stop there.
   useEffect(() => {
-    if (steps > 0 && parts.length > 1 && steps % parts.length === 0) setRunning(false);
+    if (steps > 0 && parts.length > 1 && steps % parts.length === 0)
+      setRunning(false);
   }, [steps, parts.length]);
 
   if (parts.length === 0) return null;
-  if (parts.length === 1) return <span className="text-primary">{parts[0]}</span>;
+  if (parts.length === 1) return <span>{parts[0]}</span>;
 
   return (
     <>
       <span className="sr-only">{parts.join(", ")}</span>
-      <span aria-hidden className="relative inline-block text-primary">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={parts[index]}
-            initial={{
-              opacity: 0,
-              y: reduceMotion ? 0 : 14,
-              filter: "blur(4px)",
-            }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: reduceMotion ? 0 : -14, filter: "blur(4px)" }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className="inline-block"
-          >
-            {parts[index]}
-          </motion.span>
-        </AnimatePresence>
+      <span
+        aria-hidden
+        key={parts[index]}
+        className={cn(
+          "inline-block",
+          steps > 0 &&
+            "motion-safe:duration-slow motion-safe:animate-in motion-safe:fade-in-0",
+        )}
+      >
+        {parts[index]}
       </span>
       <button
         type="button"
         onClick={() => setRunning((r) => !r)}
-        aria-label={running ? "Pause the changing title" : "Play the changing title"}
-        className="ml-1.5 inline-flex size-6 translate-y-[-0.1em] items-center justify-center rounded-full align-middle text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={
+          running ? "Pause the changing title" : "Play the changing title"
+        }
+        className="ml-1 inline-flex size-6 translate-y-[-0.1em] items-center justify-center rounded-control align-middle text-muted-foreground transition-colors duration-fast hover:bg-secondary hover:text-foreground focus-ring"
       >
-        {running ? <Pause aria-hidden className="size-3" /> : <Play aria-hidden className="size-3" />}
+        {running ? (
+          <Pause aria-hidden className="size-3" />
+        ) : (
+          <Play aria-hidden className="size-3" />
+        )}
       </button>
     </>
   );
 }
 
-function AvailabilityPill({ label }: { label: string }) {
+/**
+ * Who is available, as one line of meta. The dot is the success colour and
+ * holds still: nothing on the first screen moves (north star §3.6).
+ */
+function Availability({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 py-1.5 pl-2.5 pr-3.5 text-micro font-medium text-foreground">
-      <span aria-hidden className="relative flex size-2">
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60 motion-reduce:animate-none" />
-        <span className="relative inline-flex size-2 rounded-full bg-primary" />
-      </span>
+    <p className="inline-flex items-center gap-2 font-mono text-micro text-muted-foreground">
+      <span aria-hidden className="size-2 shrink-0 rounded-full bg-success" />
       {label}
-    </span>
-  );
-}
-
-/** The owner's channels, as named round icon buttons. */
-function SocialRow({
-  links,
-  className,
-}: {
-  links: { id: string; label: string; url: string; is_visible?: boolean }[];
-  className?: string;
-}) {
-  const visible = links
-    .filter((link) => link.is_visible !== false)
-    .map((link) => ({ ...link, href: safeLinkUrl(link.url) }))
-    .filter((link): link is typeof link & { href: string } =>
-      Boolean(link.href),
-    );
-  if (visible.length === 0) return null;
-
-  return (
-    <ul
-      className={cn("flex flex-wrap items-center gap-2", className)}
-      aria-label="Elsewhere"
-    >
-      {visible.map((link) => {
-        const Icon = socialIcon(link.id);
-        const external = !isInternalUrl(link.href);
-        return (
-          <li key={link.id}>
-            <a
-              href={link.href}
-              {...(external
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : {})}
-              aria-label={link.label}
-              title={link.label}
-              className={cn(
-                "flex size-10 items-center justify-center rounded-full bg-card text-muted-foreground shadow-e1",
-                "transition-[box-shadow,transform,color] duration-base ease-enter",
-                "hover:-translate-y-0.5 hover:text-primary hover:shadow-e2 motion-reduce:hover:translate-y-0",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              )}
-            >
-              <Icon className="size-4" aria-hidden />
-            </a>
-          </li>
-        );
-      })}
-    </ul>
+    </p>
   );
 }
 
@@ -197,41 +108,42 @@ function SocialRow({
  * "Work with me", not "Start a project" — the same path serves a role, a
  * project or anything else (V2-040), and it matches the header's CTA.
  */
-function Actions({ className }: { className?: string }) {
+function Actions() {
   return (
-    <div className={cn("flex flex-wrap items-center gap-3", className)}>
-      <Button asChild size="lg" className="group rounded-full px-7">
+    <div className="flex flex-wrap items-center gap-3">
+      <Button asChild size="lg" className="group max-[399px]:flex-1">
         <Link href="/contact">
           Work with me
           <ArrowRight
             aria-hidden
-            className="ml-2 size-4 transition-transform duration-base ease-enter group-hover:translate-x-0.5 motion-reduce:transition-none"
+            className="ml-2 size-4 transition-transform duration-fast group-hover:translate-x-0.5 motion-reduce:transition-none"
           />
         </Link>
       </Button>
-      <Button asChild size="lg" variant="outline" className="rounded-full px-7">
+      <Button
+        asChild
+        size="lg"
+        variant="outline"
+        className="max-[399px]:flex-1"
+      >
         <Link href="/work">See the work</Link>
       </Button>
     </div>
   );
 }
 
-/** Who is making the promise in the headline — the founder line of a SaaS hero. */
+/** Who is making the promise in the headline. A paragraph, not a heading. */
 function Byline({
   name,
   title,
   picture,
-  centered,
 }: {
   name: string;
   title: string;
   picture: string | null;
-  centered: boolean;
 }) {
   return (
-    <div
-      className={cn("flex items-center gap-3", centered && "justify-center")}
-    >
+    <div className="flex items-center gap-3">
       {picture && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -239,14 +151,14 @@ function Byline({
           alt=""
           width={40}
           height={40}
-          className="size-10 shrink-0 rounded-full object-cover shadow-e1"
+          className="size-10 shrink-0 rounded-full object-cover"
         />
       )}
-      <p className="min-w-0 text-base leading-snug text-muted-foreground sm:text-lg">
+      <p className="min-w-0 text-base leading-snug text-muted-foreground">
         <span className="font-semibold text-foreground">{name}</span>
         {title.trim() && (
           <>
-            <span aria-hidden className="mx-2 text-muted-foreground/60">
+            <span aria-hidden className="mx-2">
               ·
             </span>
             <RotatingTitle title={title} />
@@ -257,65 +169,32 @@ function Byline({
   );
 }
 
-const PROOF_COLUMNS: Record<number, string> = {
-  1: "lg:grid-cols-1",
-  2: "lg:grid-cols-2",
-  3: "lg:grid-cols-3",
-};
-
 /**
- * Results, set as large figures across the foot of the hero — the proof a
- * SaaS page puts right under its promise. Each figure counts up once; under
- * reduced motion it is simply there. Only what the owner entered appears:
- * there is no default row of flattering numbers.
+ * The setup and the payoff of a two-sentence headline, toned apart: the
+ * setup in the secondary text colour, the payoff in the foreground (north
+ * star §3.1). A one-sentence headline is all payoff.
  */
-function ProofStrip({
-  items,
-  centered,
-}: {
-  items: { value: string; label: string }[];
-  centered: boolean;
-}) {
-  return (
-    <ul
-      aria-label="Results"
-      className={cn(
-        "mt-16 grid grid-cols-2 gap-x-8 gap-y-8 border-t border-border/60 pt-10 sm:mt-20",
-        PROOF_COLUMNS[items.length] ?? "lg:grid-cols-4",
-        centered && "text-center",
-      )}
-    >
-      {items.map((item, index) => (
-        <li key={`${item.value}-${index}`} className="min-w-0">
-          <CountUp
-            value={item.value}
-            className="block font-heading text-3xl font-semibold tracking-tight tabular-nums text-foreground [overflow-wrap:anywhere] sm:text-4xl"
-          />
-          <p className="mt-2 text-pretty text-sm leading-snug text-muted-foreground">
-            {item.label}
-          </p>
-        </li>
-      ))}
-    </ul>
-  );
+export function splitHeadline(
+  headline: string,
+): [setup: string, payoff: string] {
+  const match = /^(.+?[.!?])\s+(\S[\s\S]*)$/.exec(headline.trim());
+  return match ? [match[1], match[2]] : ["", headline.trim()];
 }
 
 function HeroSkeleton() {
   return (
-    <Band weight="feature" aria-busy>
-      <div className="grid gap-16 lg:grid-cols-[1.35fr_1fr] lg:items-center">
-        <div className="space-y-6">
-          <Skeleton className="h-7 w-40 rounded-full" />
-          <Skeleton className="h-20 w-full max-w-xl rounded-control" />
-          <Skeleton className="h-12 w-2/3 rounded-control" />
-          <Skeleton className="h-20 w-full max-w-prose rounded-control" />
-          <div className="flex gap-3">
-            <Skeleton className="h-12 w-36 rounded-full" />
-            <Skeleton className="h-12 w-36 rounded-full" />
-          </div>
+    <Band weight="feature" aria-busy className="hero-band">
+      <div className="max-w-hero space-y-6">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-36 w-full rounded-control" />
+        <Skeleton className="h-6 w-64" />
+        <Skeleton className="h-14 w-full max-w-prose rounded-control" />
+        <div className="flex gap-3">
+          <Skeleton className="h-12 w-40 rounded-control" />
+          <Skeleton className="h-12 w-36 rounded-control" />
         </div>
-        <Skeleton className="h-72 w-full rounded-surface" />
       </div>
+      <Skeleton className="mt-12 h-24 w-full rounded-control" />
     </Band>
   );
 }
@@ -329,161 +208,92 @@ export function Hero() {
 }
 
 /**
- * The opening of the home page, built like the top of a product page.
+ * The opening of the home page.
  *
  * **It leads with the promise, not the name.** A visitor decides in a few
- * seconds whether this person solves their problem; "Ada Lovelace" answers a
- * question they have not asked yet. When the owner writes a headline it is the
- * `h1`, the name and role become the byline under it, and the results strip
- * closes the band with evidence. Without a headline the name leads, as before.
+ * seconds whether this person solves their problem; a name answers a question
+ * they have not asked yet. When the owner writes a headline it is the `h1`,
+ * and the name and role become the byline under it. Without a headline the
+ * name leads.
  *
- * **Two compositions, chosen by what exists** — never one with a hole in it:
- * beside the status panel the copy runs down the left; without it, the hero
- * is the one centred composition on the site.
+ * **One composition, in reading order:** availability → promise → who →
+ * what → two actions → results. At 1280×720 the actions end above 680px and
+ * the results sit right under them (P0-1); on a phone the results follow the
+ * actions before anything else.
+ *
+ * **Nothing in it animates on load.** The headline is the largest paint on
+ * the page; it used to fade in from `opacity: 0` after the animation library
+ * loaded, which held every visitor's first meaningful paint for the length of
+ * a script download (P0-2). The status panel that shared this band moved to
+ * About: what the owner is learning is not the first thing a buyer needs.
  *
  * Takes identity rather than fetching it, so the settings preview renders the
  * real hero against unsaved values.
  */
 export function HeroView({ identity }: { identity: SiteContent }) {
-  const reduceMotion = useReducedMotion();
-  const { profile_data, social_links } = identity;
-  const panel = profile_data.status_panel;
-  const showPanel = Boolean(panel.show);
-  const centered = !showPanel;
+  const { profile_data } = identity;
+  const availability = profile_data.status_panel?.availability?.trim();
   const headline = profile_data.headline?.trim() ?? "";
   const proof = (profile_data.proof ?? []).filter((item) => item.value?.trim());
   const picture = profile_data.show_profile_picture
     ? safeImageUrl(profile_data.profile_picture_url)
     : null;
-
-  const rise = (delay: number) =>
-    reduceMotion
-      ? {}
-      : {
-          initial: { opacity: 0, y: 16 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.6, ease: EASE, delay },
-        };
-
-  const heading = headline ? (
-    <div className="min-w-0 space-y-6">
-      <motion.h1
-        id="hero-name"
-        {...rise(0.05)}
-        className={cn(
-          centered ? CENTERED_HEADLINE : "t-display",
-          "text-balance [overflow-wrap:anywhere]",
-        )}
-      >
-        {headline}
-      </motion.h1>
-      <motion.div {...rise(0.2)}>
-        <Byline
-          name={profile_data.name}
-          title={profile_data.title ?? ""}
-          picture={picture}
-          centered={centered}
-        />
-      </motion.div>
-    </div>
-  ) : (
-    <div className="min-w-0">
-      <h1
-        id="hero-name"
-        className={cn(
-          centered ? CENTERED_NAME : "t-display",
-          "text-balance [overflow-wrap:anywhere]",
-        )}
-      >
-        <AnimatedName name={profile_data.name} />
-      </h1>
-      {profile_data.title?.trim() && (
-        <motion.p
-          {...rise(0.3)}
-          className={cn("t-title text-balance", centered ? "mt-4" : "mt-3")}
-        >
-          <RotatingTitle title={profile_data.title} />
-        </motion.p>
-      )}
-    </div>
-  );
-
-  const copy = (
-    <>
-      {panel.availability && (
-        <motion.div {...rise(0)}>
-          <AvailabilityPill label={panel.availability} />
-        </motion.div>
-      )}
-      {heading}
-      {profile_data.description && (
-        <motion.div
-          {...rise(0.35)}
-          className={cn(
-            "t-lead max-w-prose text-pretty [&_p]:m-0",
-            centered && "mx-auto",
-          )}
-        >
-          <Markdown>{profile_data.description}</Markdown>
-        </motion.div>
-      )}
-      <motion.div {...rise(0.45)}>
-        <Actions className={centered ? "justify-center" : undefined} />
-      </motion.div>
-      <motion.div {...rise(0.55)}>
-        <SocialRow
-          links={social_links ?? []}
-          className={centered ? "justify-center" : undefined}
-        />
-      </motion.div>
-    </>
-  );
+  const [setup, payoff] = splitHeadline(headline);
 
   return (
-    <Band
-      weight="feature"
-      aria-labelledby="hero-name"
-      className="relative isolate"
-    >
-      <div
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-x-0 -top-48 -z-10 h-[52rem]",
-          showPanel
-            ? "bg-[radial-gradient(55%_50%_at_20%_30%,hsl(var(--primary)/0.13),transparent_72%)]"
-            : "bg-[radial-gradient(50%_50%_at_50%_30%,hsl(var(--primary)/0.14),transparent_72%)]",
+    <Band weight="feature" aria-labelledby="hero-name" className="hero-band">
+      <div className="flex max-w-hero flex-col items-start gap-6">
+        {availability && <Availability label={availability} />}
+
+        {headline ? (
+          <>
+            <h1
+              id="hero-name"
+              className="t-display text-balance [overflow-wrap:anywhere]"
+            >
+              {setup && (
+                <>
+                  <span className="text-secondary-foreground">
+                    {setup}
+                  </span>{" "}
+                </>
+              )}
+              {payoff}
+            </h1>
+            <Byline
+              name={profile_data.name}
+              title={profile_data.title ?? ""}
+              picture={picture}
+            />
+          </>
+        ) : (
+          <div className="min-w-0">
+            <h1
+              id="hero-name"
+              className="t-display text-balance [overflow-wrap:anywhere]"
+            >
+              {profile_data.name}
+            </h1>
+            {profile_data.title?.trim() && (
+              <p className="t-heading mt-3 text-balance text-secondary-foreground">
+                <RotatingTitle title={profile_data.title} />
+              </p>
+            )}
+          </div>
         )}
-      />
 
-      {showPanel ? (
-        <div
-          data-composition="panel"
-          className="grid gap-16 lg:grid-cols-[1.35fr_1fr] lg:items-center"
-        >
-          <div className="flex min-w-0 flex-col items-start gap-7">{copy}</div>
-          <motion.div
-            className="min-w-0"
-            {...(reduceMotion
-              ? {}
-              : {
-                  initial: { opacity: 0, y: 24, scale: 0.98 },
-                  animate: { opacity: 1, y: 0, scale: 1 },
-                  transition: { duration: 0.8, ease: EASE, delay: 0.35 },
-                })}
-          >
-            <StatusPanel panel={panel} />
-          </motion.div>
-        </div>
-      ) : (
-        <div
-          data-composition="centered"
-          className="mx-auto flex max-w-4xl flex-col items-center gap-7 text-center"
-        >
-          {copy}
-        </div>
-      )}
+        {profile_data.description && (
+          <div className="t-lead max-w-prose text-pretty [&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-foreground">
+            <Markdown>{profile_data.description}</Markdown>
+          </div>
+        )}
 
-      {proof.length > 0 && <ProofStrip items={proof} centered={centered} />}
+        <div className="pt-2">
+          <Actions />
+        </div>
+      </div>
+
+      {proof.length > 0 && <ProofStrip items={proof} />}
     </Band>
   );
 }

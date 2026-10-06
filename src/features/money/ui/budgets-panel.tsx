@@ -80,8 +80,8 @@ export function BudgetsPanel() {
           <>
             <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-secondary" role="img" aria-label={`Needs ${Math.round(split.shares.need * 100)}%, wants ${Math.round(split.shares.want * 100)}%, saved ${Math.round(split.shares.save * 100)}%`}>
               <span className="bg-sky-600" style={{ width: `${Math.max(0, Math.min(100, split.shares.need * 100))}%` }} />
-              <span className="bg-amber-500" style={{ width: `${Math.max(0, Math.min(100, split.shares.want * 100))}%` }} />
-              <span className="bg-emerald-600" style={{ width: `${Math.max(0, Math.min(100, split.shares.save * 100))}%` }} />
+              <span className="bg-warning" style={{ width: `${Math.max(0, Math.min(100, split.shares.want * 100))}%` }} />
+              <span className="bg-success" style={{ width: `${Math.max(0, Math.min(100, split.shares.save * 100))}%` }} />
             </div>
             <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
               {(["need", "want", "save"] as const).map((bucket) => {
@@ -90,7 +90,7 @@ export function BudgetsPanel() {
                 return (
                   <div key={bucket}>
                     <dt className="text-muted-foreground">{bucket === "need" ? "Needs" : bucket === "want" ? "Wants" : "Saved"}</dt>
-                    <dd className={cn("font-semibold", off && "text-amber-700 dark:text-amber-400")}>
+                    <dd className={cn("font-semibold", off && "text-warning")}>
                       {Math.round(share * 100)}% <span className="font-normal text-muted-foreground">of {Math.round(target[bucket] * 100)}%</span>
                     </dd>
                     <dd className="text-xs text-muted-foreground">
@@ -214,7 +214,7 @@ function BudgetRow({
       </label>
       {line && (
         <div className="col-span-full h-1.5 overflow-hidden rounded-full bg-secondary" aria-hidden>
-          <div className={cn("h-full", over ? "bg-destructive" : ratio > 0.85 ? "bg-amber-500" : "bg-emerald-600")} style={{ width: `${ratio * 100}%` }} />
+          <div className={cn("h-full", over ? "bg-destructive" : ratio > 0.85 ? "bg-warning" : "bg-success")} style={{ width: `${ratio * 100}%` }} />
         </div>
       )}
     </li>

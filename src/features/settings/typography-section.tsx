@@ -29,6 +29,7 @@ export function TypographySection({ form }: { form: SettingsForm }) {
                   <button
                     type="button"
                     key={preset.value}
+                    aria-pressed={isActive}
                     onClick={() => field.onChange(preset.value)}
                     className={cn(
                       "group relative rounded-surface border-2 p-3.5 text-left transition-all",
@@ -73,7 +74,7 @@ export function TypographySection({ form }: { form: SettingsForm }) {
                         Hello, I&apos;m Derek
                       </p>
                       <p
-                        className="text-[11px] leading-relaxed text-muted-foreground"
+                        className="text-xs leading-relaxed text-muted-foreground"
                         style={{
                           fontFamily: `"${preset.body}", sans-serif`,
                         }}
@@ -82,7 +83,7 @@ export function TypographySection({ form }: { form: SettingsForm }) {
                       </p>
                       <div className="flex items-center gap-2">
                         <span
-                          className="rounded bg-muted/60 px-1.5 py-0.5 text-[9px] text-muted-foreground/80"
+                          className="rounded bg-muted/60 px-1.5 py-0.5 text-micro text-muted-foreground"
                           style={{
                             fontFamily: `"${preset.code}", monospace`,
                           }}
@@ -90,7 +91,7 @@ export function TypographySection({ form }: { form: SettingsForm }) {
                           npm run dev
                         </span>
                         <span
-                          className="text-[9px] text-primary"
+                          className="text-micro text-primary"
                           style={{
                             fontFamily: `"${preset.body}", sans-serif`,
                           }}
@@ -104,10 +105,10 @@ export function TypographySection({ form }: { form: SettingsForm }) {
                     <p className="text-xs font-semibold text-foreground">
                       {preset.label}
                     </p>
-                    <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
+                    <p className="mt-0.5 text-micro leading-relaxed text-muted-foreground">
                       {preset.description}
                     </p>
-                    <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[9px] text-muted-foreground/70">
+                    <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-micro text-muted-foreground">
                       <span>
                         Display{" "}
                         <span className="font-medium text-muted-foreground">

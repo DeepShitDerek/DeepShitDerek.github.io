@@ -4,6 +4,7 @@ import { useRememberedChoice } from "@/hooks/use-remembered-choice";
 import { useMemo, useState } from "react";
 import {
   Archive,
+  ArrowLeft,
   Box,
   LayoutGrid,
   Plus,
@@ -19,7 +20,7 @@ import {
 } from "@/store/api/adminApi";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import {
   EmptyState,
   FormSheet,
@@ -50,6 +51,10 @@ import {
   type InventorySortBy,
 } from "./inventory-filters";
 
+/**
+ * One figure in the summary strip. A term and its value, not a card: the
+ * strip is static, and static content sits on a ground, not a shadow.
+ */
 function Stat({
   label,
   value,
@@ -60,18 +65,17 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="rounded-surface bg-card p-4 shadow-e1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
       {hint && (
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
+        <dd className="mt-0.5 text-micro text-muted-foreground">{hint}</dd>
       )}
     </div>
   );
 }
 
 export default function InventoryPage() {
-  const confirm = useConfirm();
   const today = todayIso();
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -80,28 +84,58 @@ export default function InventoryPage() {
     DEFAULT_INVENTORY_FILTERS,
   );
   const [sortBy, setSortBy] = useState<InventorySortBy>("recent");
-  const [viewMode, setViewMode] = useRememberedChoice<"grid" | "table">("inventory", "grid", ["grid", "table"]);
+  const [viewMode, setViewMode] = useRememberedChoice<"grid" | "table">(
+    "inventory",
+    "grid",
+    ["grid", "table"],
+  );
 
-  const { data: items = [], isLoading, error: loadError, refetch } = useGetInventoryQuery();
+  const {
+    data: items = [],
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetInventoryQuery();
   // An item with no currency of its own is in the base currency (ADM-024).
   const { data: moneySettings } = useGetMoneySettingsQuery();
   const baseCurrency = moneySettings?.baseCurrency ?? "CAD";
   const [archiveItem] = useArchiveInventoryItemMutation();
   const [deleteItem] = useDeleteInventoryItemMutation();
 
-  const live = useMemo(() => items.filter((i) => !i.archived_at), [items]);
+  // Delete offers Undo instead of asking first (P1-10).
+  const { pending: deleting, remove: removeItem } =
+    useUndoableDelete<InventoryItem>(async (item) => {
+      try {
+        await deleteItem(item.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the item", {
+          description: getErrorMessage(err),
+        });
+      }
+    });
+  const kept = useMemo(
+    () => items.filter((i) => !deleting.has(i.id)),
+    [items, deleting],
+  );
+  const live = useMemo(() => kept.filter((i) => !i.archived_at), [kept]);
+  const archivedCount = kept.length - live.length;
 
-  const attention = useMemo(() => needsAttention(items, today), [items, today]);
+  const attention = useMemo(() => needsAttention(kept, today), [kept, today]);
 
   const visible = useMemo(
-    () => sortItems(filterItems(items, filters, today), sortBy, today),
-    [items, filters, sortBy, today],
+    () => sortItems(filterItems(kept, filters, today), sortBy, today),
+    [kept, filters, sortBy, today],
   );
 
-  const summary = useMemo(() => totals(live, baseCurrency), [live, baseCurrency]);
+  const summary = useMemo(
+    () => totals(live, baseCurrency),
+    [live, baseCurrency],
+  );
   // The base currency (or the largest) leads; the rest are listed under it.
   const [lead, ...others] = summary.byCurrency;
-  const moneyStat = (pick: (t: (typeof summary.byCurrency)[number]) => number) => ({
+  const moneyStat = (
+    pick: (t: (typeof summary.byCurrency)[number]) => number,
+  ) => ({
     value: lead ? formatValue(pick(lead), lead.currency) : "—",
     hint: others.length
       ? `+ ${others.map((t) => formatValue(pick(t), t.currency)).join(" · ")}`
@@ -138,27 +172,12 @@ export default function InventoryPage() {
     }
   };
 
-  const handleDelete = async (item: InventoryItem) => {
-    const ok = await confirm({
-      title: `Delete "${item.name}"?`,
-      description:
-        // Archiving is the right answer for anything sold or discarded, and
-        // the price is the part worth keeping once the object is gone.
-        "This removes what it cost and when you bought it, permanently. Archiving keeps the record and takes the item out of the list instead.",
-      variant: "destructive",
-      confirmText: "Delete",
-    });
-    if (!ok) return;
-
-    try {
-      await deleteItem(item.id).unwrap();
-      toast.success("Item deleted.");
-    } catch (err) {
-      toast.error("Couldn't delete the item", {
-        description: getErrorMessage(err),
-      });
-    }
-  };
+  const handleDelete = (item: InventoryItem) =>
+    removeItem(
+      item,
+      `Deleted "${item.name}"`,
+      "Archiving keeps the record of what it cost instead.",
+    );
 
   if (loadError && items.length === 0) {
     return (
@@ -182,20 +201,11 @@ export default function InventoryPage() {
         title="Inventory"
         description="What you own, what it's worth, and what's about to lose cover."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={filters.showArchived ? "secondary" : "outline"}
-              onClick={() =>
-                setFilters((f) => ({ ...f, showArchived: !f.showArchived }))
-              }
-            >
-              <Archive className="mr-2 size-4" aria-hidden />
-              {filters.showArchived ? "Back to inventory" : "Archive"}
-            </Button>
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 size-4" aria-hidden /> Add item
-            </Button>
-          </div>
+          // One primary (G7). The archive opens from the foot of the list,
+          // as Habits' does (P-archive).
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 size-4" aria-hidden /> Add item
+          </Button>
         }
       />
 
@@ -215,9 +225,9 @@ export default function InventoryPage() {
               search: f.search,
             }))
           }
-          className="mb-5 flex w-full items-center gap-3 rounded-surface bg-chart-3/10 p-4 text-left shadow-e1 transition-shadow hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mb-5 flex w-full items-center gap-3 rounded-surface border border-warning/40 bg-warning/10 p-4 text-left transition-colors hover:bg-warning/15 focus-ring"
         >
-          <ShieldAlert className="size-5 shrink-0 text-chart-3" aria-hidden />
+          <ShieldAlert className="size-5 shrink-0 text-warning" aria-hidden />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium">
               {attention.length} warrant
@@ -234,11 +244,14 @@ export default function InventoryPage() {
               {attention.length > 3 && ` · +${attention.length - 3} more`}
             </span>
           </span>
+          <span className="shrink-0 text-sm font-semibold text-primary">
+            Review
+          </span>
         </button>
       )}
 
       {!filters.showArchived && live.length > 0 && (
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-4 rounded-surface border bg-card p-4 lg:grid-cols-4">
           <Stat
             label="Items"
             value={`${summary.items}`}
@@ -254,6 +267,20 @@ export default function InventoryPage() {
             label="Lost to depreciation"
             {...moneyStat((t) => t.depreciation)}
           />
+        </dl>
+      )}
+
+      {filters.showArchived && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setFilters((f) => ({ ...f, showArchived: false }))}
+            className="mb-2 inline-flex items-center gap-1.5 rounded-control text-sm text-muted-foreground hover:text-foreground focus-ring"
+          >
+            <ArrowLeft aria-hidden className="size-4" />
+            Inventory
+          </button>
+          <h2 className="t-heading">Archived</h2>
         </div>
       )}
 
@@ -264,9 +291,7 @@ export default function InventoryPage() {
         onSortByChange={setSortBy}
         categories={categories}
         locations={locations}
-      />
-
-      <div className="mb-4 flex justify-end">
+      >
         {/* Both views at every width. The table used to be replaced by the grid
             below a breakpoint, so the columns simply vanished on a phone. */}
         <ToggleGroup
@@ -282,7 +307,7 @@ export default function InventoryPage() {
             <Table2 className="size-4" aria-hidden />
           </ToggleGroupItem>
         </ToggleGroup>
-      </div>
+      </InventoryToolbar>
 
       {visible.length === 0 ? (
         <EmptyState
@@ -339,6 +364,17 @@ export default function InventoryPage() {
             />
           )}
         </div>
+      )}
+
+      {!filters.showArchived && archivedCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setFilters((f) => ({ ...f, showArchived: true }))}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-control text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-ring"
+        >
+          <Archive aria-hidden className="size-4" />
+          Show archived ({archivedCount})
+        </button>
       )}
 
       <FormSheet

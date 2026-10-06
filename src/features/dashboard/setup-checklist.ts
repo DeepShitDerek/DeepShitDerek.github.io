@@ -30,14 +30,15 @@ export interface SetupItem {
  * What `db/schema.sql` seeds, which is placeholder text rather than an answer.
  *
  * A fresh install arrives with "Your Name", "Your Professional Title",
- * `github.com/your-username` and the blueprint theme already in the row. Read
+ * `github.com/your-username` and the default theme already in the row. Read
  * naively, three steps tick themselves on day one — while the live site still
  * says "Your Name" to every visitor, which is exactly what the checklist
  * exists to prevent.
  */
 const SEEDED_NAME = "your name";
 const SEEDED_TITLE = "your professional title";
-const SEEDED_THEME = "theme-blueprint";
+/** What installs before the redesign were seeded with; it is not a choice either. */
+const LEGACY_SEEDED_THEME = "theme-blueprint";
 const SEEDED_URL = /your-username|your-profile|your-email@example\.com/i;
 
 function answered(value: string | undefined, seeded: string): boolean {
@@ -84,7 +85,7 @@ export function setupItems({
       done:
         !!profile &&
         ((profile.default_theme !== DEFAULT_THEME &&
-          profile.default_theme !== SEEDED_THEME &&
+          profile.default_theme !== LEGACY_SEEDED_THEME &&
           !!profile.default_theme) ||
           (profile.typography_preset ?? "typo-default") !== "typo-default"),
     },

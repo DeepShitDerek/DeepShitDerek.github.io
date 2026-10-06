@@ -11,6 +11,7 @@ import { Reveal, Stagger, StaggerItem } from "@/components/layout/motion";
 import { safeImageUrl } from "@/lib/safe-url";
 import { sizedImageUrl } from "@/lib/image-size";
 import type { SiteContent } from "@/types";
+import { StatusPanel } from "@/features/home/status-panel";
 
 export function AboutPage() {
   const { data: identity, isLoading } = useGetSiteIdentityQuery();
@@ -88,13 +89,13 @@ export function AboutView({ identity }: { identity: SiteContent }) {
             name; from `sm` up it becomes a narrow portrait card in its own
             column, never wider than 14rem.
           */}
-          <figure className="flex items-center gap-4 sm:block sm:overflow-hidden sm:rounded-surface sm:bg-card sm:shadow-e2">
+          <figure className="flex items-center gap-4 sm:block sm:overflow-hidden sm:rounded-surface sm:border sm:border-border sm:bg-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               // Never wider than 14rem (224px) in its column.
               src={sizedImageUrl(picture as string, 224)}
               alt={profile_data.name}
-              className="size-20 shrink-0 rounded-full object-cover shadow-e1 sm:aspect-[4/5] sm:size-auto sm:w-full sm:rounded-none sm:shadow-none"
+              className="size-20 shrink-0 rounded-full object-cover sm:aspect-[4/5] sm:size-auto sm:w-full sm:rounded-none"
             />
             <figcaption className="min-w-0 sm:p-4">
               <p className="font-heading font-semibold [overflow-wrap:anywhere]">
@@ -122,6 +123,17 @@ export function AboutView({ identity }: { identity: SiteContent }) {
             </Markdown>
           </StaggerItem>
         ))}
+        {/* What the owner is working on and learning. It opened the home
+            page until the redesign; a buyer needs strengths first, and a
+            reader of this page is the one who asked "who is this?". */}
+        {profile_data.status_panel?.show && (
+          <section aria-labelledby="about-now" className="pt-6">
+            <h2 id="about-now" className="t-heading mb-4">
+              Now
+            </h2>
+            <StatusPanel panel={profile_data.status_panel} />
+          </section>
+        )}
       </Stagger>
     </div>
   );

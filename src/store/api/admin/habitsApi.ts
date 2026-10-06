@@ -1,6 +1,7 @@
 import { supabase } from "@/supabase/client";
 import type { Habit, HabitLog } from "@/types";
 import { adminApi } from "./baseApi";
+import { dashboardApi } from "./dashboardApi";
 import { NO_DB_ERROR, saveQueryFn } from "./query-helpers";
 
 /** PostgREST's default row cap; a shorter page means the last one. */
@@ -52,12 +53,15 @@ export const habitsApi = adminApi.injectEndpoints({
           byHabit.set(log.habit_id, list);
         }
         return {
-          data: habits.map((habit) => ({ ...habit, habit_logs: byHabit.get(habit.id) ?? [] })) as Habit[],
+          data: habits.map((habit) => ({
+            ...habit,
+            habit_logs: byHabit.get(habit.id) ?? [],
+          })) as Habit[],
         };
       },
       providesTags: ["Habits"],
     }),
-    archiveHabit: builder.mutation<void, { id: string; archived: boolean }>({
+    archiveHabit: builder.mutation<null, { id: string; archived: boolean }>({
       queryFn: async ({ id, archived }) => {
         if (!supabase) return { error: NO_DB_ERROR };
         const { error } = await supabase
@@ -68,7 +72,7 @@ export const habitsApi = adminApi.injectEndpoints({
           })
           .eq("id", id);
         if (error) return { error };
-        return { data: undefined };
+        return { data: null };
       },
       invalidatesTags: ["Habits"],
     }),
@@ -76,12 +80,12 @@ export const habitsApi = adminApi.injectEndpoints({
       queryFn: saveQueryFn<Habit>("habits"),
       invalidatesTags: ["Habits"],
     }),
-    deleteHabit: builder.mutation<void, string>({
+    deleteHabit: builder.mutation<null, string>({
       queryFn: async (id) => {
         if (!supabase) return { error: NO_DB_ERROR };
         const { error } = await supabase.from("habits").delete().eq("id", id);
         if (error) return { error };
-        return { data: undefined };
+        return { data: null };
       },
       invalidatesTags: ["Habits"],
     }),
@@ -94,7 +98,7 @@ export const habitsApi = adminApi.injectEndpoints({
      * habit makes easy to trigger.
      */
     setHabitLog: builder.mutation<
-      void,
+      null,
       { habit_id: string; date: string; value: number }
     >({
       queryFn: async ({ habit_id, date, value }) => {
@@ -105,41 +109,71 @@ export const habitsApi = adminApi.injectEndpoints({
           new_value: value,
         });
         if (error) return { error };
-        return { data: undefined };
+        return { data: null };
       },
       async onQueryStarted(
         { habit_id, date, value },
         { dispatch, queryFulfilled },
       ) {
-        const patchResult = dispatch(
-          habitsApi.util.updateQueryData("getHabits", undefined, (draft) => {
-            const habit = draft.find((h) => h.id === habit_id);
-            if (!habit) return;
-            if (!habit.habit_logs) habit.habit_logs = [];
-            const index = habit.habit_logs.findIndex(
-              (l) => l.completed_date === date,
-            );
-            if (value <= 0) {
-              if (index !== -1) habit.habit_logs.splice(index, 1);
-            } else if (index !== -1) {
-              habit.habit_logs[index].value = value;
-            } else {
-              habit.habit_logs.push({
-                id: `optimistic-${habit_id}-${date}`,
-                habit_id,
-                completed_date: date,
-                value,
-              });
-            }
-          }),
+        // Both lists the page can be showing: Today reads the active habits,
+        // History also the archived ones (for "Show archived"). Patching only
+        // the first left a tap in History unchanged until a reload.
+        const patches = ([undefined, { includeArchived: true }] as const).map(
+          (args) =>
+            dispatch(
+              habitsApi.util.updateQueryData("getHabits", args, (draft) => {
+                const habit = draft.find((h) => h.id === habit_id);
+                if (!habit) return;
+                if (!habit.habit_logs) habit.habit_logs = [];
+                const index = habit.habit_logs.findIndex(
+                  (l) => l.completed_date === date,
+                );
+                if (value <= 0) {
+                  if (index !== -1) habit.habit_logs.splice(index, 1);
+                } else if (index !== -1) {
+                  habit.habit_logs[index].value = value;
+                } else {
+                  habit.habit_logs.push({
+                    id: `optimistic-${habit_id}-${date}`,
+                    habit_id,
+                    completed_date: date,
+                    value,
+                  });
+                }
+              }),
+            ),
+        );
+        // The dashboard's Today list logs habits too: patch its copy the same
+        // way, so a tap there lands at once rather than after the refetch.
+        patches.push(
+          dispatch(
+            dashboardApi.util.updateQueryData("getDashboardData", undefined, (draft) => {
+              const habit = draft.habits.find((h) => h.id === habit_id);
+              if (!habit) return;
+              if (!habit.habit_logs) habit.habit_logs = [];
+              const index = habit.habit_logs.findIndex((l) => l.completed_date === date);
+              if (value <= 0) {
+                if (index !== -1) habit.habit_logs.splice(index, 1);
+              } else if (index !== -1) {
+                habit.habit_logs[index].value = value;
+              } else {
+                habit.habit_logs.push({
+                  id: `optimistic-${habit_id}-${date}`,
+                  habit_id,
+                  completed_date: date,
+                  value,
+                });
+              }
+            }),
+          ),
         );
         try {
           await queryFulfilled;
         } catch {
-          patchResult.undo();
+          patches.forEach((patch) => patch.undo());
         }
       },
-      // The habits list patches itself above; the dashboard's copy refetches (ADM-012).
+      // Both copies are patched above; the dashboard still refetches (ADM-012).
       invalidatesTags: ["Dashboard"],
     }),
     updateHabitOrder: builder.mutation<null, string[]>({

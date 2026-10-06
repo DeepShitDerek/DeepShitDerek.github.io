@@ -84,17 +84,17 @@ export const publicApi = createApi({
       ],
     }),
 
-    incrementPostView: builder.mutation<void, string>({
+    incrementPostView: builder.mutation<null, string>({
       queryFn: async (postId) => {
         // --- MOCK FALLBACK ---
-        if (!rest) return { data: undefined };
+        if (!rest) return { data: null };
         // ---------------------
 
         const { error } = await rest.rpc("increment_blog_post_view", {
           post_id_to_increment: postId,
         });
         if (error) return { error };
-        return { data: undefined };
+        return { data: null };
       },
       invalidatesTags: (result, error, postId) => [
         { type: "Post", id: postId },
@@ -187,14 +187,14 @@ export const publicApi = createApi({
      * database. `contactFormSchema` is the courtesy copy that produces a
      * useful message before the round trip.
      */
-    submitContactForm: builder.mutation<void, ContactFormValues>({
+    submitContactForm: builder.mutation<null, ContactFormValues>({
       queryFn: async (formData) => {
         if (rest) {
           const { error } = await rest
             .from("contact_submissions")
             .insert(formData);
           if (error) return { error };
-          return { data: undefined };
+          return { data: null };
         }
 
         const webhookUrl = process.env.NEXT_PUBLIC_CONTACT_WEBHOOK_URL || "";
@@ -256,7 +256,7 @@ export const publicApi = createApi({
           };
         }
 
-        return { data: undefined };
+        return { data: null };
       },
     }),
 

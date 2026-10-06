@@ -48,8 +48,8 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   // THEME
   // ---------------------------------------------------------------------------
-  defaultTheme: "theme-github-light",
-  typographyPreset: "typo-default",
+  defaultTheme: "theme-field-notes-light",
+  typographyPreset: "typo-modern-editorial",
   portfolioMode: "multi-page" as const,
 
   // ---------------------------------------------------------------------------

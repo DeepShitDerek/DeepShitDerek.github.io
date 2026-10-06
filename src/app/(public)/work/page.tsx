@@ -23,13 +23,12 @@ export const metadata: Metadata = {
 /**
  * /work — one answer to "what have you built?" (V2-040a).
  *
- * Replaces /showcase and /projects, which split that answer in two. It reads
- * their CMS sections where they already are, so no content has to move:
- * case studies first (the /showcase sections), then featured projects (the
- * /projects sections), then open source. Both old URLs redirect here.
+ * Its own sections (case studies, then projects, in the order set in
+ * Content), then open source. /showcase and /projects no longer exist; their
+ * sections were moved here (db/schema.sql).
  */
 export default async function Page() {
-  const data = await pagePreload({ sections: ["/showcase", "/projects"] });
+  const data = await pagePreload({ sections: ["/work"] });
   return (
     <PublicPreload data={data}>
       <Band weight="content">
@@ -38,11 +37,10 @@ export default async function Page() {
           title={siteContent.pages.work.heading}
           subheading={siteContent.pages.work.subheading}
         />
-        <DynamicPageContent pagePath="/showcase" />
-        <DynamicPageContent pagePath="/projects" />
+        <DynamicPageContent pagePath="/work" />
       </Band>
       <Band weight="content" aria-labelledby="repos-heading">
-        <h2 id="repos-heading" className="t-heading">
+        <h2 id="repos-heading" className="t-title">
           Open source &amp; experiments
         </h2>
         <div className="mt-8">

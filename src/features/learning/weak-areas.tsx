@@ -33,10 +33,10 @@ export function WeakAreas({
   return (
     <section
       aria-label="Weak areas"
-      className="mt-6 rounded-surface bg-card p-5 shadow-e1"
+      className="mt-6 rounded-surface border bg-card p-5"
     >
       <h2 className="t-eyebrow mb-3 flex items-center gap-1.5">
-        <TrendingDown className="size-3.5 text-chart-3" aria-hidden />
+        <TrendingDown className="size-3.5 text-warning" aria-hidden />
         Keeps slipping
       </h2>
       <ul className="space-y-1.5">
@@ -45,7 +45,7 @@ export function WeakAreas({
             <button
               type="button"
               onClick={() => onOpen(topic)}
-              className="flex w-full items-center justify-between gap-3 rounded-control px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-full items-center justify-between gap-3 rounded-control px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary focus-ring"
             >
               <span className="min-w-0 truncate">{topic.title}</span>
               <span className="shrink-0 text-xs tabular-nums text-muted-foreground">

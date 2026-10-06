@@ -277,11 +277,11 @@ export type LifeUpdateCategoryValue =
   (typeof LIFE_UPDATE_CATEGORY)[keyof typeof LIFE_UPDATE_CATEGORY];
 
 export const LIFE_UPDATE_CATEGORY_OPTIONS = [
-  { value: LIFE_UPDATE_CATEGORY.WATCHING, label: "Watching", emoji: "📺" },
-  { value: LIFE_UPDATE_CATEGORY.ACTIVITY, label: "Activity", emoji: "🏄" },
-  { value: LIFE_UPDATE_CATEGORY.PHOTO, label: "Photo", emoji: "📸" },
-  { value: LIFE_UPDATE_CATEGORY.THOUGHT, label: "Thought", emoji: "💭" },
-  { value: LIFE_UPDATE_CATEGORY.MILESTONE, label: "Milestone", emoji: "🏆" },
+  { value: LIFE_UPDATE_CATEGORY.WATCHING, label: "Watching" },
+  { value: LIFE_UPDATE_CATEGORY.ACTIVITY, label: "Activity" },
+  { value: LIFE_UPDATE_CATEGORY.PHOTO, label: "Photo" },
+  { value: LIFE_UPDATE_CATEGORY.THOUGHT, label: "Thought" },
+  { value: LIFE_UPDATE_CATEGORY.MILESTONE, label: "Milestone" },
 ] as const;
 
 export const TYPOGRAPHY_PRESETS = [
@@ -499,6 +499,8 @@ export type TypographyPresetValue =
   (typeof TYPOGRAPHY_PRESETS)[number]["value"];
 
 export const THEME_PRESETS = [
+  { value: "theme-field-notes-light", label: "Field Notes" },
+  { value: "theme-field-notes-dark", label: "Field Notes Dark" },
   { value: "theme-ink-light", label: "Ink" },
   { value: "theme-ink-dark", label: "Ink Noir" },
   { value: "theme-blueprint", label: "Blueprint" },
@@ -573,10 +575,8 @@ export const THEME_PRESETS = [
 export const RESERVED_SEGMENTS = [
   "admin",
   "blog",
-  "projects",
   "about",
   "contact",
-  "showcase",
   "work",
   "experience",
   "updates",
@@ -599,8 +599,6 @@ export const BUILTIN_ROUTES = [
   "/about",
   "/blog",
   "/contact",
-  "/projects",
-  "/showcase",
   "/work",
   "/updates",
   "/kit",

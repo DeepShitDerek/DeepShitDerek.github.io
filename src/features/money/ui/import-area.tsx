@@ -56,13 +56,14 @@ export function ImportArea() {
       return;
     }
     const parsed = parseCsv(await file.text());
-    const guess = guessMapping(parsed, account.country);
+    const guess = guessMapping(parsed, account.country, {
+      currency: account.currency,
+      card: account.kind === "credit_card" || account.kind === "line_of_credit",
+    });
     if (!guess) {
       toast.error("Couldn't find a date and an amount column in that file.");
       return;
     }
-    // Card exports usually list purchases as positive numbers.
-    if (account.kind === "credit_card" || account.kind === "line_of_credit") guess.invertSign = true;
     setFileName(file.name);
     setRows(parsed);
     setMapping(guess);
@@ -186,7 +187,7 @@ export function ImportArea() {
                     <SelectItem value="dmy">Day first (05/02/2026)</SelectItem>
                   </SelectContent>
                 </Select>
-                {dateCheck?.ambiguous && <p className="text-xs text-amber-700 dark:text-amber-400">Every date in this file works either way — check a known date below.</p>}
+                {dateCheck?.ambiguous && <p className="text-xs text-warning">Every date in this file works either way — check a known date below.</p>}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-6">

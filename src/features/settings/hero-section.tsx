@@ -132,7 +132,7 @@ export function HeroSection({ form }: { form: SettingsForm }) {
           ))}
 
           {bio.items.length === 0 && (
-            <p className="rounded-surface bg-card p-4 text-sm text-muted-foreground shadow-e1">
+            <p className="rounded-surface border bg-card p-4 text-sm text-muted-foreground">
               No bio yet. The About page will show your picture and nothing
               else.
             </p>
@@ -211,7 +211,7 @@ function ProofEditor({ form }: { form: SettingsForm }) {
         ))}
 
         {proof.fields.length === 0 && (
-          <p className="rounded-surface bg-card p-4 text-sm text-muted-foreground shadow-e1">
+          <p className="rounded-surface border bg-card p-4 text-sm text-muted-foreground">
             No results yet — the hero ends at your links.
           </p>
         )}

@@ -183,7 +183,7 @@ export function LoanSheet({ account, open, onOpenChange }: { account: AccountRec
           </div>
         </div>
         {account.kind === "mortgage" && compounding !== "semiannual" && rateType === "fixed" && (
-          <p className="-mt-3 text-xs text-amber-700 dark:text-amber-400">Canadian fixed-rate mortgages compound semi-annually by law — check your commitment letter.</p>
+          <p className="-mt-3 text-xs text-warning">Canadian fixed-rate mortgages compound semi-annually by law — check your commitment letter.</p>
         )}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">

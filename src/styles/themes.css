@@ -7,7 +7,7 @@
    @apply — Tailwind would tree-shake or reject it. Raw CSS only.
 
    Registry: THEME_PRESETS / TYPOGRAPHY_PRESETS in src/lib/constants.ts.
-   Contrast gate: src/lib/theme-contrast.test.ts.
+   Contrast gate: scripts/theme-contrast.mjs (`npm run check:themes`).
    ============================================================================= */
 
 /* --- Ink (v2 default) — warm paper, near-black ink, electric indigo --- */
@@ -71,125 +71,106 @@
   --chart-5: 210 70% 62%;
 }
 
-/* =========================================
-   TYPOGRAPHY PRESETS
-   ========================================= */
-:root {
-  --font-heading: "Space Grotesk", sans-serif;
-  --font-body: "Inter", sans-serif;
-  --font-code: "JetBrains Mono", "IBM Plex Mono", monospace;
-  --heading-letter-spacing: -0.02em;
-  --heading-weight: 700;
-  --body-letter-spacing: 0em;
+/* --- Field Notes (core) — an engineering notebook: warm paper, ink-blue
+   actions, rules instead of frames. The core pair of the redesign
+   (docs/design-research/design-north-star.md §6, concept A); every value
+   there was checked with the WCAG formula and `check:themes` re-checks it.
+
+   A core theme is more than colour: it also sets the shape tiers (control
+   6px, surface 10px) and an elevation whose first step is a hairline, so a
+   clickable card is drawn, not floated. Unlayered, so these win over the
+   `:root` / `:root.dark` defaults in globals.css. --- */
+.theme-field-notes-light {
+  --background: 42.9 33.3% 95.9%;
+  --foreground: 255 8.3% 9.4%;
+  --card: 0 0% 100%;
+  --card-foreground: 255 8.3% 9.4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 255 8.3% 9.4%;
+  --primary: 235 58.2% 44.1%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 42 25% 92.2%;
+  --secondary-foreground: 257.1 5% 27.6%;
+  --muted: 42 25% 92.2%;
+  --muted-foreground: 262.5 3.9% 40.4%;
+  --accent: 236 48.4% 93.9%;
+  --accent-foreground: 235 58.2% 38%;
+  --destructive: 4.2 76.5% 40%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 41.5 18.8% 86.5%;
+  --input: 40 6.1% 52%;
+  --ring: 235 58.2% 44.1%;
+  --radius: 0.375rem;
+
+  --success: 142.4 71.8% 29.2%;
+  --success-foreground: 0 0% 100%;
+  --warning: 33.1 91.7% 32.9%;
+  --warning-foreground: 0 0% 100%;
+  --info: 208.5 66.3% 36.1%;
+  --info-foreground: 0 0% 100%;
+
+  --chart-1: 235 58% 50%;
+  --chart-2: 172 60% 33%;
+  --chart-3: 33 90% 40%;
+  --chart-4: 340 65% 48%;
+  --chart-5: 208 66% 45%;
+
+  --r-control: 0.375rem;
+  --r-surface: 0.625rem;
+  --e-shadow: 35 25% 12%;
+  --e-1:
+    0 0 0 1px hsl(var(--border)),
+    0 1px 2px hsl(var(--e-shadow) / 0.06);
+  --e-2:
+    0 0 0 1px hsl(var(--input) / 0.6),
+    0 6px 16px -6px hsl(var(--e-shadow) / 0.16);
 }
 
-/* 1. Editorial Serif — Playfair Display + DM Sans + Fira Code */
-.typo-editorial {
-  --font-heading: "Playfair Display", serif;
-  --font-body: "DM Sans", sans-serif;
-  --font-code: "Fira Code", monospace;
-  --heading-letter-spacing: -0.03em;
-  --heading-weight: 700;
-  --body-letter-spacing: 0.005em;
-}
+.theme-field-notes-dark {
+  --background: 30 5% 7.8%;
+  --foreground: 42 27.8% 92.9%;
+  --card: 40 5.5% 10.8%;
+  --card-foreground: 42 27.8% 92.9%;
+  --popover: 40 5.5% 10.8%;
+  --popover-foreground: 42 27.8% 92.9%;
+  --primary: 235.4 100% 82.2%;
+  --primary-foreground: 30 5% 7.8%;
+  --secondary: 37.5 6% 14%;
+  --secondary-foreground: 40 13% 77.5%;
+  --muted: 30 6.7% 5.9%;
+  --muted-foreground: 40 7.5% 61%;
+  --accent: 233.3 19.1% 18.4%;
+  --accent-foreground: 235.4 100% 82.2%;
+  --destructive: 0 90.6% 70.8%;
+  --destructive-foreground: 30 5% 7.8%;
+  --border: 37.5 8.3% 18.8%;
+  --input: 32.3 5.8% 44.1%;
+  --ring: 235.4 100% 82.2%;
+  --radius: 0.375rem;
 
-/* 2. Modern Tech — Space Grotesk + Inter + Fira Code */
-.typo-modern-tech {
-  --font-heading: "Space Grotesk", sans-serif;
-  --font-body: "Inter", sans-serif;
-  --font-code: "Fira Code", monospace;
-  --heading-letter-spacing: -0.03em;
-  --heading-weight: 700;
-  --body-letter-spacing: 0em;
-}
+  --success: 141.9 69.2% 58%;
+  --success-foreground: 30 5% 7.8%;
+  --warning: 43.3 96.4% 56.3%;
+  --warning-foreground: 30 5% 7.8%;
+  --info: 212.2 85.8% 72.4%;
+  --info-foreground: 30 5% 7.8%;
 
-/* 3. Elegant Minimal — Instrument Serif + Manrope + IBM Plex Mono */
-.typo-elegant {
-  --font-heading: "Instrument Serif", serif;
-  --font-body: "Manrope", sans-serif;
-  --font-code: "IBM Plex Mono", monospace;
-  --heading-letter-spacing: 0em;
-  --heading-weight: 400;
-  --body-letter-spacing: 0.01em;
-}
+  --chart-1: 235 90% 78%;
+  --chart-2: 172 55% 55%;
+  --chart-3: 38 85% 60%;
+  --chart-4: 340 70% 68%;
+  --chart-5: 208 75% 65%;
 
-/* 4. Bold Quirky — Bricolage Grotesque + Outfit + JetBrains Mono */
-.typo-bold-quirky {
-  --font-heading: "Bricolage Grotesque", sans-serif;
-  --font-body: "Outfit", sans-serif;
-  --font-code: "JetBrains Mono", monospace;
-  --heading-letter-spacing: -0.02em;
-  --heading-weight: 800;
-  --body-letter-spacing: 0em;
-}
-
-/* 5. Futuristic — Unbounded + Sora + Fira Code */
-.typo-futuristic {
-  --font-heading: "Unbounded", sans-serif;
-  --font-body: "Sora", sans-serif;
-  --font-code: "Fira Code", monospace;
-  --heading-letter-spacing: -0.01em;
-  --heading-weight: 700;
-  --body-letter-spacing: 0.01em;
-}
-
-/* 6. Classic Pro — Libre Baskerville + Plus Jakarta Sans + IBM Plex Mono */
-.typo-classic-pro {
-  --font-heading: "Libre Baskerville", serif;
-  --font-body: "Plus Jakarta Sans", sans-serif;
-  --font-code: "IBM Plex Mono", monospace;
-  --heading-letter-spacing: -0.01em;
-  --heading-weight: 700;
-  --body-letter-spacing: 0.005em;
-}
-
-/* 7. Clean Geometric — Outfit + DM Sans + JetBrains Mono */
-.typo-geometric {
-  --font-heading: "Outfit", sans-serif;
-  --font-body: "DM Sans", sans-serif;
-  --font-code: "JetBrains Mono", monospace;
-  --heading-letter-spacing: -0.02em;
-  --heading-weight: 700;
-  --body-letter-spacing: 0em;
-}
-
-/* Apply typography variables globally */
-body {
-  font-family: var(--font-body);
-  letter-spacing: var(--body-letter-spacing);
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.font-heading {
-  font-family: var(--font-heading);
-  letter-spacing: var(--heading-letter-spacing);
-}
-
-/* Preset heading weight, on bare elements only: a font-* utility class always
-   outranks these element selectors, so explicit weights in components still win
-   while presets that ask for a lighter or chunkier default (elegant 400,
-   bold-quirky 800) actually get it. */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-weight: var(--heading-weight);
-}
-
-/* Ensure nav, card titles, buttons pick up the body font */
-nav,
-button,
-input,
-textarea,
-select {
-  font-family: var(--font-body);
+  --r-control: 0.375rem;
+  --r-surface: 0.625rem;
+  --e-shadow: 30 10% 2%;
+  --e-1:
+    0 0 0 1px hsl(var(--border)),
+    inset 0 1px 0 0 hsl(0 0% 100% / 0.04);
+  --e-2:
+    0 0 0 1px hsl(var(--input) / 0.7),
+    0 8px 20px -8px hsl(var(--e-shadow) / 0.7),
+    inset 0 1px 0 0 hsl(0 0% 100% / 0.06);
 }
 
 /* =========================================
@@ -1883,4 +1864,53 @@ select {
 [class*="theme-neobrutalism"] [class*="badge"] {
   border: 2px solid hsl(var(--border));
   box-shadow: 2px 2px 0px hsl(var(--border));
+}
+
+/* =============================================================================
+   STATUS — success / warning / info for every palette preset
+   -----------------------------------------------------------------------------
+   State, not data: chart-1…5 are series colours and were standing in for
+   status (F11). A core theme sets its own status values in its block; every
+   other preset gets the scheme default here. A preset that needs a different
+   value defines it in its own block and leaves these lists.
+
+   The light defaults are one step darker than design-system.md §3.1
+   (green-800 #166534, amber-800 #92400e): the §3.1 values were checked on
+   white only, and fell under 4.5:1 on tinted grounds such as Sepia and Tokyo
+   Night Day. Dark info is blue-300, for the same reason on Nord's cards.
+
+   `check:themes` fails when a preset resolves no status token, so a new
+   preset must join one of these lists (or define its own).
+   ============================================================================= */
+.theme-ink-light, .theme-github-light, .theme-solarized-light,
+.theme-catppuccin-latte, .theme-arctic, .theme-paper, .theme-hc-light,
+.theme-neobrutalism-light, .theme-glass-frost, .theme-gruvbox-light,
+.theme-tokyo-night-day, .theme-sepia, .theme-mono-light, .theme-stripe-light,
+.theme-neobrutalism-gumroad, .theme-neobrutalism-bauhaus,
+.theme-neobrutalism-memphis, .theme-neobrutalism-electric,
+.theme-neobrutalism-butter, .theme-neobrutalism-acid, .theme-neobrutalism-teal,
+.theme-aaa-light, .theme-rose-pine-dawn, .theme-flexoki-light {
+  --success: 142.8 64.2% 24.1%;
+  --success-foreground: 0 0% 100%;
+  --warning: 22.7 82.5% 31.4%;
+  --warning-foreground: 0 0% 100%;
+  --info: 224.3 76.3% 48%;
+  --info-foreground: 0 0% 100%;
+}
+
+.theme-ink-dark, .theme-blueprint, .theme-github-dark, .theme-dracula,
+.theme-nord, .theme-tokyo-night, .theme-catppuccin-mocha, .theme-onedark-pro,
+.theme-rose-pine, .theme-monokai, .theme-ayu-dark, .theme-cyberpunk,
+.theme-ocean, .theme-matrix, .theme-hc-dark, .theme-neobrutalism-dark,
+.theme-neobrutalism-punk, .theme-glass-dark, .theme-glass-aurora,
+.theme-glass-ocean, .theme-synthwave, .theme-retrowave, .theme-terminal,
+.theme-solarized-dark, .theme-gruvbox-dark, .theme-everforest-dark,
+.theme-kanagawa, .theme-linear-dark, .theme-mono-dark, .theme-aaa-dark,
+.theme-poimandres, .theme-flexoki-dark {
+  --success: 141.9 69.2% 58%;
+  --success-foreground: 216 28% 7%;
+  --warning: 43.3 96.4% 56.3%;
+  --warning-foreground: 216 28% 7%;
+  --info: 211.7 96.4% 78.4%;
+  --info-foreground: 216 28% 7%;
 }

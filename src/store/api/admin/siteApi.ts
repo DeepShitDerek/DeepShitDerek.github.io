@@ -103,7 +103,7 @@ export const siteApi = adminApi.injectEndpoints({
       },
       providesTags: ["SiteSettings"],
     }),
-    updateLockdownLevel: builder.mutation<void, number>({
+    updateLockdownLevel: builder.mutation<null, number>({
       queryFn: async (level) => {
         if (!supabase) return { error: NO_DB_ERROR };
         const { error } = await supabase
@@ -111,7 +111,7 @@ export const siteApi = adminApi.injectEndpoints({
           .update({ lockdown_level: level })
           .eq("id", 1);
         if (error) return { error };
-        return { data: undefined };
+        return { data: null };
       },
       invalidatesTags: ["SiteSettings"],
     }),

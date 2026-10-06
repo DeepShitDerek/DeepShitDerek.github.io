@@ -74,7 +74,7 @@ export function HoldingsPanel() {
         </Stat>
       </dl>
       {alloc.unconverted.length > 0 && (
-        <p className="text-xs text-amber-700 dark:text-amber-400">Left out of the totals for want of an exchange rate: {alloc.unconverted.join(", ")}.</p>
+        <p className="text-xs text-warning">Left out of the totals for want of an exchange rate: {alloc.unconverted.join(", ")}.</p>
       )}
 
       {alloc.total > 0 && (
@@ -170,12 +170,12 @@ export function HoldingsPanel() {
                           {h.price ? (
                             <>
                               {h.price.price}
-                              <span className={cn("block text-xs", (h.priceAgeDays ?? 0) > 7 ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")}>
+                              <span className={cn("block text-xs", (h.priceAgeDays ?? 0) > 7 ? "text-warning" : "text-muted-foreground")}>
                                 {h.price.date}
                               </span>
                             </>
                           ) : h.units > 0 ? (
-                            <span className="text-xs text-amber-700 dark:text-amber-400">no price</span>
+                            <span className="text-xs text-warning">no price</span>
                           ) : (
                             <span className="text-xs text-muted-foreground">sold</span>
                           )}
@@ -207,12 +207,12 @@ export function HoldingsPanel() {
               </ul>
             )}
             {pf.cashMinor < 0 && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+              <p className="mt-2 text-xs text-warning">
                 Cash is below zero: record the deposit that paid for these trades (a transfer into this account), or check the amounts.
               </p>
             )}
             {pf.unpriced.length > 0 && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+              <p className="mt-2 text-xs text-warning">
                 No price yet for {pf.unpriced.join(", ")} — counted at cost. Add one under Securities &amp; prices.
               </p>
             )}

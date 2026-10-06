@@ -3,15 +3,23 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Contrast of every theme preset's text-bearing token pairs (V2-060), from
- * src/styles/themes.css. Text pairs need 4.5:1, UI pairs 3:1.
+ * Contrast of every theme preset's token pairs (V2-060), from
+ * src/styles/themes.css. Text pairs need 4.5:1, UI pairs 3:1 (WCAG 1.4.11).
  *   node scripts/theme-contrast.mjs          → report, exit 1 on a failure
  * Run after editing a preset. The pairs are the ones the app draws text
  * with; see ACCESSIBILITY.md.
+ *
+ * A token a preset does not resolve is a failure, not a skip (F6): a
+ * missing `--success` would fall back to another preset's value and be
+ * drawn on a ground nobody checked it against.
  */
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const css = readFileSync(path.join(root, "src/styles/themes.css"), "utf8");
+// Comments out, so a rule's selector text is only its selectors.
+const css = readFileSync(path.join(root, "src/styles/themes.css"), "utf8").replace(
+  /\/\*[\s\S]*?\*\//g,
+  "",
+);
 
 const hslToRgb = (h, s, l) => {
   s /= 100;
@@ -52,30 +60,66 @@ const TEXT = [
   ["secondary-foreground", "secondary"],
   ["popover-foreground", "popover"],
   ["muted-foreground", "popover"],
+  // Status is text too: a "Saved" or "Overdue" label in the status colour.
+  ["success", "background"],
+  ["success", "card"],
+  ["warning", "background"],
+  ["warning", "card"],
+  ["info", "background"],
+  ["info", "card"],
+  ["success-foreground", "success"],
+  ["warning-foreground", "warning"],
+  ["info-foreground", "info"],
 ];
 
+// UI pairs (3:1): the edge of a field or toggle against what it sits on.
+const UI = [
+  ["input", "background"],
+  ["input", "card"],
+  ["ring", "background"],
+];
+
+const REQUIRED = [...new Set([...TEXT, ...UI].flat())];
+
+/**
+ * Every rule whose selector list names a preset, so a grouped rule
+ * (`.theme-a, .theme-b { … }`, the status defaults) counts for each one.
+ * Later rules win, as in the cascade.
+ */
 const themes = new Map();
-for (const block of css.matchAll(/\.(theme-[a-z0-9-]+)\s*\{([^}]*)\}/g)) {
+for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  const selectors = rule[1].split(",").map((s) => s.trim());
+  const presets = selectors
+    .map((s) => /^\.(theme-[a-z0-9-]+)$/.exec(s)?.[1])
+    .filter(Boolean);
+  // Only rules made of preset selectors (and the `:root` default alongside Ink).
+  if (presets.length === 0 || presets.length !== selectors.filter((s) => s !== ":root").length) continue;
   const vars = {};
-  for (const v of block[2].matchAll(/--([a-z-]+):\s*([^;]+);/g)) vars[v[1]] = v[2];
-  themes.set(block[1], { ...(themes.get(block[1]) ?? {}), ...vars });
+  for (const v of rule[2].matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) vars[v[1]] = v[2];
+  for (const name of presets) themes.set(name, { ...(themes.get(name) ?? {}), ...vars });
 }
 
 let failures = 0;
 for (const [name, vars] of themes) {
   const bad = [];
-  for (const [fg, bg] of TEXT) {
-    const a = parse(vars[fg] ?? "");
-    const b = parse(vars[bg] ?? "");
-    if (!a || !b) continue;
-    const r = ratio(a, b);
-    // `primary` on the ground is used for links and large accents: 4.5 like any text.
-    if (r < 4.5) bad.push(`${fg} on ${bg} ${r.toFixed(2)}`);
+  const missing = REQUIRED.filter((token) => !parse(vars[token] ?? ""));
+  if (missing.length) bad.push(`missing ${missing.join(", ")}`);
+  for (const [pairs, min] of [
+    [TEXT, 4.5],
+    [UI, 3],
+  ]) {
+    for (const [fg, bg] of pairs) {
+      const a = parse(vars[fg] ?? "");
+      const b = parse(vars[bg] ?? "");
+      if (!a || !b) continue;
+      const r = ratio(a, b);
+      if (r < min) bad.push(`${fg} on ${bg} ${r.toFixed(2)} (needs ${min})`);
+    }
   }
   if (bad.length) {
     failures += bad.length;
     console.log(`✗ ${name}: ${bad.join("; ")}`);
   }
 }
-console.log(`\n${themes.size} presets, ${failures} failing pair${failures === 1 ? "" : "s"}`);
+console.log(`\n${themes.size} presets, ${failures} failing check${failures === 1 ? "" : "s"}`);
 process.exit(failures ? 1 : 0);

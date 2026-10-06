@@ -88,3 +88,33 @@ describe("markdown section autosave (ADM-022)", () => {
     expect(onSaveContent).toHaveBeenCalledWith({ id: "s1", content: "Last words" }, { silent: true });
   });
 });
+
+describe("section header", () => {
+  it("says in words whether the section is on the site, and the switch changes it", () => {
+    const onToggleVisible = vi.fn();
+    const hidden = { ...section("s1", "Hi"), is_visible: false } as PortfolioSection;
+    render(
+      <SectionDetail
+        section={hidden}
+        onEditSection={vi.fn()}
+        onDeleteSection={vi.fn()}
+        onToggleVisible={onToggleVisible}
+        onSaveContent={vi.fn()}
+        onNewItem={vi.fn()}
+        onEditItem={vi.fn()}
+        onDeleteItem={vi.fn()}
+        onMoveItem={vi.fn()}
+      />,
+    );
+    const toggle = screen.getByRole("switch", { name: "Shown on the site" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText("Hidden")).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(onToggleVisible).toHaveBeenCalledWith(hidden);
+  });
+
+  it("links to the live page", () => {
+    setup();
+    expect(screen.getByRole("link", { name: /view on site/i })).toHaveAttribute("href", "/about");
+  });
+});

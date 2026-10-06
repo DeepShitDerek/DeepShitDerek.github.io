@@ -3,11 +3,11 @@
 import { PublishSiteButton } from "@/components/admin/publish-site-button";
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
   Edit,
+  EyeOff,
   GripVertical,
   Link2,
+  MoreHorizontal,
   Plus,
   Trash2,
   TriangleAlert,
@@ -25,12 +25,20 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
+import {
   EmptyState,
   FormSheet,
   ManagerWrapper,
   PageHeader,
   LoadingState,
   LoadError,
+  ReorderButtons,
 } from "@/components/admin/shared";
 import { cn, getErrorMessage } from "@/lib/utils";
 import { NavLinkForm } from "./nav-link-form";
@@ -42,12 +50,13 @@ import {
 } from "./nav-target";
 
 /**
- * Badge tone per target kind. `chart-2` is the success accent and `chart-3` the
- * warning accent, so both follow the preset rather than a literal palette class.
+ * Badge tone per target kind, from the status tokens every preset sets: a
+ * built-in page is neutral, a page built from your sections is information
+ * (it was a chart colour), a broken target is danger.
  */
 const TARGET_TONE: Record<NavTargetKind, string> = {
   builtin: "border-border bg-secondary/60 text-muted-foreground",
-  cms: "border-chart-2/25 bg-chart-2/10 text-chart-2",
+  cms: "border-info/25 bg-info/10 text-info",
   dead: "border-destructive/25 bg-destructive/10 text-destructive",
   invalid: "border-destructive/25 bg-destructive/10 text-destructive",
 };
@@ -97,9 +106,9 @@ function NavRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-surface bg-card p-3 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2 sm:flex-nowrap",
+        // Ruled rows in one list, not a card each (north star §3.4).
+        "group flex flex-wrap items-center gap-x-3 gap-y-2 p-3 transition-colors hover:bg-secondary/40 sm:flex-nowrap",
         isDragging && "opacity-50",
-        !link.is_visible && "opacity-70",
       )}
     >
       <GripVertical
@@ -116,16 +125,26 @@ function NavRow({
           <Badge
             variant="outline"
             className={cn(
-              "h-5 shrink-0 px-1.5 text-[10px]",
+              "h-6 shrink-0 px-2 text-micro",
               TARGET_TONE[target.kind],
             )}
           >
             {target.label}
           </Badge>
+          {/* Hidden said in words: the row used to fade, colour alone. */}
+          {!link.is_visible && (
+            <Badge
+              variant="outline"
+              className="h-6 shrink-0 gap-1 px-2 text-micro text-muted-foreground"
+            >
+              <EyeOff aria-hidden className="size-3" />
+              Hidden
+            </Badge>
+          )}
           {isDuplicate && (
             <Badge
               variant="outline"
-              className="h-5 shrink-0 border-destructive/25 bg-destructive/10 px-1.5 text-[10px] text-destructive"
+              className="h-6 shrink-0 border-destructive/25 bg-destructive/10 px-2 text-micro text-destructive"
             >
               Duplicate path
             </Badge>
@@ -168,26 +187,11 @@ function NavRow({
         {/* Reordering has to work by keyboard and on touch, where dragging a
             list item is not available. The grip is the pointer affordance for
             the same operation, not the only way to perform it. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          aria-label={`Move "${link.label}" up`}
-          disabled={index === 0}
-          onClick={() => onMove(index, -1)}
-        >
-          <ArrowUp className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          aria-label={`Move "${link.label}" down`}
-          disabled={index === total - 1}
-          onClick={() => onMove(index, 1)}
-        >
-          <ArrowDown className="size-4" />
-        </Button>
+        <ReorderButtons
+          name={link.label}
+          onMoveUp={index > 0 ? () => onMove(index, -1) : undefined}
+          onMoveDown={index < total - 1 ? () => onMove(index, 1) : undefined}
+        />
 
         <Switch
           checked={link.is_visible}
@@ -196,28 +200,43 @@ function NavRow({
           className="mx-1"
         />
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          aria-label={`Edit "${link.label}"`}
-          onClick={onEdit}
-        >
-          <Edit className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`Delete "${link.label}"`}
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" />
-        </Button>
+        {/* Edit and delete under one menu (P-menu): the row had five
+            controls, and two of them were rarely used. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              aria-label={`Actions: ${link.label}`}
+            >
+              <MoreHorizontal className="size-4" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={onEdit}>
+              <Edit aria-hidden className="mr-2 size-4" /> Edit link
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={onDelete}
+            >
+              <Trash2 aria-hidden className="mr-2 size-4" /> Delete link
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </li>
   );
 }
+
+/**
+ * One empty list, the same every render. A literal `= []` default made a new
+ * array on each render while the query had no data yet, so the effect that
+ * copies the links into local state ran every render and set state every
+ * time: "Maximum update depth exceeded".
+ */
+const NO_LINKS: NavLink[] = [];
 
 export default function NavigationPage() {
   const confirm = useConfirm();
@@ -227,7 +246,12 @@ export default function NavigationPage() {
   const [localLinks, setLocalLinks] = useState<NavLink[]>([]);
   const [draggedLinkId, setDraggedLinkId] = useState<string | null>(null);
 
-  const { data: links = [], isLoading, error: loadError, refetch } = useGetNavLinksAdminQuery();
+  const {
+    data: links = NO_LINKS,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetNavLinksAdminQuery();
   const { data: sections = [] } = useGetPortfolioContentQuery();
   const [saveNavLink] = useSaveNavLinkMutation();
   const [deleteNavLink] = useDeleteNavLinkMutation();
@@ -279,14 +303,19 @@ export default function NavigationPage() {
     }
   };
 
+  /**
+   * Swap a row with its visible neighbour. By identity, not position: while a
+   * delete waits on its Undo the list shows one row fewer than it holds, and
+   * swapping by index would move the wrong pair.
+   */
   const handleMove = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= localLinks.length) return;
+    const moving = shownLinks[index];
+    const neighbour = shownLinks[index + direction];
+    if (!moving || !neighbour) return;
     const reordered = [...localLinks];
-    [reordered[index], reordered[target]] = [
-      reordered[target],
-      reordered[index],
-    ];
+    const a = reordered.findIndex((l) => l.id === moving.id);
+    const b = reordered.findIndex((l) => l.id === neighbour.id);
+    [reordered[a], reordered[b]] = [reordered[b], reordered[a]];
     void persistOrder(reordered);
   };
 
@@ -314,29 +343,33 @@ export default function NavigationPage() {
     }
   };
 
-  const handleDelete = async (link: NavLink) => {
+  // Delete offers Undo instead of asking first (P1-10). A page built from a
+  // link only leaves the site at the next deploy, so the toast says so.
+  const { pending: deleting, remove: removeLink } = useUndoableDelete<NavLink>(
+    async (link) => {
+      try {
+        await deleteNavLink(link.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the link", {
+          description: getErrorMessage(err),
+        });
+      }
+    },
+  );
+  const handleDelete = (link: NavLink) => {
     const target = resolveNavTarget(link.href);
-    const ok = await confirm({
-      title: `Delete "${link.label}"?`,
-      description:
-        target.kind === "cms"
-          ? `${link.href} is built from this link. Deleting it removes the page from your site as well as the menu; its content sections are kept.`
-          : "This removes the link from your site's menu. The page itself is unaffected.",
-      variant: "destructive",
-      confirmText: "Delete",
-    });
-    if (!ok) return;
-
-    try {
-      await deleteNavLink(link.id).unwrap();
-      toast.success("Link deleted.");
-      if (editingLink?.id === link.id) setIsSheetOpen(false);
-    } catch (err) {
-      toast.error("Couldn't delete the link", {
-        description: getErrorMessage(err),
-      });
-    }
+    if (editingLink?.id === link.id) setIsSheetOpen(false);
+    removeLink(
+      link,
+      `Deleted "${link.label}"`,
+      target.kind === "cms"
+        ? `${link.href} leaves the site at the next deploy; its content sections are kept.`
+        : undefined,
+    );
   };
+  const shownLinks = deleting.size
+    ? localLinks.filter((l) => !deleting.has(l.id))
+    : localLinks;
 
   const handleToggleVisibility = async (link: NavLink) => {
     const hiding = link.is_visible;
@@ -391,8 +424,8 @@ export default function NavigationPage() {
       {/* Stated once, at the top, rather than repeated on every row. */}
       <div className="mb-4 space-y-2 rounded-surface bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
         <p>
-          The site is a static export, so menu and page changes go live with
-          the next deploy — not immediately.
+          The site is a static export, so menu and page changes go live with the
+          next deploy — not immediately.
         </p>
         <PublishSiteButton />
       </div>
@@ -401,7 +434,7 @@ export default function NavigationPage() {
         <LoadingState variant="section" label="Loading navigation" />
       ) : loadError && links.length === 0 ? (
         <LoadError what="the navigation" error={loadError} onRetry={refetch} />
-      ) : localLinks.length === 0 ? (
+      ) : shownLinks.length === 0 ? (
         <EmptyState
           icon={Link2}
           variant="card"
@@ -410,13 +443,13 @@ export default function NavigationPage() {
           action={{ label: "Add link", onClick: openCreate, icon: Plus }}
         />
       ) : (
-        <ol className="space-y-2">
-          {localLinks.map((link, index) => (
+        <ol className="divide-y rounded-surface border bg-card">
+          {shownLinks.map((link, index) => (
             <NavRow
               key={link.id}
               link={link}
               index={index}
-              total={localLinks.length}
+              total={shownLinks.length}
               sectionCount={sectionCounts.get(normalizeHref(link.href)) ?? 0}
               isDuplicate={duplicates.has(normalizeHref(link.href))}
               isDragging={draggedLinkId === link.id}

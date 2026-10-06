@@ -26,7 +26,7 @@ export function Amount({
     <span
       className={cn(
         "whitespace-nowrap tabular-nums",
-        tone === "flow" && minor > 0 && "text-emerald-700 dark:text-emerald-400",
+        tone === "flow" && minor > 0 && "text-success",
         tone === "balance" && minor < 0 && "text-destructive",
         className,
       )}

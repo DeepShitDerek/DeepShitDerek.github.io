@@ -182,7 +182,7 @@ export function LenderReportView({ application }: { application: Application | n
             </dl>
             {!mortgage.downPaymentOk && <p role="alert" className="mt-2 text-destructive">The down payment is below the minimum for this price.</p>}
             {!mortgage.insurable && (
-              <p className="mt-2 text-amber-700 dark:text-amber-400">
+              <p className="mt-2 text-warning">
                 Under 20% down on this price isn&apos;t insurable — a conventional (20% down) mortgage is needed.
               </p>
             )}
@@ -197,7 +197,7 @@ export function LenderReportView({ application }: { application: Application | n
         )}
 
         {report.unconverted.length > 0 && (
-          <p role="alert" className="text-amber-700 dark:text-amber-400">
+          <p role="alert" className="text-warning">
             Left out for want of an exchange rate: {report.unconverted.join(", ")}. Add the rate under Settings.
           </p>
         )}

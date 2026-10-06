@@ -25,7 +25,10 @@ interface FormSheetProps {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Classes for the form's body, not the sheet. */
   className?: string;
+  /** A wider sheet, for forms that lay out a picker or many fields. */
+  wide?: boolean;
   side?: "top" | "bottom" | "left" | "right";
   /**
    * Whether the form holds unsaved input. Left out, the sheet works it out:
@@ -88,6 +91,7 @@ export default function FormSheet({
   children,
   footer,
   className,
+  wide = false,
   side = "right",
   dirty,
 }: FormSheetProps) {
@@ -122,7 +126,8 @@ export default function FormSheet({
         onInput={markTouched}
         onChange={markTouched}
         className={cn(
-          "flex flex-col sm:max-w-lg",
+          "flex flex-col",
+          wide ? "sm:max-w-2xl" : "sm:max-w-lg",
           side === "right" && "w-full",
         )}
       >

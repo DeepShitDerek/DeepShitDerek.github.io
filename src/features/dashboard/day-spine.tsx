@@ -1,63 +1,76 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Circle } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { BandHabits, PlacedItem } from "./day-plan";
+import type { PlacedItem } from "./day-plan";
 
 /**
  * The day, drawn as one column of time.
  *
- * The hours are the page's structure — not a card, not a list, a *ruler*. A
- * meeting is a block sitting at the height its clock time puts it; the current
- * moment is a line across the whole thing; the space between blocks is
- * literally the free time you have left. None of that survives being turned
- * into a list of rows, which is what every version of this dashboard did
- * before.
+ * A meeting is a block at the height its clock time puts it; now is a line
+ * across it; the space between blocks is the free time left.
  *
- * Positions arrive as fractions from `day-plan`, so this file does no
- * arithmetic beyond turning them into percentages.
+ * It shows the next few hours by default, with "Whole day" to see the rest
+ * (03-workspace-ui.md §2.1): fifteen hours at full height pushed everything
+ * else on the page, on a phone the Today list too, a screen and a half down.
+ * Habits are no longer chips here; they are logged in the Today list.
+ *
+ * Positions arrive as fractions from `day-plan`, so this file only turns
+ * them into percentages.
  */
 
 /** Tall enough that an hour is a real distance rather than a line of text. */
-const HOUR_HEIGHT = 56;
+const HOUR_HEIGHT = 48;
 
 export function DaySpine({
   hours,
   events,
   now,
-  bands,
+  expanded,
+  onToggle,
 }: {
   hours: number[];
   events: PlacedItem[];
-  /** Fraction down the spine, or null when the day is outside these hours. */
+  /** Fraction down the spine, or null when now is outside these hours. */
   now: number | null;
-  bands: BandHabits[];
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   const height = hours.length * HOUR_HEIGHT;
+  const range =
+    hours.length === 0
+      ? "The day is done"
+      : `${String(hours[0]).padStart(2, "0")}:00–${String(hours[hours.length - 1] + 1).padStart(2, "0")}:00`;
 
   return (
     <section
-      className="overflow-hidden rounded-surface bg-card shadow-e1"
-      aria-label="Your day"
+      aria-labelledby="your-day"
+      className="overflow-hidden rounded-surface border bg-card"
     >
-      <div className="flex items-baseline justify-between gap-3 px-5 pb-3 pt-4">
-        <h2 className="text-sm font-semibold text-foreground">Your day</h2>
-        <p className="text-xs text-muted-foreground">
-          {hours.length === 0
-            ? "The day is done"
-            : `${hours[0].toString().padStart(2, "0")}:00 – ${hours[hours.length - 1] + 1}:00`}
-        </p>
+      <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-3">
+        <div className="min-w-0">
+          <h2 id="your-day" className="text-sm font-semibold text-foreground">
+            Your day
+          </h2>
+          <p className="text-xs text-muted-foreground">{range}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="shrink-0 rounded-control px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground focus-ring"
+        >
+          {expanded ? "Next hours" : "Whole day"}
+        </button>
       </div>
 
-      <div className="flex px-5 pb-5">
-        {/* The ruler. */}
-        <div className="w-11 shrink-0 select-none">
+      <div className="flex px-4 pb-4">
+        <div className="w-12 shrink-0 select-none" aria-hidden>
           {hours.map((hour) => (
             <div
               key={hour}
               style={{ height: HOUR_HEIGHT }}
-              className="text-[11px] tabular-nums text-muted-foreground"
+              className="text-micro tabular-nums text-muted-foreground"
             >
               {String(hour).padStart(2, "0")}:00
             </div>
@@ -65,13 +78,12 @@ export function DaySpine({
         </div>
 
         <div className="relative min-w-0 flex-1" style={{ height }}>
-          {/* Hour rules, behind everything and never catching a click. */}
           <div aria-hidden className="pointer-events-none absolute inset-0">
             {hours.map((hour) => (
               <div
                 key={hour}
                 style={{ height: HOUR_HEIGHT }}
-                className="border-t border-border/50"
+                className="border-t border-border/60"
               />
             ))}
           </div>
@@ -85,91 +97,45 @@ export function DaySpine({
                 height: `${event.height * 100}%`,
               }}
               className={cn(
-                "absolute inset-x-0 flex flex-col justify-center overflow-hidden rounded-control px-3 py-1 transition-shadow duration-base ease-enter hover:shadow-e2",
+                "absolute inset-x-0 flex flex-col justify-center overflow-hidden rounded-control border-l-[3px] px-2.5 py-0.5 transition-colors focus-ring",
                 event.isNow
-                  ? // The one thing on the page that is happening right now
-                    // earns the accent. Everything else is quieter than it.
-                    "bg-primary text-primary-foreground shadow-e2"
+                  ? // The one thing happening right now earns the accent.
+                    "border-l-primary bg-primary/15 text-foreground"
                   : event.isPast
-                    ? "bg-secondary/50 text-muted-foreground"
-                    : "bg-secondary text-foreground",
+                    ? "border-l-border bg-secondary/40 text-muted-foreground"
+                    : "border-l-primary/60 bg-secondary text-foreground hover:bg-secondary/70",
               )}
             >
-              <span className="truncate break-words text-xs font-medium">
+              <span className="truncate text-xs font-medium">
                 {event.title}
               </span>
-              {event.height > 0.08 && (
-                <span
-                  className={cn(
-                    "truncate text-[11px] tabular-nums",
-                    event.isNow
-                      ? "text-primary-foreground/80"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {event.detail}
+              {event.height > 0.12 && (
+                <span className="truncate text-micro tabular-nums text-muted-foreground">
+                  {event.isNow ? `Now · ${event.detail}` : event.detail}
                 </span>
               )}
             </Link>
           ))}
 
-          {/* Now. Drawn last so it sits above the blocks it crosses. */}
+          {/* Now, in the same colour as the calendar's now line. */}
           {now !== null && (
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 z-raised flex items-center"
               style={{ top: `${now * 100}%` }}
             >
-              <span className="size-1.5 rounded-full bg-chart-3" />
-              <span className="h-px flex-1 bg-chart-3" />
+              <span className="-ml-1 size-2 rounded-full bg-destructive" />
+              <span className="h-0.5 flex-1 bg-destructive" />
             </div>
           )}
 
           {hours.length > 0 && events.length === 0 && (
-            <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-              Nothing scheduled — the day is yours
+            <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-muted-foreground">
+              Nothing scheduled{expanded ? " today" : " in these hours"}
             </p>
           )}
         </div>
       </div>
-
-      {bands.length > 0 && (
-        <div className="border-t border-border/60 px-5 py-4">
-          <div className="space-y-3">
-            {bands.map((band) => (
-              <div key={band.band}>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {band.label}
-                </p>
-                <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                  {band.habits.map((habit) => (
-                    <li key={habit.id}>
-                      <Link
-                        href="/admin/habits"
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-control px-2.5 py-1 text-xs transition-colors",
-                          habit.done
-                            ? "bg-chart-2/15 text-muted-foreground line-through"
-                            : "bg-secondary text-foreground hover:bg-secondary/70",
-                        )}
-                      >
-                        {habit.done ? (
-                          <Check className="size-3 text-chart-2" aria-hidden />
-                        ) : (
-                          <Circle className="size-3 opacity-40" aria-hidden />
-                        )}
-                        <span className="max-w-40 truncate break-words">
-                          {habit.title}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

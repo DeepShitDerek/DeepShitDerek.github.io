@@ -2,76 +2,86 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 import {
-  AlarmClock,
   ArrowRight,
   Flame,
-  Inbox,
+  Plus,
   Radio,
-  Target,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import type { DashboardData, Task } from "@/types";
+import { toast } from "sonner";
+import type { DashboardData, Habit, Task } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/admin/shared";
 import { useSetTaskStatus } from "@/features/tasks/use-task-status";
 import {
+  useAddTaskMutation,
   useGetCalendarSettingsQuery,
   useGetDashboardDataQuery,
+  useSetHabitLogMutation,
 } from "@/store/api/adminApi";
 import { useGetMoneySettingsQuery } from "@/features/money/data/money-api";
+import { LoadError } from "@/components/admin/shared";
+import { HabitToday } from "@/features/habits/habit-today";
 import {
-  LoadingState,
-  LoadError,
-} from "@/components/admin/shared";
+  dueToday,
+  indexLogs,
+  isSatisfiedOn,
+} from "@/features/habits/habit-progress";
+import { todayIso } from "@/features/habits/habit-schedule";
+import { useBelowBreakpoint } from "@/hooks/use-media-query";
 import { formatMoney } from "@/lib/money";
+import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
 import {
-  dayPulse,
-  habitBands,
   nextUp,
   nowOffset,
   placeEvents,
   spineHours,
   untilLabel,
+  windowHours,
 } from "./day-plan";
 import { cashflow, habitHeat } from "./metrics";
-import { Heatmap, Ring, Sparkline } from "./charts";
+import { Heatmap, Sparkline } from "./charts";
 import { DaySpine } from "./day-spine";
 import { SetupChecklist } from "./setup-checklist-card";
 
 /**
- * Home, built around the day rather than around the modules.
+ * Home: what today asks of you, and what is next (03-workspace-ui.md §2.1).
  *
- * Three versions got here. The first was eleven cards of equal weight, where
- * overdue tasks sat beside total blog views. The second replaced them with a
- * ranked list — honest, but nothing to see. The third added charts to the
- * list, which was the same page with better decoration.
+ * The Today list is the page. Tasks due today, tasks overdue and today's
+ * habits are one list, each ticked or logged where it is. Before, today's
+ * tasks sat in a narrow rail under a decorative ring, and habits were chips
+ * that could not be logged from here, the most frequent thing done daily.
  *
- * The problem in all three was the *shape*: a grid of panels, one per module,
- * each answering "how is Tasks" or "how is Finance". Nobody opens their own
- * tools asking about a module. They ask what their day looks like, and that
- * question has an answer with a shape — time.
- *
- * So the page is a spine of hours with everything docked onto it, and the
- * numbers moved to a rail beside it. What is late gets a band across the top,
- * shown only when there is something late; the rest of the time that space
- * does not exist. The most useful sentence — what is next and how long you
- * have — sits in the header, because it is the thing you came to find out.
+ * Around it: a line of what needs you now (next event, overdue, unread,
+ * reviews), the next hours of the day, the week's money and the habit
+ * momentum. On a phone the Today list comes first.
  */
 export default function DashboardPage() {
-  const { data, isLoading, error: loadError, refetch } = useGetDashboardDataQuery();
+  const {
+    data,
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetDashboardDataQuery();
   const { data: moneySettings } = useGetMoneySettingsQuery();
   const { data: calendarSettings } = useGetCalendarSettingsQuery();
+  const narrow = useBelowBreakpoint("lg");
+  const [wholeDay, setWholeDay] = useState(false);
 
   const currency = moneySettings?.baseCurrency ?? "CAD";
-  // The day's bounds belong to Calendar. Hard-coding 9–5 here would put the
-  // spine out of step with the grid the events were scheduled on.
+  // The day's bounds belong to Calendar.
   const startHour = calendarSettings?.day_start_hour ?? 7;
   const endHour = calendarSettings?.day_end_hour ?? 22;
 
-  // The "now" line and "in 10 min" labels move while the page stays open
-  // (ADM-014); they were fixed at whenever the data last arrived.
+  // "In 10 min" and the now line move while the page stays open (ADM-014).
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -80,73 +90,157 @@ export default function DashboardPage() {
 
   const view = useMemo(() => {
     if (!data) return null;
-    const hours = spineHours(now, startHour, endHour);
-
+    const hours = wholeDay
+      ? spineHours(now, startHour, endHour)
+      : windowHours(now, startHour, endHour, narrow ? 3 : 6);
     return {
       hours,
       events: placeEvents(data.todaysEvents, hours, now),
       now: nowOffset(now, hours),
-      bands: habitBands(data.habits, now),
       next: nextUp(data.todaysEvents, now),
-      pulse: dayPulse(data, now),
       money: cashflow(data, 7, now),
       heat: habitHeat(data.habits, 12, now),
     };
-  }, [data, startHour, endHour, now]);
+  }, [data, startHour, endHour, now, wholeDay, narrow]);
 
-  if (loadError && !data) return <LoadError what="your day" error={loadError} onRetry={refetch} />;
-
-  if (isLoading && !data) {
-    return <LoadingState variant="page" label="Loading your day" />;
+  if (loadError && !data) {
+    return (
+      <div className="space-y-4">
+        <Greeting now={now} next={null} />
+        <LoadError what="your day" error={loadError} onRetry={refetch} />
+      </div>
+    );
   }
-
+  if (isLoading && !data) return <DashboardSkeleton now={now} />;
   if (!data || !view) {
     return (
       <div className="mx-auto max-w-prose py-16 text-center">
         <p className="text-sm text-muted-foreground">
-          Nothing to show yet — this needs a database connection.
+          Nothing to show yet: this needs a database connection.
         </p>
       </div>
     );
   }
 
+  const counts = todayCounts(data, todayIso());
+  const today = <TodayList data={data} />;
+  const spine = (
+    <DaySpine
+      hours={view.hours}
+      events={view.events}
+      now={view.now}
+      expanded={wholeDay}
+      onToggle={() => setWholeDay((v) => !v)}
+    />
+  );
+  const money = <MoneyCard money={view.money} currency={currency} />;
+  const momentum = <MomentumCard heat={view.heat} />;
+  // First run only, and gone once done. Above the day on a wide screen; on a
+  // phone below it, so it never pushes Today off the first screen.
+  const setup = <SetupChecklist />;
+
   return (
-    <div className="space-y-4 pb-10">
-      <Header next={view.next} />
+    <div className="space-y-5 pb-10">
+      <Greeting now={now} next={view.next} />
+      {!narrow && setup}
 
-      {/* First-run: what is left before the site is yours. Gone once done. */}
-      <SetupChecklist />
-
-      {/* Only exists when something is actually late. An always-present
-          "0 overdue" panel trains you to ignore the space it occupies. */}
-      {data.overdueTasks.length > 0 && <BehindBand tasks={data.overdueTasks} />}
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
-        <DaySpine
-          hours={view.hours}
-          events={view.events}
-          now={view.now}
-          bands={view.bands}
-        />
-
-        <aside className="space-y-4" aria-label="Today at a glance">
-          <PulseCard pulse={view.pulse} focusMinutes={data.focusMinutesToday} />
-          {data.tasksDueToday.length > 0 && (
-            <TodayTasksCard tasks={data.tasksDueToday} />
-          )}
-          <MoneyCard money={view.money} currency={currency} />
-          <MomentumCard heat={view.heat} />
-          <InboxCard count={data.unreadMessages} reviews={data.reviewsDue} />
-        </aside>
+      {/* The day in four numbers; each opens the module it counts. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Tile href="/admin/tasks" label="Open tasks">
+          <StatCard
+            size="compact"
+            title="Done today"
+            value={`${counts.done}/${counts.total}`}
+            helpText={counts.total === 0 ? "Nothing due" : "Tasks and habits"}
+          />
+        </Tile>
+        <Tile href="/admin/tasks" label="Open overdue tasks">
+          <StatCard
+            size="compact"
+            title="Overdue"
+            value={data.overdueTasks.length}
+            helpText={
+              data.overdueTasks.length === 0
+                ? "Nothing late"
+                : "Tasks past their date"
+            }
+          />
+        </Tile>
+        <Tile href="/admin/inbox" label="Open the inbox">
+          <StatCard
+            size="compact"
+            title="Unread"
+            value={data.unreadMessages}
+            helpText="Messages in the inbox"
+          />
+        </Tile>
+        <Tile href="/admin/learning" label="Open Learning">
+          <StatCard
+            size="compact"
+            title="To review"
+            value={data.reviewsDue}
+            helpText={
+              data.reviewsDue === 0 ? "Nothing due" : "Topics due in Learning"
+            }
+          />
+        </Tile>
       </div>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="min-w-0">{today}</div>
+        <div className="min-w-0">{spine}</div>
+        <div className="min-w-0 space-y-5">
+          {money}
+          {momentum}
+        </div>
+      </div>
+
+      {narrow && setup}
     </div>
+  );
+}
+
+/** How much of today is done: tasks due today and today's habits. */
+export function todayCounts(data: DashboardData, today: string) {
+  const habits = dueToday(data.habits, today);
+  return {
+    total: data.tasksDueToday.length + data.overdueTasks.length + habits.length,
+    done:
+      data.tasksDueToday.filter((t) => t.status === "done").length +
+      habits.filter((h) => isSatisfiedOn(h, indexLogs(h), today)).length,
+  };
+}
+
+/** A number tile that is also the way into its module. */
+function Tile({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className="block rounded-surface transition-colors focus-ring [&>*]:h-full [&>*]:transition-colors hover:[&>*]:border-input"
+    >
+      {children}
+    </Link>
   );
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 
-function Header({ next }: { next: ReturnType<typeof nextUp> }) {
-  const hour = new Date().getHours();
+function Greeting({
+  now,
+  next,
+}: {
+  now: Date;
+  next: ReturnType<typeof nextUp> | null;
+}) {
+  const hour = now.getHours();
   const part =
     hour < 5
       ? "Still up"
@@ -155,144 +249,84 @@ function Header({ next }: { next: ReturnType<typeof nextUp> }) {
         : hour < 18
           ? "Afternoon"
           : "Evening";
-
   return (
     <header className="flex flex-wrap items-end justify-between gap-3">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        {part}
-      </h1>
-
-      {next && (
-        <Link
-          href="/admin/calendar"
-          className="flex items-center gap-2.5 rounded-control bg-card px-3 py-2 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2"
+      <div>
+        {/* The time of day and date are the reader's, not the build's. */}
+        <h1 className="t-heading" suppressHydrationWarning>
+          {part}
+        </h1>
+        <p
+          className="mt-0.5 text-sm text-muted-foreground"
+          suppressHydrationWarning
         >
-          {next.happening ? (
-            // A live indicator only when something is genuinely live; a
-            // permanent one would be noise pretending to be signal.
-            <Radio className="size-3.5 shrink-0 text-chart-2" aria-hidden />
-          ) : (
-            <ArrowRight
-              className="size-3.5 shrink-0 text-muted-foreground"
-              aria-hidden
-            />
-          )}
-          <span className="min-w-0">
-            <span className="block text-[11px] text-muted-foreground">
-              {next.happening ? "Happening now" : untilLabel(next.minutesAway)}
+          {format(now, "EEEE d MMMM")}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {next && (
+          <Link
+            href="/admin/calendar"
+            className="flex items-center gap-2.5 rounded-control border bg-card px-3 py-2 transition-colors hover:border-input focus-ring"
+          >
+            {next.happening ? (
+              <Radio className="size-4 shrink-0 text-success" aria-hidden />
+            ) : (
+              <ArrowRight
+                className="size-4 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+            )}
+            <span className="min-w-0">
+              <span className="block text-micro text-muted-foreground">
+                {next.happening
+                  ? "Happening now"
+                  : untilLabel(next.minutesAway)}
+              </span>
+              <span className="block max-w-56 truncate text-sm font-medium text-foreground">
+                {next.title}
+              </span>
             </span>
-            <span className="block max-w-56 truncate break-words text-sm font-medium text-foreground">
-              {next.title}
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              {next.at}
             </span>
-          </span>
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-            {next.at}
-          </span>
-        </Link>
-      )}
+          </Link>
+        )}
+      </div>
     </header>
   );
 }
 
-function BehindBand({ tasks }: { tasks: DashboardData["overdueTasks"] }) {
-  return (
-    <Link
-      href="/admin/tasks"
-      className="flex items-center gap-3 rounded-surface bg-chart-3/10 px-4 py-3 transition-colors hover:bg-chart-3/15"
-    >
-      <AlarmClock className="size-4 shrink-0 text-chart-3" aria-hidden />
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium text-foreground">
-          {tasks.length === 1
-            ? "1 task is overdue"
-            : `${tasks.length} tasks are overdue`}
-        </span>
-        <span className="block truncate break-words text-xs text-muted-foreground">
-          {tasks
-            .slice(0, 3)
-            .map((task) => task.title)
-            .join(" · ")}
-          {tasks.length > 3 && ` · +${tasks.length - 3} more`}
-        </span>
-      </span>
-      <ArrowRight
-        className="size-3.5 shrink-0 text-muted-foreground"
-        aria-hidden
-      />
-    </Link>
-  );
-}
-
-/* ── Rail ────────────────────────────────────────────────────────────────── */
-
-function PulseCard({
-  pulse,
-  focusMinutes,
-}: {
-  pulse: ReturnType<typeof dayPulse>;
-  focusMinutes: number;
-}) {
-  return (
-    <section className="flex items-center gap-4 rounded-surface bg-card p-4 shadow-e1">
-      <Ring
-        percent={pulse.percent}
-        size={76}
-        className="text-primary"
-        label={`Today is ${Math.round(pulse.percent)} percent done`}
-      >
-        <span className="text-base font-semibold tabular-nums text-foreground">
-          {Math.round(pulse.percent)}%
-        </span>
-      </Ring>
-
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">Today</p>
-        {pulse.segments.length === 0 ? (
-          <p className="mt-0.5 text-sm text-foreground">Nothing due</p>
-        ) : (
-          // The score can always be taken apart. One you cannot interrogate is
-          // one nobody believes twice.
-          <ul className="mt-1 space-y-0.5">
-            {pulse.segments.map((segment) => (
-              <li
-                key={segment.label}
-                className="flex items-baseline gap-2 text-xs"
-              >
-                <span className="text-muted-foreground">{segment.label}</span>
-                <span className="tabular-nums text-foreground">
-                  {segment.done}/{segment.total}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {focusMinutes > 0 && (
-          // Not a segment: focus has no target to be a fraction of.
-          <p className="mt-0.5 flex items-baseline gap-2 text-xs">
-            <span className="text-muted-foreground">Focused</span>
-            <span className="tabular-nums text-foreground">
-              {focusMinutes >= 60
-                ? `${Math.floor(focusMinutes / 60)}h ${focusMinutes % 60}m`
-                : `${focusMinutes}m`}
-            </span>
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
+/* ── Today ───────────────────────────────────────────────────────────────── */
 
 /**
- * Today's tasks, ticked off in place (ADM-013). The pulse used to count them
- * without naming them, and could never move past 0.
+ * One checklist for the day: add a task, then what is overdue, what is due
+ * today, and today's habits, each done where it is.
  */
-function TodayTasksCard({ tasks }: { tasks: Task[] }) {
+function TodayList({ data }: { data: DashboardData }) {
+  const router = useRouter();
   const setTaskStatus = useSetTaskStatus();
+  const [addTask, { isLoading: adding }] = useAddTaskMutation();
+  const [setHabitLog] = useSetHabitLogMutation();
+  const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
-  // Open first, then finished; the query's own order within each.
-  const ordered = [...tasks].sort(
-    (a, b) => Number(a.status === "done") - Number(b.status === "done"),
+  const today = todayIso();
+
+  const habits = useMemo(
+    () => dueToday(data.habits, today),
+    [data.habits, today],
   );
+  const overdue = data.overdueTasks;
+  // Open first, then finished, the query's order within each.
+  const dueTasks = useMemo(
+    () =>
+      [...data.tasksDueToday].sort(
+        (a, b) => Number(a.status === "done") - Number(b.status === "done"),
+      ),
+    [data.tasksDueToday],
+  );
+
+  const { total, done } = todayCounts(data, today);
 
   const toggle = async (task: Task) => {
     setSaving((s) => new Set(s).add(task.id));
@@ -304,49 +338,209 @@ function TodayTasksCard({ tasks }: { tasks: Task[] }) {
     });
   };
 
+  const add = async () => {
+    const title = draft.trim();
+    if (!title) return;
+    try {
+      await addTask({ title, due_date: today, status: "todo" }).unwrap();
+      setDraft("");
+    } catch (err) {
+      toast.error("Couldn't add the task", {
+        description: getErrorMessage(err),
+      });
+    }
+  };
+
+  const logHabit = async (habit: Habit, value: number) => {
+    try {
+      await setHabitLog({ habit_id: habit.id, date: today, value }).unwrap();
+    } catch (err) {
+      toast.error("Couldn't record that", {
+        description: getErrorMessage(err),
+      });
+    }
+  };
+
   return (
-    <section
-      aria-labelledby="today-tasks"
-      className="rounded-surface bg-card p-4 shadow-e1"
-    >
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 id="today-tasks" className="text-xs text-muted-foreground">
-          Due today
+    <section aria-labelledby="today" className="rounded-surface border bg-card">
+      <div className="flex items-end justify-between gap-3 px-4 pb-3 pt-4 sm:px-5">
+        <h2 id="today" className="text-base font-semibold">
+          Today
         </h2>
-        <Link
-          href="/admin/tasks"
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          All tasks
-        </Link>
+        {total > 0 && (
+          <p className="text-xs tabular-nums text-muted-foreground">
+            {done} of {total} done
+          </p>
+        )}
       </div>
-      <ul className="mt-2 space-y-1">
-        {ordered.map((task) => {
-          const done = task.status === "done";
-          return (
-            <li key={task.id}>
-              <label className="flex min-h-9 cursor-pointer items-center gap-3 rounded-control px-1 text-sm hover:bg-muted/50">
-                <Checkbox
-                  checked={done}
-                  disabled={saving.has(task.id)}
-                  onCheckedChange={() => void toggle(task)}
-                />
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate break-words",
-                    done ? "text-muted-foreground line-through" : "text-foreground",
-                  )}
-                >
-                  {task.title}
-                </span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
+      {total > 0 && (
+        <div
+          role="progressbar"
+          aria-label="Today's progress"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={done}
+          className="mx-4 h-1 overflow-hidden rounded-full bg-secondary sm:mx-5"
+        >
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-base"
+            style={{ width: `${(done / total) * 100}%` }}
+          />
+        </div>
+      )}
+
+      <form
+        className="flex items-center gap-2 px-4 pt-3 sm:px-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void add();
+        }}
+      >
+        <Input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Add a task for today…"
+          aria-label="Add a task for today"
+          maxLength={500}
+          className="h-10"
+        />
+        <Button
+          type="submit"
+          variant="outline"
+          size="icon"
+          className="size-10 shrink-0"
+          disabled={!draft.trim() || adding}
+          aria-label="Add"
+        >
+          <Plus className="size-4" aria-hidden />
+        </Button>
+      </form>
+
+      <div className="space-y-4 px-2 pb-4 pt-3 sm:px-3">
+        {total === 0 && (
+          <p className="px-2 py-3 text-sm text-muted-foreground">
+            Clear for today.
+          </p>
+        )}
+
+        {overdue.length > 0 && (
+          <TaskGroup label="Overdue">
+            {overdue.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                saving={saving.has(task.id)}
+                onToggle={toggle}
+                overdue
+              />
+            ))}
+          </TaskGroup>
+        )}
+
+        {dueTasks.length > 0 && (
+          <TaskGroup label="Due today">
+            {dueTasks.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                saving={saving.has(task.id)}
+                onToggle={toggle}
+              />
+            ))}
+          </TaskGroup>
+        )}
+
+        {habits.length > 0 && (
+          <div>
+            <h3 className="mb-2 px-2 text-xs font-medium text-muted-foreground">
+              Habits
+            </h3>
+            <div className="px-2">
+              <HabitToday
+                habits={habits}
+                today={today}
+                onSetValue={(habit, value) => void logHabit(habit, value)}
+                onOpen={() => router.push("/admin/habits")}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-4 px-2 text-xs">
+          <Link
+            href="/admin/tasks"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            All tasks
+          </Link>
+          <Link
+            href="/admin/habits"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            All habits
+          </Link>
+        </div>
+      </div>
     </section>
   );
 }
+
+function TaskGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <h3 className="mb-1 px-2 text-xs font-medium text-muted-foreground">
+        {label}
+      </h3>
+      <ul className="list-none space-y-0.5 p-0">{children}</ul>
+    </div>
+  );
+}
+
+function TaskRow({
+  task,
+  saving,
+  overdue = false,
+  onToggle,
+}: {
+  task: Task;
+  saving: boolean;
+  overdue?: boolean;
+  onToggle: (task: Task) => void;
+}) {
+  const done = task.status === "done";
+  return (
+    <li>
+      <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-control px-2 text-sm hover:bg-secondary/50">
+        <Checkbox
+          checked={done}
+          disabled={saving}
+          onCheckedChange={() => onToggle(task)}
+        />
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate",
+            done ? "text-muted-foreground line-through" : "text-foreground",
+          )}
+        >
+          {task.title}
+        </span>
+        {overdue && task.due_date && (
+          <span className="shrink-0 rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-micro text-warning">
+            {format(new Date(`${task.due_date}T00:00:00`), "d MMM")}
+          </span>
+        )}
+      </label>
+    </li>
+  );
+}
+
+/* ── Money and momentum ──────────────────────────────────────────────────── */
 
 function MoneyCard({
   money,
@@ -357,40 +551,38 @@ function MoneyCard({
 }) {
   const net = money.totalEarned - money.totalSpent;
   const positive = net >= 0;
-
   return (
     <Link
       href="/admin/finance"
-      className="block overflow-hidden rounded-surface bg-card p-4 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2"
+      className="block overflow-hidden rounded-surface border bg-card p-4 transition-colors hover:border-input focus-ring"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">Last 7 days</p>
+          {/* The same sign colours as Money: success for in, destructive for out. */}
           <p
             className={cn(
               "mt-0.5 truncate text-xl font-semibold tabular-nums",
-              // chart-2 is the success accent, chart-3 the warning accent; a
-              // literal green would not move with the presets.
-              positive ? "text-chart-2" : "text-chart-3",
+              positive ? "text-success" : "text-destructive",
             )}
           >
             {formatMoney({ amount: net, currency }, { signed: true })}
           </p>
         </div>
         {positive ? (
-          <TrendingUp className="size-4 shrink-0 text-chart-2" aria-hidden />
+          <TrendingUp className="size-4 shrink-0 text-success" aria-hidden />
         ) : (
-          <TrendingDown className="size-4 shrink-0 text-chart-3" aria-hidden />
+          <TrendingDown
+            className="size-4 shrink-0 text-destructive"
+            aria-hidden
+          />
         )}
       </div>
-
-      {/* Both series in one frame: spending against earning is a comparison,
-          and two charts would make it a lookup. */}
       <div className="relative mt-2" style={{ height: 40 }}>
         <div className="absolute inset-0">
           <Sparkline
             values={money.earned}
-            className="text-chart-2"
+            className="text-success"
             height={40}
             label="Money in over the last seven days"
           />
@@ -398,12 +590,21 @@ function MoneyCard({
         <div className="absolute inset-0">
           <Sparkline
             values={money.spent}
-            className="text-chart-3"
+            className="text-destructive"
             height={40}
             label="Money out over the last seven days"
           />
         </div>
       </div>
+      <p className="mt-2 flex gap-3 text-micro text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className="h-0.5 w-3 rounded-full bg-success" /> In
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className="h-0.5 w-3 rounded-full bg-destructive" />{" "}
+          Out
+        </span>
+      </p>
     </Link>
   );
 }
@@ -416,48 +617,43 @@ function MomentumCard({
   return (
     <Link
       href="/admin/habits"
-      className="block rounded-surface bg-card p-4 shadow-e1 transition-shadow duration-base ease-enter hover:shadow-e2"
+      className="block rounded-surface border bg-card p-4 transition-colors hover:border-input focus-ring"
     >
       <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Flame className="size-3" aria-hidden />
-        Momentum · 12 weeks
+        <Flame className="size-3.5" aria-hidden />
+        Habit momentum, 12 weeks
       </p>
       <Heatmap cells={heat} label="Habit consistency over twelve weeks" />
     </Link>
   );
 }
 
-function InboxCard({ count, reviews }: { count: number; reviews: number }) {
-  // Nothing to say is worth saying nothing about: a rail of zeroes is a rail
-  // you stop reading.
-  if (count === 0 && reviews === 0) return null;
+/* ── Loading ─────────────────────────────────────────────────────────────── */
 
+/** Shaped like the page, so it does not jump when the day arrives (P-states). */
+function DashboardSkeleton({ now }: { now: Date }) {
   return (
-    <section className="space-y-2 rounded-surface bg-card p-4 shadow-e1">
-      {count > 0 && (
-        <Link
-          href="/admin/inbox"
-          className="flex items-center justify-between gap-3 text-sm"
-        >
-          <span className="flex items-center gap-2 text-foreground">
-            <Inbox className="size-4 text-muted-foreground" aria-hidden />
-            Unread
-          </span>
-          <span className="tabular-nums text-foreground">{count}</span>
-        </Link>
-      )}
-      {reviews > 0 && (
-        <Link
-          href="/admin/learning"
-          className="flex items-center justify-between gap-3 text-sm"
-        >
-          <span className="flex items-center gap-2 text-foreground">
-            <Target className="size-4 text-muted-foreground" aria-hidden />
-            To review
-          </span>
-          <span className="tabular-nums text-foreground">{reviews}</span>
-        </Link>
-      )}
-    </section>
+    <div className="space-y-5 pb-10" aria-busy aria-label="Loading your day">
+      <Greeting now={now} next={null} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 w-full rounded-surface" />
+        ))}
+      </div>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-3 rounded-surface border bg-card p-5">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-10 w-full" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-72 w-full rounded-surface" />
+        <div className="space-y-5">
+          <Skeleton className="h-32 w-full rounded-surface" />
+          <Skeleton className="h-40 w-full rounded-surface" />
+        </div>
+      </div>
+    </div>
   );
 }

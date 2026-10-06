@@ -110,7 +110,7 @@ function HabitTodayRow({
         {progress.satisfied && !isQuit ? (
           <Check className="size-4" style={{ color }} aria-hidden />
         ) : (
-          <span className="text-[11px] font-medium tabular-nums">
+          <span className="text-micro font-medium tabular-nums">
             {isQuit ? (progress.value > 0 ? "!" : "✓") : progress.value}
           </span>
         )}
@@ -119,7 +119,7 @@ function HabitTodayRow({
       <button
         type="button"
         onClick={() => onOpen(habit)}
-        className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-w-0 flex-1 text-left focus-ring"
       >
         <span
           className={cn(
@@ -129,7 +129,7 @@ function HabitTodayRow({
         >
           {habit.title}
         </span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-micro text-muted-foreground">
           <span>{describeSchedule(habit)}</span>
           {weekly && (
             <span>

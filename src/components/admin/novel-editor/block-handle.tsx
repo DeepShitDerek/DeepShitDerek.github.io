@@ -296,7 +296,7 @@ function MenuItem({
       onClick={onClick}
       className={cn(
         "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "focus-ring",
         destructive
           ? "text-destructive hover:bg-destructive/10"
           : "hover:bg-secondary",

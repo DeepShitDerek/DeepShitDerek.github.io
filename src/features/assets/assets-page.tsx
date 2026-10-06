@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  MoreHorizontal,
   Move,
   RefreshCw,
   Trash2,
@@ -27,6 +28,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import {
   EmptyState,
   LoadingState,
@@ -116,9 +124,34 @@ export default function AssetsPage() {
     [assets],
   );
 
+  // Deleting unused files offers Undo (P1-10): the storage delete runs only
+  // when the toast closes. A batch is one toast; its key lists its ids.
+  const { pending: deleting, remove: removeBatch } = useUndoableDelete<{
+    id: string;
+    assets: StorageAsset[];
+  }>(async (batch) => {
+    try {
+      await Promise.all(
+        batch.assets.map((asset) => deleteAsset(asset).unwrap()),
+      );
+    } catch (err) {
+      toast.error("Couldn't delete every asset", {
+        description: getErrorMessage(err),
+      });
+    }
+  });
+  const hidden = useMemo(
+    () => new Set([...deleting].flatMap((key) => key.split("|"))),
+    [deleting],
+  );
+
   const { currentFolderAssets, subFolders } = useMemo(
-    () => getAssetsForPath(assets, currentPath),
-    [assets, currentPath],
+    () =>
+      getAssetsForPath(
+        hidden.size ? assets.filter((a) => !hidden.has(a.id)) : assets,
+        currentPath,
+      ),
+    [assets, currentPath, hidden],
   );
 
   const selectedAssets = useMemo(
@@ -270,15 +303,41 @@ export default function AssetsPage() {
     }
   };
 
+  /**
+   * Unused files go at once, with Undo. Files that pages use still ask
+   * first, and say which pages: deleting them breaks live pages, and that
+   * consequence deserves a decision, not a toast that may be missed.
+   */
   const handleDeleteAssets = async (assetsToDelete: StorageAsset[]) => {
     if (assetsToDelete.length === 0) return;
+    const finish = () => {
+      if (
+        selectedAsset &&
+        assetsToDelete.some((a) => a.id === selectedAsset.id)
+      )
+        setSelectedAsset(null);
+      if (isBulkSelectMode) {
+        setIsBulkSelectMode(false);
+        clearSelection();
+      }
+    };
 
     const usage = describeUsage(assetsToDelete);
+    if (!usage) {
+      removeBatch(
+        {
+          id: assetsToDelete.map((a) => a.id).join("|"),
+          assets: assetsToDelete,
+        },
+        `Deleted ${pluralAssets(assetsToDelete.length)}`,
+      );
+      finish();
+      return;
+    }
+
     const ok = await confirm({
       title: `Delete ${pluralAssets(assetsToDelete.length)}?`,
-      description: usage
-        ? `${usage} Deleting removes the file from storage, so those pages will show a broken image. This cannot be undone.`
-        : "This removes the file from storage permanently and cannot be undone.",
+      description: `${usage} Deleting removes the file from storage, so those pages will show a broken image. This cannot be undone.`,
       variant: "destructive",
       confirmText: "Delete",
     });
@@ -289,15 +348,7 @@ export default function AssetsPage() {
         assetsToDelete.map((asset) => deleteAsset(asset).unwrap()),
       );
       toast.success(`Deleted ${pluralAssets(assetsToDelete.length)}`);
-      if (
-        selectedAsset &&
-        assetsToDelete.some((a) => a.id === selectedAsset.id)
-      )
-        setSelectedAsset(null);
-      if (isBulkSelectMode) {
-        setIsBulkSelectMode(false);
-        clearSelection();
-      }
+      finish();
     } catch (err) {
       toast.error("Couldn't delete every asset", {
         description: getErrorMessage(err),
@@ -351,37 +402,18 @@ export default function AssetsPage() {
     <ManagerWrapper>
       <PageHeader
         title="Assets"
-        description={
-          <AssetBreadcrumbs
-            currentPath={currentPath}
-            onNavigateRoot={navigateRoot}
-            onNavigateToBreadcrumb={navigateToBreadcrumb}
-          />
-        }
+        description="Images and files your pages use."
         actions={
           /* Every control is available at every width. Creating a folder and
              rescanning used to be `hidden sm:flex`, so on a phone neither was
              reachable at all. */
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCreateFolderOpen(true)}
-            >
-              <FolderPlus className="mr-2 size-4" aria-hidden /> New folder
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleRescanUsage()}
-              disabled={isLoading}
-            >
-              <RefreshCw className="mr-2 size-4" aria-hidden /> Rescan usage
-            </Button>
+          // One primary (G7): Upload. Creating a folder is occasional and a
+          // usage rescan is maintenance, so both wait under the menu; every
+          // control stays reachable at every width.
+          <div className="flex items-center gap-2">
             <Button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              size="sm"
               aria-describedby="assets-public-note"
             >
               {isUploading ? (
@@ -391,6 +423,28 @@ export default function AssetsPage() {
               )}
               Upload
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="More asset actions"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setIsCreateFolderOpen(true)}>
+                  <FolderPlus className="mr-2 size-4" aria-hidden /> New folder
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={isLoading}
+                  onSelect={() => handleRescanUsage()}
+                >
+                  <RefreshCw className="mr-2 size-4" aria-hidden /> Rescan usage
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />
@@ -400,9 +454,13 @@ export default function AssetsPage() {
         anyone who has its link, so say so where the upload happens rather than
         let a receipt or an ID scan end up world-readable by accident.
       */}
-      <p id="assets-public-note" className="-mt-2 mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+      <p
+        id="assets-public-note"
+        className="-mt-2 mb-4 flex items-center gap-1.5 text-xs text-muted-foreground"
+      >
         <Globe className="size-3.5 shrink-0" aria-hidden />
-        Public: anyone with a file&apos;s link can open it. Keep private documents out of Assets.
+        Public: anyone with a file&apos;s link can open it. Keep private
+        documents out of Assets.
       </p>
 
       <input
@@ -437,7 +495,9 @@ export default function AssetsPage() {
             <p className="font-medium text-primary">
               Drop to upload into this folder
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">Uploads are public to anyone with the link.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Uploads are public to anyone with the link.
+            </p>
           </div>
         )}
 
@@ -448,6 +508,15 @@ export default function AssetsPage() {
         */}
         <UploadQueue tasks={uploads} onDismiss={dismissUploads} />
 
+        {/* Where you are, at the head of the toolbar (it was squeezed into
+            the header's description). */}
+        <div className="mb-3 min-w-0">
+          <AssetBreadcrumbs
+            currentPath={currentPath}
+            onNavigateRoot={navigateRoot}
+            onNavigateToBreadcrumb={navigateToBreadcrumb}
+          />
+        </div>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {currentPath.length > 0 && (

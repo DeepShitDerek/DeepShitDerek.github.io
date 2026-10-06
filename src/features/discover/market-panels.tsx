@@ -21,6 +21,7 @@ import {
   type Indicator,
   type RateSeries,
 } from "./market";
+import { Panel } from "./panel";
 
 /**
  * Money, markets and the job market.
@@ -37,39 +38,6 @@ import {
 
 type State = "loading" | "done" | "failed";
 
-function Panel({
-  title,
-  note,
-  state,
-  children,
-}: {
-  title: string;
-  note?: string;
-  state: State;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-surface bg-card p-4 shadow-e1">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-        {note && (
-          <p className="shrink-0 text-[11px] text-muted-foreground">{note}</p>
-        )}
-      </div>
-
-      {state === "loading" && (
-        <p className="mt-3 text-sm text-muted-foreground">Reading…</p>
-      )}
-      {state === "failed" && (
-        <p className="mt-3 text-sm text-muted-foreground">
-          {/* Named, so you know whether to wait or to investigate. */}
-          {title} did not answer just now.
-        </p>
-      )}
-      {state === "done" && children}
-    </section>
-  );
-}
 
 /* ── Currency corridor ───────────────────────────────────────────────────── */
 
@@ -121,10 +89,11 @@ export function CorridorPanel({
             <span
               className={cn(
                 "flex items-center gap-0.5 text-xs tabular-nums",
+                // Advice, not an error: a poor rate is a reason to wait.
                 signal === "good"
-                  ? "text-chart-2"
+                  ? "text-success"
                   : signal === "poor"
-                    ? "text-chart-3"
+                    ? "text-warning"
                     : "text-muted-foreground",
               )}
             >
@@ -141,7 +110,7 @@ export function CorridorPanel({
             <Sparkline
               values={series.values}
               height={44}
-              className={signal === "poor" ? "text-chart-3" : "text-chart-2"}
+              className={signal === "poor" ? "text-warning" : "text-success"}
               label={`${base} to ${quote} over the last 30 days`}
             />
           </div>
@@ -149,7 +118,7 @@ export function CorridorPanel({
           <p className="mt-2 text-xs text-muted-foreground">
             {describeSignal(signal, quote)}
           </p>
-          <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+          <p className="mt-0.5 text-micro tabular-nums text-muted-foreground">
             Month low {series.low.toFixed(2)} · high {series.high.toFixed(2)}
           </p>
         </>
@@ -205,7 +174,7 @@ export function CryptoPanel({ vs = "usd" }: { vs?: string }) {
               <span
                 className={cn(
                   "w-14 text-right text-xs tabular-nums",
-                  coin.change24h >= 0 ? "text-chart-2" : "text-chart-3",
+                  coin.change24h >= 0 ? "text-success" : "text-destructive",
                 )}
               >
                 {formatPercent(coin.change24h)}
@@ -266,9 +235,9 @@ export function EconomyPanel({ country }: { country: string }) {
             </span>
             <span className="flex shrink-0 items-baseline gap-2">
               <span className="text-sm tabular-nums text-foreground">
-                {formatPercent(row.value)}
+                {formatPercent(row.value, 1, false)}
               </span>
-              <span className="w-9 text-right text-[11px] tabular-nums text-muted-foreground">
+              <span className="w-9 text-right text-micro tabular-nums text-muted-foreground">
                 {row.year}
               </span>
             </span>

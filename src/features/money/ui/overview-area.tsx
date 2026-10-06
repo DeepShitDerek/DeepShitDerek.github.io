@@ -9,7 +9,7 @@ import { convert, money } from "../domain/money";
 import { creditUtilisation, valuation } from "../domain/ledger";
 import { hasPublishedRate } from "../data/rate-source";
 import { Amount } from "./amount";
-import { countryLabel } from "./labels";
+import { countryLabel, shortDate } from "./labels";
 import { InsightsPanel } from "./insights-panel";
 import { useMoney } from "./money-context";
 import { UpcomingPanel } from "./upcoming-panel";
@@ -61,7 +61,7 @@ export function OverviewArea({ onGo }: { onGo: (area: AreaId) => void }) {
               <li key={step.label}>
                 <button type="button" onClick={() => onGo(step.area)} className="flex items-center gap-2 text-left text-sm hover:underline">
                   {step.done ? (
-                    <Check aria-label="Done" className="size-4 text-emerald-600" />
+                    <Check aria-label="Done" className="size-4 text-success" />
                   ) : (
                     <Circle aria-label="To do" className="size-4 text-muted-foreground" />
                   )}
@@ -72,8 +72,6 @@ export function OverviewArea({ onGo }: { onGo: (area: AreaId) => void }) {
           </ol>
         </section>
       )}
-
-      <InsightsPanel onGo={onGo} />
 
       <section aria-labelledby="worth-heading" className="grid gap-4 md:grid-cols-3">
         <div className="rounded-surface border bg-card p-5 md:col-span-2">
@@ -103,7 +101,7 @@ export function OverviewArea({ onGo }: { onGo: (area: AreaId) => void }) {
             ))}
           </dl>
           {worth.unpriced.length > 0 && (
-            <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
+            <p className="mt-3 text-xs text-warning">
               Not included for want of an exchange rate:{" "}
               {worth.unpriced.map((m, i) => (
                 <span key={m.currency}>
@@ -122,7 +120,7 @@ export function OverviewArea({ onGo }: { onGo: (area: AreaId) => void }) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">Accounts marked spendable, cards netted against it.</p>
           {util.overallRatio !== null && (
-            <p className={cn("mt-3 text-sm", util.overallRatio > 0.3 && "text-amber-700 dark:text-amber-400")}>
+            <p className={cn("mt-3 text-sm", util.overallRatio > 0.3 && "text-warning")}>
               Cards: {Math.round(util.overallRatio * 100)}% of limits used
             </p>
           )}
@@ -150,28 +148,37 @@ export function OverviewArea({ onGo }: { onGo: (area: AreaId) => void }) {
           </div>
         </dl>
         {month.unpriced > 0 && (
-          <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+          <p className="mt-2 text-xs text-warning">
             {month.unpriced} amount{month.unpriced === 1 ? "" : "s"} in another currency had no exchange rate for their day and are not counted.
           </p>
         )}
       </section>
 
-      {data.schedules.length > 0 && (
-        <section aria-labelledby="coming-heading" className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <h2 id="coming-heading" className="sr-only">Due soon</h2>
-            <span />
-            <button type="button" className="text-sm text-primary hover:underline" onClick={() => onGo("plan")}>All bills & pay</button>
-          </div>
-          <UpcomingPanel compact />
-        </section>
-      )}
+      {/*
+        What needs doing, after where you stand (03-workspace-ui.md §2.22):
+        what is due, beside what stands out. The notes used to open the page,
+        above net worth, so the first thing read was a caveat, not the answer.
+      */}
+      <div className="grid gap-8 lg:grid-cols-12">
+        {data.schedules.length > 0 && (
+          <section aria-labelledby="coming-heading" className="min-w-0 space-y-2 lg:col-span-7">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="coming-heading" className="font-heading text-base font-semibold">Due soon</h2>
+              <button type="button" className="rounded-control text-sm text-primary hover:underline focus-ring" onClick={() => onGo("plan")}>All bills & pay</button>
+            </div>
+            <UpcomingPanel compact />
+          </section>
+        )}
+        <div className={cn("min-w-0", data.schedules.length > 0 ? "lg:col-span-5" : "lg:col-span-12")}>
+          <InsightsPanel onGo={onGo} />
+        </div>
+      </div>
 
       {transactions.length > 0 && (
         <section aria-labelledby="recent-heading">
           <div className="mb-2 flex items-baseline justify-between">
             <h2 id="recent-heading" className="font-heading text-base font-semibold">Recent</h2>
-            <button type="button" className="text-sm text-primary hover:underline" onClick={() => onGo("transactions")}>All transactions</button>
+            <button type="button" className="rounded-control text-sm text-primary hover:underline focus-ring" onClick={() => onGo("transactions")}>All transactions</button>
           </div>
           <ul className="divide-y rounded-surface border bg-card text-sm">
             {transactions.slice(0, 6).map((txn) => {
@@ -179,7 +186,7 @@ export function OverviewArea({ onGo }: { onGo: (area: AreaId) => void }) {
               const account = first ? accountById.get(first.accountId) : undefined;
               return (
                 <li key={txn.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="w-20 shrink-0 text-xs tabular-nums text-muted-foreground">{txn.date}</span>
+                  <time dateTime={txn.date} className="w-14 shrink-0 text-xs tabular-nums text-muted-foreground">{shortDate(txn.date, today)}</time>
                   <span className="min-w-0 flex-1 truncate">
                     {txn.description}
                     <span className="block text-xs text-muted-foreground">

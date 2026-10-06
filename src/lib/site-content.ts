@@ -19,23 +19,10 @@ export const siteContent = {
     contact: {
       title: "Contact Me",
       description: `Let's build something great together. Get in touch with ${portfolioConfig.name}.`,
-      heading: "Get In Touch",
+      heading: "Get in touch",
       subheading:
         "A role, a project, or something else entirely — tell me what you're working on.",
       servicesTitle: "What I Can Do For You",
-    },
-    projects: {
-      title: "My Projects",
-      description: `A collection of projects developed by ${portfolioConfig.name}, showcasing skills in various technologies.`,
-      heading: "Projects",
-    },
-    showcase: {
-      title: "Showcase",
-      description:
-        "A curated collection of my work, skills, and professional journey.",
-      heading: "Showcase",
-      subheading:
-        "A deep dive into my professional journey, featured projects, and technical expertise.",
     },
     work: {
       title: "Work",

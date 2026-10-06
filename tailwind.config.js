@@ -74,6 +74,20 @@ module.exports = {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
+        // State, never data (F11): every preset resolves these, gated by
+        // check:themes. Always shown with an icon or text, never alone.
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -99,9 +113,11 @@ module.exports = {
       },
       // One motion scale (V2-030). Easing is `enter` / `exit` below.
       transitionDuration: {
-        fast: "150ms",
-        base: "200ms",
-        slow: "300ms",
+        instant: "var(--d-instant)",
+        fast: "var(--d-fast)",
+        base: "var(--d-base)",
+        slow: "var(--d-slow)",
+        page: "var(--d-page)",
       },
       boxShadow: {
         // v3 elevation. Derived from the theme's own foreground so depth reads
@@ -114,6 +130,7 @@ module.exports = {
         content: "var(--w-content)",
         wide: "var(--w-wide)",
         prose: "var(--w-prose)",
+        hero: "var(--w-hero)",
       },
       fontSize: {
         display: ["var(--t-display)", { lineHeight: "1.05" }],
@@ -125,6 +142,7 @@ module.exports = {
       transitionTimingFunction: {
         enter: "cubic-bezier(0.32, 0.72, 0, 1)",
         exit: "cubic-bezier(0.4, 0, 1, 1)",
+        standard: "cubic-bezier(0.2, 0, 0.38, 0.9)",
       },
       keyframes: {
         "accordion-down": {
@@ -139,18 +157,6 @@ module.exports = {
           "0%, 70%, 100%": { opacity: "1" },
           "20%, 50%": { opacity: "0" },
         },
-        float: {
-          "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-20px)" },
-        },
-        "gradient-x": {
-          "0%, 100%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
-        },
-        "fade-in-up": {
-          "0%": { opacity: "0", transform: "translateY(20px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
@@ -159,9 +165,6 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "caret-blink": "caret-blink 1.2s ease-out infinite",
-        float: "float 6s ease-in-out infinite",
-        "gradient-x": "gradient-x 8s ease infinite",
-        "fade-in-up": "fade-in-up 0.6s ease-out",
       },
     },
   },

@@ -60,7 +60,7 @@ export function ReadingPanel() {
   const top = useMemo(() => items[0]?.points ?? 1, [items]);
 
   return (
-    <section className="overflow-hidden rounded-surface bg-card shadow-e1">
+    <section className="overflow-hidden rounded-surface border bg-card">
       <header className="flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-4">
         <h2 className="flex items-center gap-1.5 text-sm font-semibold">
           <TrendingUp className="size-4 text-muted-foreground" aria-hidden />
@@ -79,7 +79,7 @@ export function ReadingPanel() {
               aria-selected={option.days === days}
               onClick={() => setDays(option.days)}
               className={cn(
-                "rounded-control px-2.5 py-1 text-[11px] font-medium transition-colors",
+                "rounded-control px-2.5 py-1 text-micro font-medium transition-colors",
                 option.days === days
                   ? "bg-card text-foreground shadow-e1"
                   : "text-muted-foreground hover:text-foreground",
@@ -125,7 +125,7 @@ export function ReadingPanel() {
                 />
               </p>
 
-              <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-muted-foreground">
+              <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-micro text-muted-foreground">
                 <span>{SOURCE_LABEL[item.source]}</span>
                 <span className="tabular-nums">{item.points} points</span>
                 {item.comments > 0 && (
@@ -160,7 +160,7 @@ export function ReadingPanel() {
         ))}
       </ul>
 
-      <p className="border-t border-border/60 px-5 py-2 text-[11px] text-muted-foreground">
+      <p className="border-t border-border/60 px-5 py-2 text-micro text-muted-foreground">
         Ranked on upvotes, reactions and comments, weighted down by age.
         Substack publishes no public like or share counts, so it cannot be
         ranked here.

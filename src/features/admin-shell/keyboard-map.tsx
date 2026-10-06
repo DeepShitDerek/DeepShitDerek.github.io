@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { isMac, isTypingTarget, shortcutLabel } from "@/features/maps/state/keyboard";
+import { shortcutsOwnedByEditor } from "@/lib/editor-shortcuts";
 import { REVIEW_RATINGS } from "@/features/learning/spaced-review";
 
 /** Opens the keyboard map from elsewhere (the command palette). */
@@ -46,6 +47,17 @@ export function keyboardSections(mac: boolean): { title: string; rows: Row[] }[]
       ],
     },
     {
+      title: "Calendar",
+      rows: [
+        ["Today", "T"],
+        ["Previous / next", "← / →"],
+        ["Day, 3 days, week, month, agenda", "D 3 W M A"],
+        ["New event", "N"],
+        ["Move an event", "Drag it"],
+        ["Change its length", "Drag its bottom edge"],
+      ],
+    },
+    {
       title: "Maps",
       rows: [
         ["Add a child", shortcutLabel("addChild", mac)],
@@ -68,6 +80,8 @@ export function KeyboardMap() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "?" || event.metaKey || event.ctrlKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
+      // The whiteboard has its own "?" help.
+      if (shortcutsOwnedByEditor()) return;
       event.preventDefault();
       setOpen(true);
     };

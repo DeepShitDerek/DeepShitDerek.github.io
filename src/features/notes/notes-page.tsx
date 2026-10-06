@@ -13,19 +13,23 @@ import {
   useGetNotesQuery,
   useUpdateNoteMutation,
 } from "@/store/api/adminApi";
-import { Button } from "@/components/ui/button";
 import {
+  EmptyState,
   LoadingState,
   ManagerWrapper,
   LoadError,
 } from "@/components/admin/shared";
-import { useConfirm } from "@/components/providers/confirm-dialog-provider";
+import { useUndoableDelete } from "@/hooks/use-undoable-delete";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
 import { buildLinkGraph } from "./note-links";
 import { NoteDocument } from "./note-document";
 import { NoteList } from "./note-list";
 import { loadNovelEditor } from "@/components/admin/novel-editor/load-editor";
+
+/** List beside document; shared with the dev harness (/dev/notes). */
+export const NOTES_GRID =
+  "grid items-start gap-6 md:grid-cols-[17rem_minmax(0,1fr)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[33rem_minmax(0,1fr)]";
 
 /**
  * Notes — a notebook: the list on the left, the open note on the right.
@@ -40,12 +44,26 @@ import { loadNovelEditor } from "@/components/admin/novel-editor/load-editor";
  * the button does not leave an empty note behind.
  */
 export default function NotesPage() {
-  const confirm = useConfirm();
-  const { data: notes = [], isLoading, error: loadError, refetch } = useGetNotesQuery();
+  const { data: allNotes = [], isLoading, error: loadError, refetch } = useGetNotesQuery();
   const [addNote, { isLoading: isCreating }] = useAddNoteMutation();
   const [updateNote] = useUpdateNoteMutation();
   const [archiveNote] = useArchiveNoteMutation();
   const [deleteNote] = useDeleteNoteMutation();
+
+  // Delete offers Undo instead of asking first (P1-10).
+  const { pending: deleting, remove: removeNote } = useUndoableDelete<Note>(
+    async (note) => {
+      try {
+        await deleteNote(note.id).unwrap();
+      } catch (err) {
+        toast.error("Couldn't delete the note", { description: getErrorMessage(err) });
+      }
+    },
+  );
+  const notes = useMemo(
+    () => (deleting.size ? allNotes.filter((note) => !deleting.has(note.id)) : allNotes),
+    [allNotes, deleting],
+  );
 
   // The open note lives in the URL, so a reload reopens it (ADM-004).
   const [selectedId, setSelectedId] = useUrlParam("note", "replace");
@@ -112,25 +130,14 @@ export default function NotesPage() {
     }
   };
 
-  const handleDelete = async (note: Note) => {
-    const ok = await confirm({
-      title: "Delete this note?",
-      description:
-        "This cannot be undone. Archiving keeps it and takes it out of the way instead.",
-      variant: "destructive",
-      confirmText: "Delete",
-    });
-    if (!ok) return;
-    try {
-      if (fresh.current?.id === note.id) fresh.current = null;
-      await deleteNote(note.id).unwrap();
-      setSelectedId(null);
-      toast.success("Note deleted.");
-    } catch (err) {
-      toast.error("Couldn't delete the note", {
-        description: getErrorMessage(err),
-      });
-    }
+  const handleDelete = (note: Note) => {
+    if (fresh.current?.id === note.id) fresh.current = null;
+    setSelectedId(null);
+    removeNote(
+      note,
+      note.title?.trim() ? `Deleted "${note.title.trim()}"` : "Note deleted",
+      "Archive keeps a note out of the way without deleting it.",
+    );
   };
 
   const handleArchive = async (note: Note) => {
@@ -173,10 +180,7 @@ export default function NotesPage() {
 
   return (
     <ManagerWrapper>
-      {/* The list and the note are the page; the heading is for screen
-          readers, since the top bar's module name is no longer one (ADM-005). */}
-      <h1 className="sr-only">Notes</h1>
-      <div className="grid items-start gap-6 md:grid-cols-[17rem_minmax(0,1fr)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-10">
+      <div className={NOTES_GRID}>
         <NoteList
           className={selected ? "hidden md:flex" : "flex"}
           notes={notes}
@@ -202,23 +206,18 @@ export default function NotesPage() {
               onEmptyChange={reportEmpty}
             />
           ) : (
-            <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-surface bg-secondary/30 p-8 text-center">
-              <NotebookPen
-                className="mb-3 size-8 text-muted-foreground"
-                aria-hidden
-              />
-              <p className="text-base font-medium text-foreground">
-                {notes.length > 0 ? "Pick a note to read or edit" : "No notes yet"}
-              </p>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                {notes.length > 0
+            // The shared empty state (P-states), not a hand-built one.
+            <EmptyState
+              icon={NotebookPen}
+              variant="bordered"
+              title={notes.length > 0 ? "Pick a note to read or edit" : "No notes yet"}
+              description={
+                notes.length > 0
                   ? "Or start a new one. Link notes by typing [[a title]] in any of them."
-                  : "A title is enough to start; the rest can come later."}
-              </p>
-              <Button className="mt-4" onClick={() => handleNew()} disabled={isCreating}>
-                Start a note
-              </Button>
-            </div>
+                  : "A title is enough to start; the rest can come later."
+              }
+              action={{ label: "Start a note", onClick: () => handleNew() }}
+            />
           )}
         </div>
       </div>

@@ -10,10 +10,10 @@ import type { VisitorAnalytics, VisitorSlice } from "@/types";
  */
 
 export const RANGE_OPTIONS = [
-  { days: 7, label: "7 days" },
-  { days: 30, label: "30 days" },
-  { days: 90, label: "90 days" },
-  { days: 365, label: "12 months" },
+  { days: 7, label: "7 days", short: "7d" },
+  { days: 30, label: "30 days", short: "30d" },
+  { days: 90, label: "90 days", short: "90d" },
+  { days: 365, label: "12 months", short: "12m" },
 ] as const;
 
 /** Share of a total, guarding the case that makes it meaningless. */

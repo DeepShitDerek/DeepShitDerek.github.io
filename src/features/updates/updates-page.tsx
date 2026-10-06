@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DynamicPageContent } from "@/features/sections/dynamic-page-content";
 import { FeedEnd } from "./feed-end";
 import { JournalFeed, PinnedUpdates, WallFeed } from "./update-feeds";
+import { CategoryIcon } from "./category-icon";
 
 /**
  * /updates — what the owner is up to.
@@ -99,7 +100,7 @@ export function UpdatesPage() {
           </div>
         </div>
       ) : all.length === 0 ? (
-        <div className="rounded-surface bg-card px-6 py-16 text-center shadow-e1">
+        <div className="rounded-surface border border-dashed px-6 py-16 text-center">
           <p className="t-lead">Nothing posted yet.</p>
         </div>
       ) : (
@@ -123,7 +124,7 @@ export function UpdatesPage() {
                     count={categoryCounts.get(option.value)}
                     onClick={() => setCategory(option.value)}
                   >
-                    <span aria-hidden>{option.emoji}</span>
+                    <CategoryIcon category={option.value} />
                     {option.label}
                   </FilterChip>
                 ))}
@@ -143,7 +144,7 @@ export function UpdatesPage() {
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search updates…"
                 aria-label="Search updates"
-                className="h-11 rounded-full bg-card pl-11 shadow-e1"
+                className="h-11 pl-11"
               />
             </div>
           </div>
@@ -155,7 +156,7 @@ export function UpdatesPage() {
                 type="button"
                 onClick={() => setTag(null)}
                 aria-label={`Stop filtering by ${tag}`}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-primary focus-ring"
               >
                 #{tag}
                 <X className="size-3.5" aria-hidden />
@@ -165,12 +166,12 @@ export function UpdatesPage() {
 
           {feed.length === 0 ? (
             filtering ? (
-              <div className="rounded-surface bg-card px-6 py-16 text-center shadow-e1">
+              <div className="rounded-surface border border-dashed px-6 py-16 text-center">
                 <p className="t-lead">No updates match.</p>
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline focus-ring"
                 >
                   <X className="size-3.5" aria-hidden />
                   Clear filters

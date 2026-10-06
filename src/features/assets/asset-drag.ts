@@ -12,7 +12,7 @@
  * the grid raises the "drop to upload" overlay over a gesture that is not an
  * upload, and dropping it there runs the upload handler with no files.
  *
- * Follows `calendar/drag-move.ts`: a distinct MIME type, an encoder, and a
+ * A distinct MIME type, an encoder, and a
  * decoder that assumes nothing about what it is handed, because `dataTransfer`
  * carries whatever the page it came from put there — including a drag that
  * started outside the app.

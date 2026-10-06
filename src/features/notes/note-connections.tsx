@@ -75,7 +75,7 @@ export function NoteConnections({
                   type="button"
                   onClick={() => onCreate(title)}
                   aria-label={`Create ${title}`}
-                  className="flex w-full items-center gap-2 rounded-control bg-secondary/50 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex w-full items-center gap-2 rounded-control bg-secondary/50 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-ring"
                 >
                   <Plus className="size-3.5 shrink-0" aria-hidden />
                   <span className="min-w-0 truncate">{title}</span>
@@ -115,7 +115,7 @@ function LinkedNotes({
             <button
               type="button"
               onClick={() => onOpen(linked)}
-              className="flex w-full items-start gap-2 rounded-control bg-card px-3 py-2 text-left text-sm shadow-e1 transition-shadow hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-full items-start gap-2 rounded-control bg-card px-3 py-2 text-left text-sm shadow-e1 transition-shadow hover:shadow-e2 focus-ring"
             >
               <Icon
                 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"

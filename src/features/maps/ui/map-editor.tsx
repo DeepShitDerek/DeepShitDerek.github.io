@@ -12,9 +12,9 @@ import {
   ArrowLeft,
   Check,
   Download,
-  Grid3x3,
   Link2,
   Loader2,
+  ListTree,
   Map as MapIcon,
   Maximize,
   Minus,
@@ -26,6 +26,7 @@ import {
   Trash2,
   Undo2,
   Upload,
+  Keyboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,9 @@ import {
 } from "@/components/ui/tooltip";
 import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCoarsePointer } from "@/hooks/use-coarse-pointer";
+import { MINIMAP_MIN_NODES } from "../state/minimap";
+import { OPEN_KEYBOARD_MAP } from "@/features/admin-shell/keyboard-map";
 import { cn } from "@/lib/cn";
 import { NODE_H, NODE_W } from "../domain/commands";
 import { isClip } from "../domain/clipboard";
@@ -411,6 +415,14 @@ function EditorHeader({
             <DropdownMenuItem onSelect={() => fileInput.current?.click()}>
               <Upload className="mr-2 size-4" /> Import JSON…
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() =>
+                document.dispatchEvent(new Event(OPEN_KEYBOARD_MAP))
+              }
+            >
+              <Keyboard className="mr-2 size-4" /> Keyboard shortcuts
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <input
@@ -440,7 +452,7 @@ function SaveBadge({
       aria-live="polite"
       title={status.detail}
       className={cn(
-        "hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs sm:inline-flex",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-xs sm:px-2.5",
         value === "saved" && "text-muted-foreground",
         value === "saving" && "text-muted-foreground",
         value === "dirty" && "text-muted-foreground",
@@ -453,14 +465,18 @@ function SaveBadge({
       ) : value === "saved" ? (
         <Check aria-hidden className="size-3" />
       ) : value === "dirty" ? (
-        <span
-          aria-hidden
-          className="size-1.5 rounded-full bg-muted-foreground"
-        />
+        <span aria-hidden className="size-1.5 rounded-full bg-warning" />
       ) : (
         <AlertCircle aria-hidden className="size-3" />
       )}
-      {STATUS_TEXT[value]}
+      <span
+        className={cn(
+          (value === "saved" || value === "saving" || value === "dirty") &&
+            "sr-only sm:not-sr-only",
+        )}
+      >
+        {STATUS_TEXT[value]}
+      </span>
     </span>
   );
 }
@@ -677,8 +693,10 @@ function CanvasArea({
         </div>
       </MapContextMenu>
 
-      <ToolRail focusNode={focusNode} onDelete={() => void confirmDelete()} />
-      <ZoomBar />
+      <BottomToolbar
+        focusNode={focusNode}
+        onDelete={() => void confirmDelete()}
+      />
       <EmptyHint />
     </div>
   );
@@ -703,16 +721,26 @@ function useFocusNode() {
   );
 }
 
-function ToolRail({
+/**
+ * One toolbar, at the bottom (03-workspace-ui.md §2.20): what you can do to
+ * the map, then how you look at it. It replaces a floating rail of four
+ * unlabelled icons at the top left and a separate zoom bar, two of four
+ * surfaces on an empty canvas. Every button has a name and a tooltip.
+ */
+function BottomToolbar({
   focusNode,
   onDelete,
 }: {
   focusNode: (id: string) => void;
   onDelete: () => void;
 }) {
-  const { actions, ui } = useEditor();
+  const { actions, ui, store } = useEditor();
   const selection = useMapState((s) => s.selection);
+  const nodeCount = useMapState((s) => Object.keys(s.graph.nodes).length);
+  const settings = useMapState((s) => s.settings);
   const flow = useReactFlow();
+  const { zoom } = useViewport();
+  const isMobile = useIsMobile();
   const hasNode = selection.nodes.length > 0;
 
   const addHere = () => {
@@ -730,60 +758,48 @@ function ToolRail({
   };
 
   return (
-    <nav
-      aria-label="Map tools"
-      className="absolute left-3 top-3 z-raised flex flex-col gap-1 rounded-control border bg-card/95 p-1 shadow-e2 backdrop-blur"
-    >
-      <IconButton label="Add node" onClick={addHere}>
-        <Plus />
-      </IconButton>
-      <IconButton
-        label="Add child"
-        shortcut={shortcutLabel("addChild")}
-        disabled={!hasNode}
-        onClick={() => {
-          const r = actions.addChild();
-          if (r.editNodeId) ui.setEditingId(r.editNodeId);
-        }}
-      >
-        <MapIcon />
-      </IconButton>
-      <IconButton
-        label="Connect selected"
-        shortcut={shortcutLabel("connect")}
-        disabled={selection.nodes.length < 2}
-        onClick={() => {
-          const r = actions.connectSelected();
-          if (r.notice) ui.notify(r.notice);
-        }}
-      >
-        <Link2 />
-      </IconButton>
-      <IconButton
-        label="Delete selected"
-        shortcut={shortcutLabel("delete")}
-        disabled={!hasNode && selection.edges.length === 0}
-        onClick={onDelete}
-      >
-        <Trash2 />
-      </IconButton>
-    </nav>
-  );
-}
-
-function ZoomBar() {
-  const flow = useReactFlow();
-  const { zoom } = useViewport();
-  const { store } = useEditor();
-  const settings = useMapState((s) => s.settings);
-
-  return (
-    <Panel position="bottom-left" className="!m-3">
+    <Panel position="bottom-center" className="!m-3 max-w-[calc(100%-1.5rem)]">
       <div
         role="toolbar"
-        aria-label="View"
-        className="flex items-center gap-0.5 rounded-control border bg-card/95 p-1 shadow-e2 backdrop-blur"
+        aria-label="Map tools"
+        className="flex items-center gap-0.5 overflow-x-auto rounded-control border bg-card p-1"
       >
+        <IconButton label="Add node" onClick={addHere}>
+          <Plus />
+        </IconButton>
+        <IconButton
+          label="Add child"
+          shortcut={shortcutLabel("addChild")}
+          disabled={!hasNode}
+          onClick={() => {
+            const r = actions.addChild();
+            if (r.editNodeId) ui.setEditingId(r.editNodeId);
+          }}
+        >
+          <ListTree />
+        </IconButton>
+        <IconButton
+          label="Connect selected"
+          shortcut={shortcutLabel("connect")}
+          disabled={selection.nodes.length < 2}
+          onClick={() => {
+            const r = actions.connectSelected();
+            if (r.notice) ui.notify(r.notice);
+          }}
+        >
+          <Link2 />
+        </IconButton>
+        <IconButton
+          label="Delete selected"
+          shortcut={shortcutLabel("delete")}
+          disabled={!hasNode && selection.edges.length === 0}
+          onClick={onDelete}
+        >
+          <Trash2 />
+        </IconButton>
+
+        <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-border" />
+
         <IconButton
           label="Zoom out"
           onClick={() => void flow.zoomOut({ duration: 150 })}
@@ -793,7 +809,7 @@ function ZoomBar() {
         <button
           type="button"
           onClick={() => void flow.zoomTo(1, { duration: 150 })}
-          className="h-8 min-w-12 rounded-md px-1 text-xs tabular-nums text-muted-foreground hover:bg-secondary"
+          className="h-9 min-w-12 shrink-0 rounded-md px-1 text-xs tabular-nums text-muted-foreground hover:bg-secondary focus-ring"
           aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%`}
         >
           {Math.round(zoom * 100)}%
@@ -811,13 +827,17 @@ function ZoomBar() {
         >
           <Maximize />
         </IconButton>
-        <IconButton
-          label={settings.grid ? "Hide grid" : "Show grid"}
-          pressed={settings.grid}
-          onClick={() => store.setSettings({ grid: !settings.grid })}
-        >
-          <Grid3x3 />
-        </IconButton>
+        {/* Only where the overview can appear: a big enough map, a big
+            enough screen. */}
+        {!isMobile && nodeCount > MINIMAP_MIN_NODES && (
+          <IconButton
+            label={settings.minimap ? "Hide overview" : "Show overview"}
+            pressed={settings.minimap}
+            onClick={() => store.setSettings({ minimap: !settings.minimap })}
+          >
+            <MapIcon />
+          </IconButton>
+        )}
       </div>
     </Panel>
   );
@@ -825,6 +845,8 @@ function ZoomBar() {
 
 function EmptyHint() {
   const count = useMapState((s) => Object.keys(s.graph.nodes).length);
+  // Copy for the pointer in hand: a phone can neither double-click nor Tab.
+  const coarse = useCoarsePointer();
   if (count > 0) return null;
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
@@ -833,10 +855,18 @@ function EmptyHint() {
           Start with what&apos;s on your mind
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Double-click anywhere to add a node, or press{" "}
-          <kbd className="rounded border px-1 text-xs">+</kbd> in the tool rail.
-          Then Tab adds a child, Enter a sibling, and any node connects to any
-          other.
+          {coarse ? (
+            <>
+              Tap ＋ below to add your first idea. Select it, then add a child
+              or connect it to another from the same bar.
+            </>
+          ) : (
+            <>
+              Double-click anywhere to add a node, or ＋ in the toolbar below.
+              Then Tab adds a child, Enter a sibling, and any node connects to
+              any other.
+            </>
+          )}
         </p>
       </div>
     </div>
@@ -864,10 +894,8 @@ function MobileDetails({
   onOpenChange: (open: boolean) => void;
 }) {
   const focusNode = useFocusNode();
-  const selection = useMapState((s) => s.selection);
-  const hasSelection = selection.nodes.length + selection.edges.length > 0;
   return (
-    <Sheet open={open && hasSelection} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[70dvh] overflow-y-auto">
         <SheetTitle className="sr-only">Details</SheetTitle>
         <DetailsPanel onFocusNode={focusNode} />

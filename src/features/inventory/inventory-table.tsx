@@ -2,11 +2,10 @@
 
 import type { InventoryItem } from "@/types";
 import { cn } from "@/lib/cn";
-import { getWarrantyStatus } from "./warranty";
 import { currentValue, formatValue, itemCurrency } from "./item-value";
 import type { ArchiveReason } from "./item-actions";
-import { daysUntilExpiry, warrantyBucket } from "./inventory-filters";
 import { ItemActions } from "./item-actions";
+import { WarrantyBadge } from "./warranty-badge";
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -63,9 +62,6 @@ export function InventoryTable({
         </thead>
         <tbody>
           {items.map((item) => {
-            const warranty = getWarrantyStatus(item.warranty_expiry);
-            const bucket = warrantyBucket(item, today);
-            const days = daysUntilExpiry(item, today);
             const quantity = item.quantity ?? 1;
 
             return (
@@ -102,19 +98,7 @@ export function InventoryTable({
                   {formatValue(currentValue(item) * quantity, itemCurrency(item, baseCurrency))}
                 </td>
                 <td className="px-3 py-2">
-                  <span
-                    className={cn(
-                      "whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium",
-                      warranty.bg,
-                      warranty.color,
-                    )}
-                  >
-                    {bucket === "expiring" && days !== null
-                      ? days === 0
-                        ? "Ends today"
-                        : `${days}d left`
-                      : warranty.label}
-                  </span>
+                  <WarrantyBadge item={item} today={today} />
                 </td>
                 <td className="px-3 py-2 text-right">
                   <ItemActions

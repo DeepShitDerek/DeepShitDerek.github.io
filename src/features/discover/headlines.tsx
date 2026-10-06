@@ -45,14 +45,17 @@ export function Headlines() {
   }, []);
 
   return (
-    <section className="overflow-hidden rounded-surface bg-card shadow-e1">
+    <section className="overflow-hidden rounded-surface border bg-card">
       <header className="flex flex-wrap items-baseline justify-between gap-2 px-5 pb-2 pt-4">
         <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-          <Flame className="size-3.5 text-chart-3" aria-hidden />
+          <Flame className="size-3.5 text-muted-foreground" aria-hidden />
           Trending
         </h2>
-        <p className="text-[11px] text-muted-foreground">
-          Most shared · Mastodon
+        {/* Mastodon publishes one trending list, over the last few days; it
+            has no week or month to ask for. Said here, beside the window
+            switch, so this panel holding still is not read as a fault. */}
+        <p className="text-micro text-muted-foreground">
+          Most shared on Mastodon, the last few days · any window
         </p>
       </header>
 
@@ -116,7 +119,7 @@ export function Headlines() {
       </ul>
 
       {state === "done" && links.length > 0 && (
-        <p className="border-t border-border/60 px-5 py-2 text-[11px] text-muted-foreground">
+        <p className="border-t border-border/60 px-5 py-2 text-micro text-muted-foreground">
           One network&apos;s view — it leans towards technology, science and
           public policy.
         </p>

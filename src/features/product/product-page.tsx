@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowRight, Check, RotateCcw } from "lucide-react";
 import { useGetSiteIdentityQuery } from "@/store/api/publicApi";
 import { Band, BandHeading } from "@/components/layout/band";
-import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/layout/motion";
+import { Stagger, StaggerItem } from "@/components/layout/motion";
+import { ProofStrip } from "@/features/home/proof-strip";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
 import { THEME_PRESETS } from "@/lib/constants";
@@ -39,7 +40,7 @@ function Cta({
 }) {
   const safe = safeLinkUrl(href);
   if (!safe) return null;
-  const classes = cn("rounded-full px-7", className);
+  const classes = cn(className);
   return isInternalUrl(safe) ? (
     <Button asChild size="lg" variant={variant} className={classes}>
       <Link href={safe}>{children}</Link>
@@ -128,7 +129,7 @@ function ThemePreview() {
               }}
               className={cn(
                 "group rounded-surface bg-card p-2 text-left transition-shadow duration-base ease-enter",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "focus-ring",
                 selected ? "shadow-e3 ring-2 ring-primary" : "shadow-e1 hover:shadow-e2",
               )}
             >
@@ -165,7 +166,7 @@ function ThemePreview() {
               setActive(null);
               restore();
             }}
-            className="inline-flex items-center gap-1.5 rounded-control px-2 py-1 font-medium text-foreground hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 rounded-control px-2 py-1 font-medium text-foreground hover:bg-secondary focus-ring"
           >
             <RotateCcw className="size-3.5" aria-hidden />
             Reset to this site&apos;s theme
@@ -229,60 +230,43 @@ function PlanCard({ plan }: { plan: ProductPlan }) {
 export function ProductPage() {
   return (
     <>
-      <Band weight="feature" aria-labelledby="kit-heading" className="relative isolate">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 -top-48 -z-10 h-[48rem] bg-[radial-gradient(50%_50%_at_50%_30%,hsl(var(--primary)/0.14),transparent_72%)]"
-        />
-        <div className="mx-auto flex max-w-4xl flex-col items-center gap-7 text-center">
-          <Reveal>
-            <p className="t-eyebrow">{PRODUCT.name}</p>
-          </Reveal>
-          <Reveal delay={0.05}>
-            <h1
-              id="kit-heading"
-              className="font-heading text-[clamp(2.5rem,1.4rem+4.4vw,5.25rem)] font-bold leading-[1.03] tracking-tight text-balance"
+      {/*
+        The same opening as the home hero: one column at the hero measure,
+        left-aligned on the page's one axis, no glow behind it, nothing
+        fading in, and the figures as a ruled list straight under the
+        actions. The disclosure line answers "what does it cost and what is
+        it built on" before anyone has to ask (conversion-strategy.md §6).
+      */}
+      <Band weight="feature" aria-labelledby="kit-heading" className="hero-band">
+        <div className="flex max-w-hero flex-col items-start gap-6">
+          <p className="t-eyebrow">{PRODUCT.name}</p>
+          <h1 id="kit-heading" className="t-display text-balance">
+            Your portfolio and your personal OS, in one repo.
+          </h1>
+          <p className="t-lead max-w-prose text-pretty">
+            A developer portfolio that deploys as static files for free — and,
+            once you connect Supabase, a private workspace for writing,
+            planning, money and learning behind mandatory two-factor sign-in.
+          </p>
+          <div className="pt-2">
+            <PrimaryActions />
+          </div>
+          <p className="font-mono text-micro text-muted-foreground">
+            Free · MIT licence · Next.js 16 + Supabase · static on GitHub Pages
+          </p>
+          <p className="text-sm text-muted-foreground">
+            You&apos;re looking at it —{" "}
+            <Link
+              href="/"
+              className="rounded-control font-medium text-foreground underline underline-offset-4 focus-ring"
             >
-              Your portfolio and your personal OS, in one repo.
-            </h1>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="t-lead mx-auto max-w-prose text-pretty">
-              A developer portfolio that deploys as static files for free — and,
-              once you connect Supabase, a private workspace for writing,
-              planning, money and learning behind mandatory two-factor sign-in.
-            </p>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <PrimaryActions className="justify-center" />
-          </Reveal>
-          <Reveal delay={0.2}>
-            <p className="text-sm text-muted-foreground">
-              You&apos;re looking at it —{" "}
-              <Link href="/" className="font-medium text-foreground underline-offset-4 hover:underline">
-                this site
-              </Link>{" "}
-              is built with {PRODUCT.name}.
-            </p>
-          </Reveal>
+              this site
+            </Link>{" "}
+            is built with {PRODUCT.name}.
+          </p>
         </div>
 
-        <ul
-          aria-label="By the numbers"
-          className="mt-16 grid grid-cols-2 gap-x-8 gap-y-8 border-t border-border/60 pt-10 text-center sm:mt-20 lg:grid-cols-4"
-        >
-          {PRODUCT_FACTS.map((fact) => (
-            <li key={fact.label} className="min-w-0">
-              <CountUp
-                value={fact.value}
-                className="block font-heading text-4xl font-semibold tracking-tight tabular-nums"
-              />
-              <p className="mt-2 text-pretty text-sm text-muted-foreground">
-                {fact.label}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <ProofStrip items={[...PRODUCT_FACTS]} label="By the numbers" />
       </Band>
 
       <Band weight="content" aria-labelledby="kit-modes">
@@ -297,7 +281,7 @@ export function ProductPage() {
             return (
               <StaggerItem
                 key={mode.name}
-                className="flex min-w-0 flex-col rounded-surface bg-card p-7 shadow-e1 sm:p-8"
+                className="flex min-w-0 flex-col border-t border-border pt-6"
               >
                 <span className="flex size-11 items-center justify-center rounded-control bg-primary/10 text-primary">
                   <Icon className="size-5" aria-hidden />
@@ -338,7 +322,7 @@ export function ProductPage() {
                   return (
                     <StaggerItem
                       key={module.href}
-                      className="flex min-w-0 gap-4 rounded-surface bg-card p-5 shadow-e1"
+                      className="flex min-w-0 gap-4 border-t border-border pt-5"
                     >
                       <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-secondary text-foreground">
                         <Icon className="size-[1.125rem]" aria-hidden />
@@ -382,7 +366,7 @@ export function ProductPage() {
             return (
               <StaggerItem
                 key={point.title}
-                className="min-w-0 rounded-surface bg-card p-6 shadow-e1"
+                className="min-w-0 border-t border-border pt-5"
               >
                 <Icon className="size-5 text-primary" aria-hidden />
                 <h3 className="mt-4 font-heading text-base font-semibold">

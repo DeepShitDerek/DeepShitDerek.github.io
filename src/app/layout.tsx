@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import "@/styles/themes.css";
 import "@/styles/typography.css";
 import "prism-themes/themes/prism-one-dark.css";
+import { GOOGLE_FONTS_URL } from "@/lib/google-fonts";
 import type { Metadata, Viewport } from "next";
 import { config as appConfig } from "@/lib/config";
 import {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   // The default preset's ground; applyTheme retints it for the active theme.
-  themeColor: "#f9f8f5",
+  themeColor: "#f8f6f1",
 };
 
 export default async function RootLayout({
@@ -43,14 +44,11 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Without JavaScript nothing ever animates the prerendered
-            `opacity: 0` of Reveal / StaggerItem (motion.tsx) away. */}
-        <noscript
-          dangerouslySetInnerHTML={{
-            __html:
-              "<style>[data-motion]{opacity:1!important;transform:none!important}</style>",
-          }}
-        />
+        {/* Development only: the dev server drops the font @import from
+            globals.css, which production keeps (lib/google-fonts.ts). */}
+        {process.env.NODE_ENV === "development" && (
+          <link rel="stylesheet" href={GOOGLE_FONTS_URL} />
+        )}
       </head>
       <body>
         <Providers preload={{ siteIdentity, navLinks }}>{children}</Providers>

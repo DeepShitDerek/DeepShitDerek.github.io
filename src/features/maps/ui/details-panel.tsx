@@ -556,32 +556,26 @@ function MultiDetails() {
   );
 }
 
+/**
+ * Nothing selected (03-workspace-ui.md §2.20). This was a table of keyboard
+ * shortcuts, desktop-only content on every screen; they are in the editor's
+ * ⋯ menu now, which opens the workspace keyboard map.
+ *
+ * Deliberately static: no store subscriptions. Showing live counts here made
+ * the panel re-render as a double-clicked node took focus, and the typed
+ * title was lost in about one run in three (check:maps step 6).
+ */
 function EmptyDetails() {
-  const rows: [string, string][] = [
-    ["Add a child", shortcutLabel("addChild")],
-    ["Add a sibling", shortcutLabel("addSibling")],
-    ["Rename", `${shortcutLabel("rename")} or double-click`],
-    ["Connect", "Drag from a node's edge dot"],
-    ["Select several", "Shift-click or drag a box"],
-    ["Pan", "Space-drag or two-finger scroll"],
-    ["Zoom", "Pinch or Ctrl+scroll"],
-    ["Search / quick add", shortcutLabel("search")],
-    ["Undo / redo", `${shortcutLabel("undo")} / ${shortcutLabel("redo")}`],
-  ];
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Select a node or connection to edit it. Double-click empty space to add
-        a node.
+    <div className="space-y-2">
+      {/* Wording for the pointer in hand, by CSS: no state, no re-render. */}
+      <p className="hidden text-sm text-muted-foreground [@media(pointer:coarse)]:block">
+        Tap a node or connection to edit it here.
       </p>
-      <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 text-xs">
-        {rows.map(([label, keys]) => (
-          <div key={label} className="contents">
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className="text-right font-medium">{keys}</dd>
-          </div>
-        ))}
-      </dl>
+      <p className="text-sm text-muted-foreground [@media(pointer:coarse)]:hidden">
+        Select a node or connection to edit it here. Double-click empty space to
+        add a node.
+      </p>
     </div>
   );
 }

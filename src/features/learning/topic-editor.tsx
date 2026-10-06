@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn, formatDate, getErrorMessage } from "@/lib/utils";
+import { SaveStatus } from "@/components/admin/shared";
 import { urlOrEmpty } from "@/lib/schemas";
 import { MaterialFields } from "./material-fields";
 import { SessionTracker } from "./session-tracker";
@@ -59,9 +60,11 @@ const StatusPipeline = ({
     {STATUS_STEPS.map((step) => (
       <button
         key={step.value}
+        type="button"
+        aria-pressed={current === step.value}
         onClick={() => onChange(step.value)}
         className={cn(
-          "relative rounded-md px-3 py-1 text-[10px] font-semibold transition-all duration-base sm:text-xs",
+          "relative rounded-md px-3 py-1 text-micro font-semibold transition-colors duration-base focus-ring",
           current === step.value
             ? "bg-background text-foreground shadow-e1 ring-1 ring-border/50"
             : "text-muted-foreground hover:bg-background/40 hover:text-foreground/80",
@@ -94,17 +97,17 @@ const parseResource = (rawText: string | undefined | null) => {
 const getResourceIcon = (type: string) => {
   switch (type) {
     case "Video":
-      return <Video className="size-3.5 text-chart-5" />;
+      return <Video className="size-3.5 text-muted-foreground" aria-hidden />;
     case "Article":
-      return <FileText className="size-3.5 text-chart-1" />;
+      return <FileText className="size-3.5 text-muted-foreground" aria-hidden />;
     case "Course":
-      return <GraduationCap className="size-3.5 text-chart-2" />;
+      return <GraduationCap className="size-3.5 text-muted-foreground" aria-hidden />;
     case "Official":
-      return <Globe className="size-3.5 text-chart-3" />;
+      return <Globe className="size-3.5 text-muted-foreground" aria-hidden />;
     case "OpenSource":
-      return <Globe className="size-3.5 text-chart-4" />;
+      return <Globe className="size-3.5 text-muted-foreground" aria-hidden />;
     default:
-      return <LinkIcon className="size-3.5 text-muted-foreground" />;
+      return <LinkIcon className="size-3.5 text-muted-foreground" aria-hidden />;
   }
 };
 
@@ -117,7 +120,7 @@ const ResourceCard = ({
 }) => {
   const { type, title } = parseResource(resource.name);
   return (
-    <div className="group relative flex items-start gap-3 rounded-surface bg-card shadow-e1 p-3 transition-shadow duration-base ease-enter hover:bg-card hover:shadow-e1">
+    <div className="group relative flex items-start gap-3 rounded-surface border bg-card p-3">
       <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-control bg-secondary">
         {getResourceIcon(type)}
       </div>
@@ -125,7 +128,7 @@ const ResourceCard = ({
         <div className="mb-0.5 flex items-center gap-2">
           <Badge
             variant="secondary"
-            className="h-4 rounded-[4px] px-1 text-[9px] font-normal uppercase tracking-wider text-muted-foreground/80"
+            className="h-5 rounded-[4px] px-1.5 text-micro font-normal text-muted-foreground"
           >
             {type}
           </Badge>
@@ -139,14 +142,17 @@ const ResourceCard = ({
           {title || resource.name}
         </a>
       </div>
+      {/* Shown on hover and on focus: it was invisible to the keyboard. */}
       <button
+        type="button"
+        aria-label={`Remove ${title || resource.name}`}
         onClick={(e) => {
           e.preventDefault();
           onDelete();
         }}
-        className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground/30 opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+        className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-ring group-hover:opacity-100"
       >
-        <Trash2 className="size-3.5" />
+        <Trash2 className="size-3.5" aria-hidden />
       </button>
     </div>
   );
@@ -167,7 +173,7 @@ const ResourceList = ({
         <Layers className="size-3.5" /> Resources{" "}
         <Badge
           variant="secondary"
-          className="h-4 min-w-[20px] justify-center px-1 text-[9px]"
+          className="h-5 min-w-[20px] justify-center px-1.5 text-micro"
         >
           {resources.length}
         </Badge>
@@ -175,10 +181,11 @@ const ResourceList = ({
       <Button
         variant="ghost"
         size="sm"
-        className="h-6 w-6 p-0 hover:bg-primary/10 hover:text-primary"
+        aria-label="Add a resource"
+        className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
         onClick={onAdd}
       >
-        <Plus className="size-3.5" />
+        <Plus className="size-4" aria-hidden />
       </Button>
     </div>
     <div className="space-y-3">
@@ -195,15 +202,16 @@ const ResourceList = ({
         ))}
       </AnimatePresence>
       {resources.length === 0 && (
-        <div
+        <button
+          type="button"
           onClick={onAdd}
-          className="flex cursor-pointer flex-col items-center justify-center rounded-surface border border-dashed border-border/60 p-6 text-center transition-all hover:bg-muted/30"
+          className="flex w-full flex-col items-center justify-center rounded-surface border border-dashed border-border p-6 text-center transition-colors hover:bg-muted/30 focus-ring"
         >
-          <p className="text-xs font-medium text-foreground">Empty Library</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <span className="text-xs font-medium text-foreground">No resources yet</span>
+          <span className="mt-1 text-micro text-muted-foreground">
             Add links, videos, or docs.
-          </p>
-        </div>
+          </span>
+        </button>
       )}
     </div>
   </>
@@ -330,7 +338,7 @@ export function TopicEditor({
     <div
       className={cn(
         "flex h-full flex-col overflow-hidden bg-background",
-        !isMobile && "rounded-surface shadow-e3",
+        !isMobile && "rounded-surface border",
       )}
     >
       {/* Fixed header */}
@@ -344,7 +352,7 @@ export function TopicEditor({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Back to modules"
+            aria-label="Back to topics"
             onClick={onBack}
             className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
           >
@@ -355,15 +363,16 @@ export function TopicEditor({
               <h1 className="truncate font-heading text-lg font-bold tracking-tight">
                 {topic.title}
               </h1>
-              {isSaving && (
-                <span className="animate-pulse text-[11px] text-primary">
-                  Saving…
-                </span>
-              )}
             </div>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Edited {formatDate(new Date(topic.updated_at || new Date()))}
-            </p>
+            <SaveStatus
+              className="mt-0.5"
+              state={isSaving ? "saving" : "idle"}
+              text={
+                isSaving
+                  ? undefined
+                  : `Edited ${formatDate(new Date(topic.updated_at || new Date()))}`
+              }
+            />
           </div>
         </div>
         <StatusPipeline current={status} onChange={handleStatusChange} />
@@ -382,7 +391,7 @@ export function TopicEditor({
             {/* Mobile-only: timer above editor */}
             {isMobile && (
               <div className="px-4 pb-2 pt-6">
-                <div className="mb-6 rounded-surface bg-card p-4 shadow-e1">
+                <div className="mb-6 rounded-surface border bg-card p-4">
                   <div className="t-micro mb-3 flex items-center gap-2">
                     <Hourglass className="size-3.5" /> Study Session
                   </div>
@@ -441,7 +450,7 @@ export function TopicEditor({
           {!isMobile && (
             <div className="w-80 shrink-0 overflow-y-auto border-l bg-muted/5 xl:w-96">
               <div className="p-4">
-                <div className="rounded-surface bg-card p-4 shadow-e1">
+                <div className="rounded-surface border bg-card p-4">
                   <div className="t-micro mb-3 flex items-center gap-2">
                     <Hourglass className="size-3.5" /> Study Session
                   </div>

@@ -1,17 +1,16 @@
 import * as React from "react";
 // Mounted by AdminShell only, after the admin guard passes (V2-024).
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { supabase } from "@/supabase/client";
 import { useAppDispatch } from "@/store/hooks";
 import { startFocus } from "@/store/slices/focusSlice";
-import { DARK_THEME, LIGHT_THEME } from "@/lib/themes";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { NAV_GROUPS } from "@/features/admin-shell/nav-config";
 import { requestCreate } from "@/features/admin-shell/create-intent";
 import { OPEN_KEYBOARD_MAP } from "@/features/admin-shell/keyboard-map";
+import { shortcutsOwnedByEditor } from "@/lib/editor-shortcuts";
 import { type SearchKind, useSearchWorkspaceQuery } from "@/store/api/admin/searchApi";
 import { cn } from "@/lib/utils"; // Ensure you have this utility
-import { Button } from "@/components/ui/button"; // Import Button for the mobile trigger
 import {
   User,
   FileText,
@@ -26,7 +25,6 @@ import {
   PenTool,
   Copy,
   Terminal,
-  Search,
   ListTodo,
   Mail,
   Keyboard,
@@ -60,13 +58,14 @@ export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const [isAdmin, setIsAdmin] = React.useState(false);
   const router = useRouter();
-  const { setTheme } = useTheme();
+  const { setScheme } = useColorScheme();
   const dispatch = useAppDispatch();
 
   // Handle Keyboard Shortcut (Cmd+K)
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      // On a whiteboard ⌘K adds a link to the selected shape.
+      if (e.key === "k" && (e.metaKey || e.ctrlKey) && !shortcutsOwnedByEditor()) {
         e.preventDefault();
         setOpen((open) => !open);
       }
@@ -146,20 +145,9 @@ export function CommandPalette() {
 
   return (
     <>
-      {/* 
-        MOBILE TRIGGER:
-        Since mobile users can't press Cmd+K, we add a fixed Floating Action Button.
-        Hidden on Desktop (md:hidden).
-      */}
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-overlay h-12 w-12 rounded-full bg-background/80 shadow-e3 backdrop-blur-sm md:hidden"
-        aria-label="Open Command Palette"
-      >
-        <Search className="h-5 w-5" />
-      </Button>
+      {/* No floating search button on phones any more: the workspace tab
+          bar's "More" sheet opens the palette, and the button sat over the
+          corner of every list. */}
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput
@@ -311,16 +299,17 @@ export function CommandPalette() {
               active `theme-*` class and replaced it with a class that defines
               no tokens — the site lost its palette until reload. "System" was
               doubly dead, since the provider runs `enableSystem={false}`.
-              They now select the two real presets that carry the v2 identity.
+              They now set the same light/dark preference as the site header's
+              switch: the owner's theme in that scheme, or the core pair.
             */}
             <CommandItem
-              onSelect={() => runCommand(() => setTheme(LIGHT_THEME))}
+              onSelect={() => runCommand(() => setScheme("light"))}
             >
               <Sun className="mr-2 h-4 w-4" />
               <span>Light Mode</span>
             </CommandItem>
             <CommandItem
-              onSelect={() => runCommand(() => setTheme(DARK_THEME))}
+              onSelect={() => runCommand(() => setScheme("dark"))}
             >
               <Moon className="mr-2 h-4 w-4" />
               <span>Dark Mode</span>

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Chivo:wght@400;500;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&family=Fraunces:opsz,wght@9..144,600..900&family=Geist:wght@400..800&family=Geist+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;500;700&family=Libre+Baskerville:wght@400;700&family=Lora:ital,wght@0,400..600;1,400..600&family=Manrope:wght@400..700&family=Onest:wght@400..800&family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400..700&family=Sora:wght@400..600&family=Space+Grotesk:wght@500;700&family=Unbounded:wght@600;700&family=Figtree:wght@400..700&family=Funnel+Display:wght@400..800&family=Funnel+Sans:ital,wght@0,400..700;1,400..700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700..800&family=Chivo:wght@400;500;700&family=DM+Sans:wght@400;500;700&family=Fira+Code:wght@400;500&family=Fraunces:opsz,wght@9..144,600..900&family=Geist:wght@400..800&family=Geist+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;500;700&family=Libre+Baskerville:wght@400;700&family=Lora:ital,wght@0,400..600;1,400..600&family=Manrope:wght@400..700&family=Onest:wght@400..800&family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400..700&family=Sora:wght@400..600&family=Space+Grotesk:wght@500;700&family=Unbounded:wght@600;700&family=Figtree:wght@400..700&family=Funnel+Display:wght@400..800&family=Funnel+Sans:ital,wght@0,400..700;1,400..700&family=Newsreader:wght@400..700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -37,6 +37,7 @@
      * values exist because band rhythm is larger than that scale reaches
      * comfortably and needs to be stated in one place.
      */
+    --band-y-tight: 3rem;
     --band-y: 5rem;
     --band-y-feature: 8rem;
     --band-x: 1.5rem;
@@ -45,10 +46,15 @@
     --w-content: 72rem;
     --w-wide: 84rem;
     --w-prose: 44rem;
+    /* The hero's text column: at the display size, a 3-line headline. */
+    --w-hero: 48rem;
 
     /* Type — fluid, so a display size is stated once rather than re-derived
        with breakpoint variants at every call site. */
-    --t-display: clamp(2.5rem, 1.6rem + 4.5vw, 5rem);
+    /* 36 → 68px. It was 40 → 80px, which set the headline in five lines on a
+       laptop and pushed the hero's call to action below the fold
+       (design-research/redesign-roadmap.md P0-1). */
+    --t-display: clamp(2.25rem, 1.5rem + 3.2vw, 4.25rem);
     --t-title: clamp(1.875rem, 1.4rem + 2.2vw, 3rem);
     --t-heading: clamp(1.25rem, 1.1rem + 0.8vw, 1.75rem);
     --t-lead: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
@@ -79,9 +85,50 @@
       0 8px 20px -8px hsl(var(--e-shadow) / 0.2),
       0 32px 64px -16px hsl(var(--e-shadow) / 0.3);
 
-    /* Motion — exits are always faster than entrances. */
+    /* Motion — exits are always faster than entrances. Durations are named
+       by job (animation-motion.md §2.2): instant for press feedback, fast
+       for hover and every small exit, base for menus, slow for dialogs and
+       sheets, page as the ceiling. */
+    --d-instant: 100ms;
+    --d-fast: 150ms;
+    --d-base: 200ms;
+    --d-slow: 300ms;
+    --d-page: 400ms;
     --m-enter: 220ms cubic-bezier(0.32, 0.72, 0, 1);
     --m-exit: 140ms cubic-bezier(0.4, 0, 1, 1);
+
+    /* Focus is an outline, not a box-shadow ring, so it survives Windows
+       forced-colors mode (F15). The offset shows the ground between the
+       control and the ring. */
+    --focus-width: 2px;
+
+    /* The workspace's phone tab bar (workspace-tab-bar.tsx), for anything
+       that has to sit above it or keep clear of it. Zero where there is no
+       bar, so a public page's toasts are not lifted over nothing. */
+    --tabbar-h: 0px;
+    --focus-offset: 2px;
+
+    /* Status fallbacks, for a page with no preset class yet and for custom
+       themes before their variables land; every preset sets its own
+       (themes.css, "STATUS"). */
+    --success: 142.8 64.2% 24.1%;
+    --success-foreground: 0 0% 100%;
+    --warning: 22.7 82.5% 31.4%;
+    --warning-foreground: 0 0% 100%;
+    --info: 224.3 76.3% 48%;
+    --info-foreground: 0 0% 100%;
+  }
+
+  :root:has([data-workspace-tabbar]) {
+    --tabbar-h: 3.5rem;
+  }
+
+  /* The high-contrast and AAA presets draw a heavier ring. */
+  :root.theme-hc-light,
+  :root.theme-hc-dark,
+  :root.theme-aaa-light,
+  :root.theme-aaa-dark {
+    --focus-width: 3px;
   }
 
   /**
@@ -352,6 +399,32 @@
     @apply text-lg;
   }
 
+  /* A blog post reads at 17px (18px with the long-form preset), with its
+     section headings at the heading role rather than the generic 20px
+     (P1-13). Notes and CMS markdown keep the compact sizes above. */
+  .post-prose {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+
+  .typo-longform .post-prose {
+    font-size: 1.125rem;
+  }
+
+  .post-prose > * + :is(h2, h3) {
+    margin-top: 2.5em;
+  }
+
+  .post-prose h2 {
+    font-size: var(--t-heading);
+    line-height: 1.25;
+  }
+
+  .post-prose h3 {
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+
   .markdown h4,
   .markdown h5,
   .markdown h6 {
@@ -617,7 +690,7 @@
 
 /* =============================================================================
    COMPONENTS — v2 motifs + vendor themes (TipTap toolbar-adjacent styles are in
-   the base layer above; FullCalendar + react-markdown ported from v1)
+   the base layer above; react-markdown ported from v1)
    ============================================================================= */
 @layer components {
   /* --- v2 motifs --- */
@@ -666,6 +739,19 @@
   .band-content + .band-feature,
   .band-feature + .band-feature {
     padding-block-start: 0;
+  }
+
+  /* Related bands join at the tight step (48px), so a section and its
+     follow-on read as one group rather than two topics. */
+  .band-tight {
+    padding-block: var(--band-y-tight);
+  }
+
+  /* The hero starts close under the header: its call to action has to end
+     above 680px on a 1280×720 screen (P0-1). Below it, the route links
+     answer it at the tight step, so the two read as one opening. */
+  .hero-band {
+    padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--band-y-tight);
   }
 
   .band-inner {
@@ -744,11 +830,18 @@
      and the fluid scale is not re-derived per page.
      ========================================================================= */
 
+  /* Tracking follows the typography preset (X9): a fixed -0.03em was right
+     for a grotesk and wrong for a serif, and squeezed wide faces like
+     Unbounded into extra lines. A preset may set --display-letter-spacing
+     for the display size alone. */
   .t-display {
     font-family: var(--font-heading);
     font-size: var(--t-display);
     font-weight: var(--heading-weight, 700);
-    letter-spacing: -0.03em;
+    letter-spacing: var(
+      --display-letter-spacing,
+      var(--heading-letter-spacing, -0.03em)
+    );
     line-height: 1.05;
   }
 
@@ -756,7 +849,7 @@
     font-family: var(--font-heading);
     font-size: var(--t-title);
     font-weight: var(--heading-weight, 700);
-    letter-spacing: -0.02em;
+    letter-spacing: var(--heading-letter-spacing, -0.02em);
     line-height: 1.12;
   }
 
@@ -764,7 +857,7 @@
     font-family: var(--font-heading);
     font-size: var(--t-heading);
     font-weight: var(--heading-weight, 700);
-    letter-spacing: -0.015em;
+    letter-spacing: var(--heading-letter-spacing, -0.015em);
     line-height: 1.25;
   }
 
@@ -781,13 +874,15 @@
     color: hsl(var(--muted-foreground));
   }
 
-  /* An eyebrow is a small label above a heading. Sentence case and sans — the
-     uppercase monospace label is a v2 mannerism and is not reintroduced. */
+  /* An eyebrow is a small label above a heading, in the meta voice: the
+     code face, sentence case, muted. Primary is for things you can act on
+     (north star §3.2), so a label no longer wears it. */
   .t-eyebrow {
+    font-family: var(--font-code);
     font-size: var(--t-micro);
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: hsl(var(--primary));
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: hsl(var(--muted-foreground));
   }
 
   /* --- React Markdown --- */
@@ -819,6 +914,16 @@
    UTILITIES
    ============================================================================= */
 @layer utilities {
+  /* The focus indicator (F15, WCAG 2.4.7 / 2.4.11). Drawn with `outline`, so
+     Windows forced-colors mode keeps it, where a box-shadow ring vanishes;
+     the offset leaves a gap of ground between control and ring, which reads
+     on a filled button as well as on the page. Width and colour are tokens,
+     so the high-contrast presets draw it heavier. */
+  .focus-ring:focus-visible {
+    outline: var(--focus-width) solid hsl(var(--ring));
+    outline-offset: var(--focus-offset);
+  }
+
   .text-balance {
     text-wrap: balance;
   }
@@ -849,195 +954,4 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-border/60 hover:bg-border rounded-full transition-colors;
   }
-}
-
-/* ===========================================================================
-   FullCalendar, wearing this app's theme
-   ===========================================================================
-
-   FullCalendar ships its own palette and its own idea of a border. Left alone
-   it looks like a third-party widget dropped into the page — light grey on
-   white, fixed blue events — and on 55 of the 56 presets it is simply wrong.
-
-   Every value it draws is remapped onto a token here, so the calendar follows
-   the theme like everything else and a preset switch moves it too. This is the
-   one place colour may be written for the grid, because these are variable
-   *assignments*, not literals: no hex value appears below.
-
-   Kept out of a Tailwind layer deliberately — FullCalendar's own rules are
-   injected at runtime with a specificity these have to answer, and a layer
-   would put ours behind theirs.
-   =========================================================================== */
-
-.fc {
-  --fc-border-color: hsl(var(--border) / 0.6);
-  --fc-page-bg-color: transparent;
-  --fc-neutral-bg-color: hsl(var(--secondary) / 0.5);
-  --fc-neutral-text-color: hsl(var(--muted-foreground));
-
-  /* Today is a wash rather than a block: it marks the column without
-     competing with anything actually on it. */
-  --fc-today-bg-color: hsl(var(--primary) / 0.06);
-
-  --fc-now-indicator-color: hsl(var(--destructive));
-  --fc-event-bg-color: hsl(var(--primary));
-  --fc-event-border-color: hsl(var(--primary));
-  --fc-event-text-color: hsl(var(--primary-foreground));
-  --fc-event-selected-overlay-color: hsl(var(--primary) / 0.15);
-  --fc-highlight-color: hsl(var(--primary) / 0.1);
-  --fc-non-business-color: hsl(var(--secondary) / 0.35);
-  --fc-small-font-size: 0.6875rem;
-
-  font-family: inherit;
-  color: hsl(var(--foreground));
-}
-
-/* The frame. FullCalendar draws a full border box; the card around it already
-   provides one, and two is a seam. */
-.fc .fc-scrollgrid {
-  border-left-width: 0;
-  border-top-width: 0;
-}
-.fc .fc-scrollgrid-section > * {
-  border-right-width: 0;
-}
-.fc .fc-scrollgrid-section-liquid > td {
-  border-bottom-width: 0;
-}
-
-/* Column and day headers: quiet, uppercase, and not shouting the date. */
-.fc .fc-col-header-cell {
-  padding: 0.5rem 0.25rem;
-  font-weight: 500;
-  background: transparent;
-}
-.fc .fc-col-header-cell-cushion {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0;
-}
-
-/* The date number in a month cell. */
-.fc .fc-daygrid-day-number {
-  color: hsl(var(--foreground));
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  padding: 0.35rem 0.45rem;
-}
-.fc .fc-day-other .fc-daygrid-day-number {
-  color: hsl(var(--muted-foreground) / 0.6);
-}
-
-/* Today's number is the accent, not a filled pill — the column wash already
-   says which day it is. */
-.fc .fc-day-today .fc-daygrid-day-number {
-  color: hsl(var(--primary));
-  font-weight: 600;
-}
-
-/* Hour labels down the side. */
-.fc .fc-timegrid-slot-label-cushion,
-.fc .fc-timegrid-axis-cushion {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  font-variant-numeric: tabular-nums;
-}
-
-/* The half-hour rule is implied, not drawn: a dotted line every 30 minutes is
-   noise behind every event on the grid. */
-.fc .fc-timegrid-slot-minor {
-  border-top-style: none;
-}
-
-/* Events. The real styling comes from `eventClassNames`, which returns theme
-   utilities per entry kind; this only strips FullCalendar's own chrome so
-   those are not fighting a blue background. */
-.fc .fc-event,
-.fc .fc-event:hover {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  padding: 0;
-}
-.fc .fc-event-main {
-  padding: 0;
-  color: inherit;
-}
-.fc .fc-daygrid-event {
-  margin-top: 1px;
-  border-radius: var(--r-control);
-}
-.fc .fc-daygrid-event-harness + .fc-daygrid-event-harness {
-  margin-top: 1px;
-}
-
-/* "+2 more" reads as a control, because it is one. */
-.fc .fc-daygrid-more-link {
-  color: hsl(var(--muted-foreground));
-  font-size: 0.6875rem;
-  font-weight: 500;
-  padding: 0 0.25rem;
-}
-.fc .fc-daygrid-more-link:hover {
-  color: hsl(var(--foreground));
-}
-
-/* The popover that opens from it, and the list view's day headings. */
-.fc .fc-popover {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--r-surface);
-  box-shadow: var(--e-3);
-}
-.fc .fc-popover-header {
-  background: transparent;
-  color: hsl(var(--foreground));
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.5rem 0.625rem;
-}
-.fc .fc-list {
-  border: 0;
-}
-.fc .fc-list-day-cushion {
-  background: hsl(var(--secondary) / 0.5);
-  color: hsl(var(--foreground));
-  font-size: 0.75rem;
-}
-.fc .fc-list-event:hover td {
-  background: hsl(var(--secondary) / 0.6);
-}
-.fc .fc-list-event-dot {
-  border-color: hsl(var(--primary));
-}
-.fc .fc-list-empty {
-  background: transparent;
-  color: hsl(var(--muted-foreground));
-}
-
-/* The now-indicator: a hairline with a dot, the way every calendar draws it. */
-.fc .fc-timegrid-now-indicator-line {
-  border-width: 1px 0 0;
-}
-.fc .fc-timegrid-now-indicator-arrow {
-  border-width: 4px;
-  margin-top: -4px;
-}
-
-/* Dragging. FullCalendar's mirror is a copy of the event, which with
-   transparent events would be invisible. */
-.fc .fc-event-dragging:not(.fc-event-selected) {
-  opacity: 0.65;
-}
-.fc .fc-highlight {
-  background: hsl(var(--primary) / 0.1);
-  border-radius: var(--r-control);
-}
-
-/* A fixed density sets the slot height; "Fit" leaves `expandRows` to share the
-   available height between the visible hours instead. */
-.fc-host[data-density="fixed"] .fc .fc-timegrid-slot {
-  height: var(--fc-slot-height);
 }

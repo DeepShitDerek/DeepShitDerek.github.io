@@ -12,14 +12,19 @@ import { lastMonths, monthEnds, monthlySeries, netWorthHistory, remittances, T11
 import { Amount } from "./amount";
 import { LineChart } from "./line-chart";
 import { useMoney } from "./money-context";
+import { useUrlTab } from "@/hooks/use-url-tab";
 
 const pct = (r: number | null) => (r === null ? "—" : `${Math.round(r * 100)}%`);
 const monthName = (key: string) => new Date(`${key}-01T00:00:00Z`).toLocaleDateString("en-CA", { month: "short", year: "numeric", timeZone: "UTC" });
 
+const TABS = ["months", "worth", "remittances", "tax"] as const;
+
 /** Reports (V2-080): months, net worth over time, the cost of sending money, and the tax year. */
 export function ReportsArea() {
+  // In the URL (?tab=), so Back and a reload return to it.
+  const [tab, setTab] = useUrlTab("months", TABS);
   return (
-    <Tabs defaultValue="months" className="space-y-5">
+    <Tabs value={tab} onValueChange={setTab} className="space-y-5">
       <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <TabsList>
           <TabsTrigger value="months">Months</TabsTrigger>
@@ -170,7 +175,7 @@ function WorthReport() {
           <tbody className="tabular-nums">
             {[...points].reverse().map((p) => (
               <tr key={p.date} className="border-t">
-                <td className="py-1 text-muted-foreground">{p.date}{p.unpriced > 0 && <span className="text-amber-700 dark:text-amber-400"> *</span>}</td>
+                <td className="py-1 text-muted-foreground">{p.date}{p.unpriced > 0 && <span className="text-warning"> *</span>}</td>
                 <td className="py-1 text-right"><Amount minor={p.assetsMinor} currency={base} /></td>
                 <td className="py-1 text-right"><Amount minor={-p.liabilitiesMinor} currency={base} /></td>
                 <td className="py-1 text-right font-medium"><Amount minor={p.netMinor} currency={base} tone="balance" /></td>
@@ -178,7 +183,7 @@ function WorthReport() {
             ))}
           </tbody>
         </table>
-        {points.some((p) => p.unpriced > 0) && <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">* Some accounts had no exchange rate that day and are left out.</p>}
+        {points.some((p) => p.unpriced > 0) && <p className="mt-2 text-xs text-warning">* Some accounts had no exchange rate that day and are left out.</p>}
       </section>
     </div>
   );
@@ -314,7 +319,7 @@ function TaxReport() {
             </dl>
           )}
           {t.foreignIncomeMinor > 0 && (
-            <p className="mt-2 text-amber-700 dark:text-amber-400">
+            <p className="mt-2 text-warning">
               {c(t.foreignIncomeMinor)} arrived in accounts outside Canada (NRO interest, rent in India…). As a Canadian resident you report worldwide income; Indian tax already paid can usually be claimed as a foreign tax credit.
             </p>
           )}
@@ -355,7 +360,7 @@ function TaxReport() {
             Counts accounts outside Canada at their balance and foreign-currency securities in non-registered accounts at cost. Personal-use property and registered accounts are excluded. The threshold is {`$${(T1135_THRESHOLD_MINOR / 100).toLocaleString("en-CA")}`}.
           </p>
         </Block>
-        {t.unconverted > 0 && <p role="alert" className="text-amber-700 dark:text-amber-400">{t.unconverted} amount(s) had no rate to CAD and are missing from these figures.</p>}
+        {t.unconverted > 0 && <p role="alert" className="text-warning">{t.unconverted} amount(s) had no rate to CAD and are missing from these figures.</p>}
       </article>
     </div>
   );

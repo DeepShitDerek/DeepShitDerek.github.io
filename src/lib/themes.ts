@@ -18,16 +18,83 @@ export const VALID_THEMES = [
 
 export const TYPOGRAPHY_CLASSES = TYPOGRAPHY_PRESETS.map((t) => t.value);
 
-export const DEFAULT_THEME = "theme-ink-light";
+/**
+ * The one default (T-1): the code fallback, `portfolio.config.ts`, the
+ * `db/schema.sql` seed and the settings form all start here, so a fresh
+ * install, a static build and a missing value agree. `themes.test.ts` holds
+ * the config and the seed to it.
+ */
+export const DEFAULT_THEME = "theme-field-notes-light";
 export const THEME_STORAGE_KEY = "site-theme";
 
 /**
- * The two presets carrying the v2 "Ink" identity. Anything offering a plain
- * light/dark choice (the command palette) must pick real preset classes —
- * setting a bare `light`/`dark` class leaves the app with no tokens at all.
+ * The core pair (Field Notes). Anything offering a plain light/dark choice
+ * must pick real preset classes — setting a bare `light`/`dark` class leaves
+ * the app with no tokens at all — and a preset without a partner of the
+ * other scheme falls back to these.
  */
-export const LIGHT_THEME = "theme-ink-light";
-export const DARK_THEME = "theme-ink-dark";
+export const LIGHT_THEME = "theme-field-notes-light";
+export const DARK_THEME = "theme-field-notes-dark";
+
+/** Presets that come as a light and a dark version of one palette. */
+const THEME_PAIRS: readonly (readonly [light: string, dark: string])[] = [
+  [LIGHT_THEME, DARK_THEME],
+  ["theme-ink-light", "theme-ink-dark"],
+  ["theme-github-light", "theme-github-dark"],
+  ["theme-hc-light", "theme-hc-dark"],
+  ["theme-aaa-light", "theme-aaa-dark"],
+  ["theme-mono-light", "theme-mono-dark"],
+  ["theme-catppuccin-latte", "theme-catppuccin-mocha"],
+  ["theme-rose-pine-dawn", "theme-rose-pine"],
+  ["theme-solarized-light", "theme-solarized-dark"],
+  ["theme-gruvbox-light", "theme-gruvbox-dark"],
+  ["theme-tokyo-night-day", "theme-tokyo-night"],
+  ["theme-flexoki-light", "theme-flexoki-dark"],
+  ["theme-glass-frost", "theme-glass-dark"],
+  ["theme-neobrutalism-light", "theme-neobrutalism-dark"],
+];
+
+export type Scheme = "light" | "dark";
+
+/**
+ * The owner's theme in the scheme a visitor asked for: its own partner when
+ * it has one (Solarized Light → Solarized Dark, the high-contrast pair stays
+ * high-contrast), the core pair otherwise. The caller only asks when the
+ * applied theme is the other scheme, so an unpaired theme is never swapped
+ * for no reason.
+ */
+export function pairedTheme(themeClass: string, scheme: Scheme): string {
+  for (const [light, dark] of THEME_PAIRS) {
+    if (themeClass === light || themeClass === dark) {
+      return scheme === "light" ? light : dark;
+    }
+  }
+  return scheme === "light" ? LIGHT_THEME : DARK_THEME;
+}
+
+/**
+ * A visitor's light/dark choice (the header toggle). Separate from
+ * `site-theme`, which caches the *applied* class for the first paint: this
+ * is the preference, and the owner's theme still decides everything else.
+ */
+export const SCHEME_STORAGE_KEY = "visitor-scheme";
+
+export function readVisitorScheme(): Scheme | null {
+  try {
+    const value = window.localStorage.getItem(SCHEME_STORAGE_KEY);
+    return value === "light" || value === "dark" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeVisitorScheme(scheme: Scheme): void {
+  try {
+    window.localStorage.setItem(SCHEME_STORAGE_KEY, scheme);
+  } catch {
+    // Best-effort, like the theme cache: the switch still applies now.
+  }
+}
 
 type CustomThemeColors = NonNullable<
   SiteContent["profile_data"]["custom_theme_colors"]
@@ -51,6 +118,12 @@ const THEME_CSS_VARS = [
   "muted-foreground",
   "destructive",
   "destructive-foreground",
+  "success",
+  "success-foreground",
+  "warning",
+  "warning-foreground",
+  "info",
+  "info-foreground",
   "border",
   "input",
   "ring",
@@ -89,12 +162,44 @@ export function customThemeVars(
     "--popover-foreground": hexToHsl(colors.foreground),
     "--muted": hexToHsl(colors.secondary),
     "--muted-foreground": hexToHsl(colors.foreground),
-    "--destructive": hexToHsl("#ef4444"),
-    "--destructive-foreground": hexToHsl(colors.foreground),
+    ...statusVars(isDarkBackground(hexToHsl(colors.background))),
     "--border": hexToHsl(colors.secondary),
     "--input": hexToHsl(colors.secondary),
     "--ring": hexToHsl(colors.primary),
   };
+}
+
+/**
+ * Danger and status colours for a custom palette (P0-4, T-2).
+ *
+ * The owner picks six colours, none of them a status, so these come from the
+ * scheme the ground implies. The old fixed `#ef4444` measured 3.76:1 on white
+ * and failed AA on every light custom theme. The values are the palette-tier
+ * defaults `check:themes` gates (themes.css, "STATUS"); `themes.test.ts`
+ * checks them against light and dark grounds.
+ */
+export function statusVars(dark: boolean): Record<string, string> {
+  return dark
+    ? {
+        "--destructive": hexToHsl("#f87171"),
+        "--destructive-foreground": hexToHsl("#0d1117"),
+        "--success": hexToHsl("#4ade80"),
+        "--success-foreground": hexToHsl("#0d1117"),
+        "--warning": hexToHsl("#fbbf24"),
+        "--warning-foreground": hexToHsl("#0d1117"),
+        "--info": hexToHsl("#93c5fd"),
+        "--info-foreground": hexToHsl("#0d1117"),
+      }
+    : {
+        "--destructive": hexToHsl("#c62828"),
+        "--destructive-foreground": hexToHsl("#ffffff"),
+        "--success": hexToHsl("#166534"),
+        "--success-foreground": hexToHsl("#ffffff"),
+        "--warning": hexToHsl("#92400e"),
+        "--warning-foreground": hexToHsl("#ffffff"),
+        "--info": hexToHsl("#1d4ed8"),
+        "--info-foreground": hexToHsl("#ffffff"),
+      };
 }
 
 /** Write the custom palette onto <html>. */
@@ -207,4 +312,28 @@ export function applyTheme(
     // Persistence is best-effort (storage may be blocked, e.g. Safari
     // private mode); the theme is still applied to the DOM.
   }
+}
+
+/**
+ * Apply the owner's theme, then a visitor's light/dark choice on top.
+ *
+ * Which scheme the owner's theme is comes from its resolved ground (the
+ * `dark` class `applyTheme` just synced), not a list of names, so custom
+ * themes count too. Only a mismatch swaps it: the visitor who asked for dark
+ * on a dark theme gets the owner's theme untouched. Both applications run in
+ * one task, so nothing paints in between. Returns the class applied.
+ */
+export function applySiteTheme(
+  themeClass: string,
+  typographyPreset: string,
+  customColors: CustomThemeColors | undefined,
+  scheme: Scheme | null = readVisitorScheme(),
+): string {
+  applyTheme(themeClass, typographyPreset, customColors);
+  if (!scheme) return themeClass;
+  const isDark = document.documentElement.classList.contains("dark");
+  if (isDark === (scheme === "dark")) return themeClass;
+  const paired = pairedTheme(themeClass, scheme);
+  applyTheme(paired, typographyPreset, undefined);
+  return paired;
 }

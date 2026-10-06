@@ -21,7 +21,7 @@ import {
  * grid, about 50px a day on a phone — narrower than the time labels in it.
  */
 
-export type CalendarView = "day" | "week" | "month" | "agenda";
+export type CalendarView = "day" | "3day" | "week" | "month" | "agenda";
 
 export interface ViewWindow {
   /** The columns the grid draws. Empty for agenda, which is a list. */
@@ -49,6 +49,16 @@ export function viewWindow({
   if (view === "day") {
     const day = startOfDay(anchor);
     return { days: [day], from: day, to: day };
+  }
+
+  // Three days from the anchor: "around now" on a phone, or for a closer look.
+  if (view === "3day") {
+    const first = startOfDay(anchor);
+    return {
+      days: [0, 1, 2].map((i) => addDays(first, i)),
+      from: first,
+      to: addDays(first, 2),
+    };
   }
 
   if (view === "month") {
@@ -98,6 +108,7 @@ export function viewWindow({
  */
 export function stepDays(view: CalendarView, weekLength: number): number {
   if (view === "day") return 1;
+  if (view === "3day") return 3;
   if (view === "agenda") return AGENDA_DAYS;
   if (view === "month") return 0; // Months step by month, not by days.
   return weekLength;

@@ -73,7 +73,7 @@ function RepoCard({ repo }: { repo: GitHubRepo }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`${card} transition-[box-shadow,transform] duration-base ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0`}
+      className={`${card} transition-[box-shadow,transform] duration-base ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-ring motion-reduce:hover:translate-y-0`}
     >
       {body}
     </a>
@@ -165,7 +165,7 @@ export function RepoGrid() {
           href={`https://github.com/${encodeURIComponent(config.username)}?tab=repositories`}
           target="_blank"
           rel="noopener noreferrer"
-          className="group inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-ring"
         >
           View all on GitHub
           <ArrowUpRight

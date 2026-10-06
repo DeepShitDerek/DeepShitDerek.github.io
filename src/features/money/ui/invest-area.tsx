@@ -5,11 +5,16 @@ import { HoldingsPanel } from "./holdings-panel";
 import { PricesPanel } from "./prices-panel";
 import { RoomPanel } from "./room-panel";
 import { TradesPanel } from "./trades-panel";
+import { useUrlTab } from "@/hooks/use-url-tab";
+
+const TABS = ["holdings", "trades", "prices", "room"] as const;
 
 /** Investing (V2-080): holdings, trades, securities and prices, and contribution room. */
 export function InvestArea() {
+  // In the URL (?tab=), so Back and a reload return to it.
+  const [tab, setTab] = useUrlTab("holdings", TABS);
   return (
-    <Tabs defaultValue="holdings" className="space-y-5">
+    <Tabs value={tab} onValueChange={setTab} className="space-y-5">
       <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <TabsList>
           <TabsTrigger value="holdings">Holdings</TabsTrigger>

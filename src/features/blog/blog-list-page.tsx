@@ -5,26 +5,26 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { postHref } from "./post-href";
 import { useDisplayTimeZone } from "@/hooks/use-hydrated";
-import { ArrowUpRight, Eye, Search, X } from "lucide-react";
+import { Eye, Search, X } from "lucide-react";
 import { useGetPublishedBlogPostsQuery } from "@/store/api/publicApi";
 import type { BlogPost } from "@/types";
 import { formatPostDate, readTime } from "./post-meta";
 import { siteContent } from "@/lib/site-content";
-import { safeImageUrl } from "@/lib/safe-url";
 import { Band } from "@/components/layout/band";
 import { PageHeader } from "@/components/layout/page-header";
-import { Reveal, Stagger, StaggerItem } from "@/components/layout/motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/cn";
 
 export { readTime } from "./post-meta";
 const formatDate = formatPostDate;
 
-/** The tags worth offering as filters: most used first, at most `limit`. */
-export function topTags(posts: BlogPost[], limit = 8): string[] {
+/** The tags worth offering as filters, with how many posts carry each: most used first, at most `limit`. */
+export function topTags(
+  posts: BlogPost[],
+  limit = 8,
+): { tag: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const post of posts) {
     const unique = Array.from(
@@ -37,123 +37,61 @@ export function topTags(posts: BlogPost[], limit = 8): string[] {
   return Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
-    .map(([tag]) => tag);
+    .map(([tag, count]) => ({ tag, count }));
 }
 
-/** Date · read time · views, in the body face. */
-function PostMeta({ post, className }: { post: BlogPost; className?: string }) {
+/**
+ * One post as a ruled row (P2-15): date and read time in the margin, then the
+ * title, the excerpt and the topics. The whole row is the link.
+ *
+ * Rows replaced a lead card and a grid of cover cards. Posts here mostly have
+ * no cover, and the grid painted the title's first letter in a tinted box
+ * instead, the placeholder the redesign removes everywhere (X1); a date on
+ * every row is also the quickest proof the writing is current.
+ */
+function PostRow({ post, href }: { post: BlogPost; href: string }) {
   // Prerendered: UTC until hydrated, so the build and the browser agree.
   const timeZone = useDisplayTimeZone();
+  const topics = (post.tags ?? []).filter((t) => t.trim()).slice(0, 3);
   return (
-    <p
-      className={cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground",
-        className,
-      )}
-    >
-      {post.published_at && (
-        <time dateTime={post.published_at}>
-          {formatDate(post.published_at, timeZone)}
-        </time>
-      )}
-      {post.published_at && <span aria-hidden>·</span>}
-      <span>{readTime(post)} min read</span>
-      {typeof post.views === "number" && (
-        <>
-          <span aria-hidden>·</span>
-          <span className="inline-flex items-center gap-1">
-            <Eye className="size-3.5" aria-hidden />
-            {post.views.toLocaleString("en-US")}
-          </span>
-        </>
-      )}
-    </p>
-  );
-}
-
-/** A cover, or a tinted well with the title's initial when there is none. */
-function Cover({ post, className }: { post: BlogPost; className?: string }) {
-  const src = safeImageUrl(post.cover_image_url);
-  return (
-    <div className={cn("overflow-hidden bg-secondary", className)}>
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="size-full object-cover transition-transform duration-700 ease-enter group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-        />
-      ) : (
-        <div
-          aria-hidden
-          className="flex size-full items-center justify-center bg-[radial-gradient(80%_80%_at_30%_20%,hsl(var(--primary)/0.18),transparent)] font-heading text-5xl font-bold text-primary/60"
-        >
-          {post.title.trim().charAt(0).toUpperCase()}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const CARD_LINK =
-  "group flex h-full overflow-hidden rounded-surface bg-card shadow-e1 transition-[box-shadow,transform] duration-base ease-enter hover:-translate-y-0.5 hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0";
-
-/** The newest post, given the room a lead story gets. */
-function FeaturedPost({ post, href }: { post: BlogPost; href: string }) {
-  return (
-    <Reveal>
+    <li className="border-t border-border">
       <Link
         href={href}
-        data-featured
-        className={cn(CARD_LINK, "flex-col lg:grid lg:grid-cols-[1.25fr_1fr]")}
+        className="group grid gap-x-8 gap-y-1 rounded-control py-6 focus-ring lg:grid-cols-[12rem_minmax(0,1fr)]"
       >
-        <Cover
-          post={post}
-          className="aspect-[16/9] lg:aspect-auto lg:min-h-80"
-        />
-        <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8 lg:p-10">
-          <p className="t-eyebrow">Latest</p>
-          <h2 className="t-heading mt-3 text-balance [overflow-wrap:anywhere] transition-colors group-hover:text-primary">
+        <p className="font-mono text-micro text-muted-foreground lg:pt-1">
+          {post.published_at && (
+            <time dateTime={post.published_at}>
+              {formatDate(post.published_at, timeZone)}
+            </time>
+          )}
+          {post.published_at && <span aria-hidden> · </span>}
+          {readTime(post)} min read
+          {typeof post.views === "number" && (
+            <span className="ml-2 inline-flex items-center gap-1 lg:ml-0 lg:mt-1 lg:flex">
+              <Eye className="size-3.5" aria-hidden />
+              <span className="sr-only">Views:</span>
+              {post.views.toLocaleString("en-US")}
+            </span>
+          )}
+        </p>
+        <div className="min-w-0 max-w-prose">
+          <h2 className="font-heading text-xl font-semibold leading-snug underline-offset-4 decoration-primary decoration-2 [overflow-wrap:anywhere] group-hover:underline sm:text-2xl">
             {post.title}
           </h2>
           {post.excerpt && (
-            <p className="mt-3 line-clamp-3 leading-relaxed text-muted-foreground">
+            <p className="mt-2 line-clamp-3 text-base leading-relaxed text-muted-foreground">
               {post.excerpt}
             </p>
           )}
-          <PostMeta post={post} className="mt-5" />
-          <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
-            Read the post
-            <ArrowUpRight
-              aria-hidden
-              className="size-4 transition-transform duration-base ease-enter group-hover:-translate-y-0.5 group-hover:translate-x-0.5 motion-reduce:transition-none"
-            />
-          </span>
+          {topics.length > 0 && (
+            <p className="mt-3 font-mono text-micro text-muted-foreground">
+              {topics.join(" · ")}
+            </p>
+          )}
         </div>
       </Link>
-    </Reveal>
-  );
-}
-
-function PostCard({ post, href }: { post: BlogPost; href: string }) {
-  return (
-    <Link href={href} className={cn(CARD_LINK, "flex-col")}>
-      <Cover post={post} className="aspect-[16/10]" />
-      <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
-        {post.tags?.[0] && <p className="t-eyebrow">{post.tags[0]}</p>}
-        <h2 className="mt-2 font-heading text-lg font-semibold leading-snug [overflow-wrap:anywhere] transition-colors group-hover:text-primary">
-          {post.title}
-        </h2>
-        {post.excerpt && (
-          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-            {post.excerpt}
-          </p>
-        )}
-        <PostMeta post={post} className="mt-auto pt-5 text-xs" />
-      </div>
-    </Link>
+    </li>
   );
 }
 
@@ -205,8 +143,6 @@ export function BlogListPage({
   }, [posts, searchTerm, tag]);
 
   const filtering = Boolean(searchTerm.trim() || tag);
-  // The lead story is only a lead when the reader is browsing, not searching.
-  const [featured, ...rest] = filtering ? [undefined, ...filtered] : filtered;
 
   const clear = () => {
     setSearchTerm("");
@@ -236,7 +172,7 @@ export function BlogListPage({
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search posts…"
             aria-label="Search posts"
-            className="h-11 rounded-full bg-card pl-11 shadow-e1"
+            className="h-11 pl-11"
           />
         </div>
         {tags.length > 0 && (
@@ -244,10 +180,11 @@ export function BlogListPage({
             <FilterChip active={tag === null} onClick={() => setTag(null)}>
               All
             </FilterChip>
-            {tags.map((name) => (
+            {tags.map(({ tag: name, count }) => (
               <FilterChip
                 key={name}
                 active={tag === name}
+                count={count}
                 onClick={() => setTag(tag === name ? null : name)}
               >
                 {name}
@@ -259,12 +196,9 @@ export function BlogListPage({
 
       {isLoading ? (
         <div className="space-y-6" aria-busy>
-          <Skeleton className="h-80 rounded-surface" />
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-72 rounded-surface" />
-            ))}
-          </div>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-control" />
+          ))}
         </div>
       ) : isError ? (
         <div
@@ -279,7 +213,7 @@ export function BlogListPage({
           </p>
           <Button
             variant="outline"
-            className="mt-6 rounded-full"
+            className="mt-6"
             onClick={() => refetch()}
           >
             Try again
@@ -298,7 +232,7 @@ export function BlogListPage({
           {filtering && (
             <Button
               variant="outline"
-              className="mt-6 gap-2 rounded-full"
+              className="mt-6 gap-2"
               onClick={clear}
             >
               <X className="size-4" aria-hidden />
@@ -307,31 +241,15 @@ export function BlogListPage({
           )}
         </div>
       ) : (
-        <div className="space-y-6">
-          {featured && (
-            <FeaturedPost
-              post={featured}
-              href={postHref(featured.slug, builtSlugs)}
+        <ul className="border-b border-border">
+          {filtered.map((post) => (
+            <PostRow
+              key={post.id}
+              post={post}
+              href={postHref(post.slug, builtSlugs)}
             />
-          )}
-          {rest.length > 0 && (
-            <Stagger
-              as="ul"
-              className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {rest.map((post) =>
-                post ? (
-                  <StaggerItem as="li" key={post.id}>
-                    <PostCard
-                      post={post}
-                      href={postHref(post.slug, builtSlugs)}
-                    />
-                  </StaggerItem>
-                ) : null,
-              )}
-            </Stagger>
-          )}
-        </div>
+          ))}
+        </ul>
       )}
     </Band>
   );

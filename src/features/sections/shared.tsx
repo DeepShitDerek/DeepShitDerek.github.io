@@ -188,7 +188,7 @@ export function ItemDates({
  *  1. The href goes through `safeLinkUrl`, so `javascript:`, `data:` and
  *     protocol-relative values fall back to a plain <div> instead of becoming
  *     a live anchor.
- *  2. Internal hrefs ("/projects") use next/link and no longer open a new tab.
+ *  2. Internal hrefs ("/work") use next/link and no longer open a new tab.
  *  3. `asChild` lets a caller render the wrapper as something other than a
  *     block <div>, which is how the nested-anchor invalid-HTML in the old
  *     FeatureAlternating layout is avoided.
@@ -208,7 +208,7 @@ export function MaybeLink({
   if (!safe) return <div className={className}>{children}</div>;
 
   const classes = cn(
-    "group/link block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-control",
+    "group/link block focus-ring rounded-control",
     className,
   );
 
