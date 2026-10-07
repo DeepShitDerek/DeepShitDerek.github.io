@@ -20,6 +20,7 @@ export default function LoadError({
   what: string;
   error: unknown;
   onRetry: () => void;
+  /** What usually causes it, when the module knows (a missing migration…). */
   hint?: ReactNode;
 }) {
   return (

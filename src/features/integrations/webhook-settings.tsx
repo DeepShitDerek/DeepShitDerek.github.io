@@ -41,6 +41,8 @@ export interface WebhookSettingsProps {
   label: string;
   toggleLabel: string;
   toggleHint: string;
+  /** Which migration adds the columns, so a missing one is diagnosable. */
+  migration: string;
 }
 
 export function WebhookSettings({
@@ -49,6 +51,7 @@ export function WebhookSettings({
   label,
   toggleLabel,
   toggleHint,
+  migration,
 }: WebhookSettingsProps) {
   const { data: settings, isLoading } = useGetIntegrationSettingsQuery();
   const [updateSettings, { isLoading: isSaving }] =
@@ -99,7 +102,8 @@ export function WebhookSettings({
         />
         <p className="text-xs leading-relaxed text-muted-foreground">
           Stored in an admin-only table and sent by the database, so the URL
-          never reaches the public site.
+          never reaches the public site. Requires migration{" "}
+          <code>{migration}</code>.
         </p>
       </div>
 

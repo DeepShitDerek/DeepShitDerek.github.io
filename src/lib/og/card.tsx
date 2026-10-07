@@ -66,6 +66,7 @@ async function ownerName(): Promise<string> {
   return identity?.profile_data?.name?.trim() || appConfig.site.author;
 }
 
+/** "johndoe.dev" — or nothing while the site URL is still the placeholder. */
 function siteHost(): string | null {
   try {
     const host = new URL(appConfig.site.url).hostname.replace(/^www\./, "");

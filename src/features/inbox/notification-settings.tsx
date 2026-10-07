@@ -19,6 +19,7 @@ export function NotificationSettings() {
       label="Discord webhook URL"
       toggleLabel="Notify on new messages"
       toggleHint="Messages are still saved here when this is off."
+      migration="007-contact-inbox.sql"
     />
   );
 }

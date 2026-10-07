@@ -242,7 +242,7 @@ export interface WeakArea {
 /**
  * What keeps slipping.
  *
- * The module recorded `lapses` and `ease` from the first initialization and never
+ * The module recorded `lapses` and `ease` from the first migration and never
  * showed either, so the one question a study tool should be able to answer —
  * "what am I bad at?" — had no screen. Both are already the honest signal: a
  * lapse is a topic you had learned and then could not recall, and ease falls

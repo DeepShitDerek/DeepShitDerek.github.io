@@ -107,6 +107,10 @@ export const CHART_COLORS = [
  */
 export const DEFAULT_HABIT_COLOR = "#3b82f6";
 
+// =============================================================================
+// HABIT DEFINITION — mirrors the CHECK constraints in db/migrations/002-habits.sql
+// =============================================================================
+
 export const HABIT_KIND_OPTIONS = [
   {
     value: "build",

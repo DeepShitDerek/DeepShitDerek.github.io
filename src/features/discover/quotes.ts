@@ -14,7 +14,9 @@ import type { InstrumentKind, WatchlistEntry } from "./watchlist";
  *
  * The key is stored on `integration_settings`, which has RLS and **no public
  * read policy at all**, and Discover is an admin route — so the owner's own
- * browser reads it and it never enters the bundle.
+ * browser reads it and it never enters the bundle. That is the same argument
+ * migration 007 made about the Discord webhook, and the reason a
+ * `NEXT_PUBLIC_*` key is not an option here.
  *
  * **Funds and bonds stay a link-out.** Neither free tier covers them, and a
  * row that silently shows nothing while its neighbours show prices reads as a
