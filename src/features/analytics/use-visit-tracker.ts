@@ -15,8 +15,7 @@ import { classifySource, countryFromTimezone } from "./visitor-source";
  *
  * Everything here is best-effort and silent. Analytics must never be able to
  * break, slow, or block a page: a failed insert, a blocked geo lookup and a
- * database that has not run migration 008 all end the same way, with the
- * visitor none the wiser.
+ * database, with the visitor none the wiser.
  */
 
 const GEO_ENDPOINT = "https://ipapi.co/json/";

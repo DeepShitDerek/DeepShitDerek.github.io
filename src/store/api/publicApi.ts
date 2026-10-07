@@ -167,10 +167,9 @@ export const publicApi = createApi({
 
     /**
      * The only public write path in the app.
-     *
      * **Dynamic mode** inserts the row and stops. The Discord notification is
      * sent by an AFTER INSERT trigger reading the webhook URL from an
-     * admin-only table (`db/migrations/007-contact-inbox.sql`). It used to be
+     * admin-only table. It used to be
      * sent from here, from the browser, using
      * `NEXT_PUBLIC_CONTACT_WEBHOOK_URL` — which is compiled into the client
      * bundle, so anyone could read the URL out of the JS and post arbitrary
@@ -275,15 +274,6 @@ export const publicApi = createApi({
 
     /**
      * One public Library highlight, chosen at random.
-     *
-     * Reaches a database function rather than either table: visitors have no
-     * read policy on the Library, and the function returns only rows the owner
-     * marked public, with only the columns a citation needs.
-     *
-     * Resolves to null on any failure rather than erroring. A quote is
-     * decoration, and it must never be the reason a page shows an error —
-     * including before migration 018 has been run, when the function does not
-     * exist yet.
      */
     getRandomHighlight: builder.query<PublicHighlight | null, void>({
       queryFn: async () => {

@@ -10,15 +10,6 @@ import {
 
 /**
  * Contact submissions, and the integration settings that notify you about them.
- *
- * `contact_submissions` has had admin SELECT and DELETE policies since the
- * schema was written and no interface at all, so messages accumulated where
- * nobody could read them. The UPDATE policy the marking actions need arrives
- * with `db/migrations/007-contact-inbox.sql`.
- *
- * `integration_settings` is a separate table from `site_identity` on purpose:
- * that one is `FOR SELECT USING (true)`, so a webhook URL stored there would
- * be world-readable, which is the exposure the migration exists to remove.
  */
 export const inboxApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -96,10 +87,6 @@ export const inboxApi = adminApi.injectEndpoints({
           .eq("id", 1)
           .maybeSingle();
         if (error) return { error };
-        // `maybeSingle` rather than `single`: the row is seeded by the schema,
-        // but a database that has not run migration 007 has no table at all,
-        // and an inbox that cannot show its notification settings should still
-        // show the messages.
         return {
           data: (data as IntegrationSettings | null) ?? {
             id: 1,

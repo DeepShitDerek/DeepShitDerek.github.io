@@ -15,7 +15,6 @@
 --
 --     DELETE FROM site_visits WHERE timezone = 'Seed/Fake';
 --
--- Requires db/migrations/008-visitor-analytics.sql.
 -- =============================================================================
 
 -- The enrichment trigger overwrites created_at with now(), which would pile

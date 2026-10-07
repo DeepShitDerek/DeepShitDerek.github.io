@@ -8,7 +8,7 @@ import { weakAreas } from "./spaced-review";
 /**
  * What keeps slipping.
  *
- * `lapses` and `ease` have been recorded since the module's first migration
+ * `lapses` and `ease` have been recorded since the module's first initialization
  * and never shown anywhere, so the one question a study tool ought to be able
  * to answer — "what am I actually bad at?" — had no screen. Both are already
  * honest signals rather than invented scores: a lapse is a topic you had

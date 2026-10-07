@@ -2,10 +2,9 @@
 --
 -- The supabase/postgres image ships the database, roles and extensions, but
 -- two things the schema relies on are created by other Supabase services in
--- production: auth.jwt() (Auth/GoTrue migrations) and the storage tables
--- (Storage API migrations). These are minimal stand-ins with the same
--- signatures and semantics, so db/schema.sql can be loaded and its policies
--- exercised locally.
+-- production: auth.jwt() and the storage tables. These are minimal stand-ins
+--  with the same signatures and semantics, so db/schema.sql can be loaded and
+--  its policies exercised locally.
 
 -- Matches current Supabase Auth: claims arrive as one JSON setting.
 CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb

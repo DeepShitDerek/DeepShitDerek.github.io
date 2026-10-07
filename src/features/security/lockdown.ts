@@ -9,10 +9,6 @@ import { Globe, Lock, ShieldAlert, type LucideIcon } from "lucide-react";
  * and a seed row — and no RLS policy references it. Setting level 2 changed a
  * message on the public site and nothing else, so the owner could believe
  * writes were blocked while they were not.
- *
- * A security screen that overstates what it does is worse than one that does
- * less, so the copy here describes the enforcement that exists. Where a level
- * depends on a migration the owner may not have run, it says so.
  */
 
 export const MAX_LOCKDOWN_LEVEL = 3;

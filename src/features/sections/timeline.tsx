@@ -45,7 +45,7 @@ import { ItemImage, ItemTags, Markdown, PlainText, TextLink } from "./shared";
  *
  * Work that ran *alongside* other work (derived from overlapping dates) is set
  * in as a side track — a smaller, hollow node and an indented card — and names
- * what it ran alongside. A declared merge (migration 017) is said on the card.
+ * what it ran alongside. A declared merge is said on the card.
  * Neither is drawn as a lane: lanes were accurate and hard to read, and had to
  * collapse on a phone regardless.
  *

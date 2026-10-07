@@ -57,8 +57,7 @@ export interface PortfolioSection {
   updated_at?: string;
   is_visible: boolean;
   /**
-   * Whether the public page shows the section's title. Absent on fallback
-   * data and on databases before migration 019, where it means shown.
+   * Whether the public page shows the section's title.
    */
   show_title?: boolean;
   page_path: string;
@@ -84,8 +83,7 @@ export interface PortfolioItem {
    *
    * Concurrency on the timeline is *derived* from overlapping dates, which is
    * honest. A merge is not derivable — "these ended near each other" is a
-   * different claim from "one became the other" — so it is stated. See
-   * db/migrations/017.
+   * different claim from "one became the other" — so it is stated.
    */
   merged_into_id?: string | null;
   display_order?: number;

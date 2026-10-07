@@ -161,7 +161,7 @@ export interface DatedFields {
  * the ordinary case, not an error. An earlier draft required the target to be
  * above the branch and dropped exactly that arrangement; the test caught it.
  *
- * Cycles are the database's job (migration 017), not this function's: the
+ * Cycles are the database's job, not this function's: the
  * client can only prevent the loops it thinks of.
  */
 export function resolveMerges<T extends DatedFields>(

@@ -1,9 +1,9 @@
 name: Deploy Next.js site to Pages
 
 # This file has to live in .github/workflows at the repository root: GitHub
-# reads workflows from nowhere else. The app itself is in , so every run
+# reads workflows from nowhere else. The app itself is in, so every run
 # step below works there (`defaults.run.working-directory`), and the steps
-# that are actions rather than commands are given  paths explicitly.
+# that are actions rather than commands are given paths explicitly.
 
 on:
   push:
@@ -19,10 +19,13 @@ permissions:
   pages: write
   id-token: write
 
-# One deploy at a time, never cancelled half-way. Pull requests get their own
-# group, and a newer push to the same pull request replaces the older run.
+# One deploy at a time, never cancelled half-way. Only runs that can deploy
+# (main, not a pull request) share that queue: GitHub keeps a single pending
+# run per group, so a manual run from another branch waiting there would push
+# out a newer deploy of main. Everything else gets a group of its own, and a
+# newer run on the same pull request replaces the older one.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('checks-{0}', github.ref) || 'pages' }}
+  group: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && 'pages' || format('checks-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
@@ -99,6 +102,12 @@ jobs:
       - name: Run database policy tests
         run: node scripts/test-db.mjs
 
+      # The sample person's seed (db/john-doe.sample.sql) is the first thing a
+      # new owner runs. Applied twice to a throwaway database, so a schema
+      # change that breaks it fails here and not on someone's first day.
+      - name: Run the sample seed
+        run: node scripts/test-sample-seed.mjs
+
       # The public site names its columns, so code that expects a column the
       # live database lacks breaks every page that reads it. Refuse to deploy
       # until db/schema.sql has been re-run on the project. Read-only probes
@@ -118,6 +127,9 @@ jobs:
         # `npm run build`, not `next build`: the prebuild hook copies
         # Excalidraw's fonts into public/ (gitignored), and calling Next
         # directly skipped it, so deployed whiteboards had no fonts.
+        # The hook also clears Next's cache of database responses, which is
+        # restored with .next/cache above: without that, a deploy would be
+        # built from the content as it was when the cache was first filled.
         # The script builds with webpack: ~7 KB lighter per public page
         # than Turbopack on Next 16 (V2-023).
         run: npm run build
@@ -163,7 +175,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload artifact
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v5
         with:
           path: out

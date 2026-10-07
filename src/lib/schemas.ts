@@ -179,8 +179,7 @@ export const requiredDateString = z.string().min(1, "Date is required");
 // =============================================================================
 
 /**
- * Every bound here mirrors a CHECK constraint on `tasks` — see
- * `db/migrations/001-tasks-projects-dependencies.sql`. A value this schema
+ * Every bound here mirrors a CHECK constraint on `tasks`. A value this schema
  * accepts and Postgres rejects surfaces as an opaque write failure.
  */
 export const taskSchema = z
@@ -258,8 +257,7 @@ export type SubTaskFormValues = z.infer<typeof subTaskSchema>;
 // =============================================================================
 
 /**
- * Every bound mirrors a CHECK constraint on `habits` — see
- * `db/migrations/002-habits.sql`.
+ * Every bound mirrors a CHECK constraint on `habits`.
  */
 export const habitSchema = z
   .object({
@@ -512,8 +510,7 @@ export type CalendarFormValues = z.infer<typeof calendarSchema>;
 // =============================================================================
 
 /**
- * Bounds mirror the CHECK constraints in
- * `db/migrations/005-inventory.sql`.
+ * Bounds mirror the CHECK constraints.
  */
 export const inventoryItemSchema = z
   .object({
@@ -971,7 +968,6 @@ export const LIBRARY_STATUSES = [
   "abandoned",
 ] as const;
 
-/** Mirrors the CHECK constraints in db/migrations/018. */
 export const LIBRARY_LIMITS = {
   TITLE: 200,
   CREATOR: 200,

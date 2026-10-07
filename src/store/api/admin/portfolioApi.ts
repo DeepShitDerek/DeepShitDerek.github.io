@@ -49,7 +49,6 @@ export const portfolioApi = adminApi.injectEndpoints({
       },
       invalidatesTags: ["PortfolioContent"],
     }),
-    /** A section's items, in the order given. Migration 024. */
     updateItemOrder: builder.mutation<
       null,
       { sectionId: string; itemIds: string[] }

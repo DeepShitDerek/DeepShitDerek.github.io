@@ -62,9 +62,6 @@ import { TrafficChart } from "./traffic-chart";
 /**
  * Who came to the site, and from where.
  *
- * The data behind this has been collectible since migration 008 and readable by
- * nothing — the same shape as `contact_submissions` before the inbox existed.
- *
  * Everything is aggregated by `get_visitor_analytics`; this page never sees an
  * individual visit row, which is deliberate. There is no per-visitor view to
  * build because there is no per-visitor identity to build it from: the hash

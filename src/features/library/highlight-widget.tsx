@@ -40,11 +40,6 @@ const KIND_ICONS: Record<LibraryKind, LucideIcon> = {
  *
  * The request for another line lives in the card's own closing row, on the
  * same grid as everything else, and the next line crossfades in place.
- *
- * It reads a database function that returns only lines marked public, and
- * resolves to nothing on any failure — an empty Library, a missing migration
- * or a network error all produce an absent widget, never an error on someone
- * else's page.
  */
 export function HighlightWidget() {
   const reduceMotion = useReducedMotion();

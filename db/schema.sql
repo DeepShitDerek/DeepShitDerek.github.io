@@ -90,7 +90,6 @@ CREATE TRIGGER block_additional_signups
 -- =========================================================
 
 DO $$ BEGIN CREATE TYPE task_status AS ENUM ('todo', 'inprogress', 'review', 'done'); EXCEPTION WHEN duplicate_object THEN null; END $$;
--- Existing databases pick this up via db/migrations/001-tasks-projects-dependencies.sql.
 -- 'blocked' is deliberately absent: it is derived from unmet dependencies, so a
 -- stored value could disagree with the dependency graph.
 DO $$ BEGIN CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -167,7 +166,6 @@ CREATE TABLE IF NOT EXISTS portfolio_sections (
   page_path TEXT NOT NULL DEFAULT '/',
   layout_style TEXT NOT NULL DEFAULT 'default',
   is_visible BOOLEAN DEFAULT true,
-  -- Hidden titles stay in the markup, screen-reader-only (migration 019).
   show_title BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -201,8 +199,7 @@ CREATE TABLE IF NOT EXISTS portfolio_items (
 ALTER TABLE portfolio_items ENABLE ROW LEVEL SECURITY;
 -- A branch that fed into another item. Derived concurrency is honest, but a
 -- *merge* is a relationship between two items and needs saying explicitly —
--- inferring it from adjacency would draw a claim nobody made. See
--- db/migrations/017.
+-- inferring it from adjacency would draw a claim nobody made.
 ALTER TABLE portfolio_items
   ADD COLUMN IF NOT EXISTS merged_into_id UUID
     REFERENCES portfolio_items(id) ON DELETE SET NULL;
@@ -494,8 +491,8 @@ ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admin manage notes" ON notes;
 CREATE POLICY "Admin manage notes" ON notes FOR ALL USING (auth.uid() = user_id AND public.is_aal2()) WITH CHECK (auth.uid() = user_id AND public.is_aal2());
 -- `updated_at` on a note means "the content changed", so filing a note —
--- pinning it, reordering it — deliberately leaves the timestamp alone. See
--- db/migrations/013 for why. Written as a JSONB difference rather than a list
+-- pinning it, reordering it — deliberately leaves the timestamp alone.
+-- Written as a JSONB difference rather than a list
 -- of comparisons so a column added later counts as content by default.
 CREATE OR REPLACE FUNCTION public.touch_notes_updated_at()
 RETURNS TRIGGER
@@ -610,7 +607,7 @@ CREATE TABLE IF NOT EXISTS learning_topics (
 );
 -- Not everything you learn is a flashcard: reference material is read,
 -- recall is the classic prompt-then-reveal, and quiz carries a right answer to
--- be marked against. See db/migrations/015.
+-- be marked against.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'learning_material_kind') THEN
@@ -2047,7 +2044,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Items within one section, the same way (migration 024). Invoker rights, so
+-- Items within one section, the same way. Invoker rights, so
 -- row-level security on portfolio_items still decides who may write.
 CREATE OR REPLACE FUNCTION public.update_item_order(section_uuid UUID, item_ids UUID[])
 RETURNS void
@@ -2267,7 +2264,7 @@ SELECT v.label, v.href, v.display_order, true
 
 
 -- =========================================================
--- 12. DISCOVER  (migration 012)
+-- 12. DISCOVER
 -- =========================================================
 --
 -- Two small tables behind a module that reads from public APIs. Nothing
@@ -2341,8 +2338,7 @@ CREATE INDEX IF NOT EXISTS discover_topics_user_idx
 -- LIBRARY — what you read and watch, and the lines worth keeping
 -- =========================================================
 -- Neither table has a public read policy; visitors reach one random public
--- highlight through get_random_public_highlight() and nothing else. See
--- db/migrations/018.
+-- highlight through get_random_public_highlight() and nothing else.
 
 CREATE TABLE IF NOT EXISTS library_sources (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2471,7 +2467,7 @@ REVOKE ALL ON FUNCTION public.get_random_public_highlight() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_random_public_highlight() TO anon, authenticated;
 
 -- ============================================================================
--- MONEY — finance v3 (V2-080)
+-- MONEY — finance
 -- ============================================================================
 --
 -- A personal ledger for someone whose money lives in two countries. The design
@@ -2491,12 +2487,9 @@ GRANT EXECUTE ON FUNCTION public.get_random_public_highlight() TO anon, authenti
 -- * Balances are derived, never stored: opening anchor + postings.
 -- * An exchange rate is frozen onto each posting when it is written, so last
 --   February's report says what last February cost.
---
--- Replaces finance v2 (`fin_*`, migrations 025–032), retired below. The owner
--- confirmed on 2026-09-24 that v2 held no data.
 
 
--- ── Retire finance v2 ───────────────────────────────────────────────────────
+-- ── Retire finance ───────────────────────────────────────────────────────
 --
 -- One-way and idempotent: nothing in this file recreates a `fin_*` name, so a
 -- re-run finds nothing to drop. Functions first (their triggers go with
