@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -130,14 +130,28 @@ export function PostPage({ slug, prerendered }: { slug: string; prerendered?: Pr
     if (post) document.title = post.title;
   }, [post]);
 
+  // Keyed on the post's id, and remembered: counting a view invalidates the
+  // post, which comes back as a new object with views + 1. Depending on that
+  // object restarted the timer every time, so a reader who stayed a minute
+  // was counted about a dozen times.
+  const countedId = useRef<string | null>(null);
+  const postId = post?.id;
   useEffect(() => {
-    if (!post || process.env.NODE_ENV !== "production" || !isSupabaseConfigured)
+    if (
+      !postId ||
+      process.env.NODE_ENV !== "production" ||
+      !isSupabaseConfigured
+    )
       return;
     // Not a reader: an automated browser (the build's own checks).
     if (navigator.webdriver) return;
-    const timer = setTimeout(() => incrementView(post.id), VIEW_COUNT_DELAY_MS);
+    if (countedId.current === postId) return;
+    const timer = setTimeout(() => {
+      countedId.current = postId;
+      incrementView(postId);
+    }, VIEW_COUNT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [post, incrementView]);
+  }, [postId, incrementView]);
 
   useEffect(() => {
     if (!copied) return;

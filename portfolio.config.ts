@@ -1,48 +1,46 @@
 // =============================================================================
-// FOLIOKIT - Portfolio Configuration — Akshay Bharadva
-// Generated from akshay.md. To use: replace the root portfolio.config.ts
-// with this file (or copy its values over).
+// FOLIOKIT - Portfolio Configuration
+//
+// This is the template's sample person, John Doe: a made-up full-stack
+// engineer with made-up employers, projects and numbers. Nobody here is real.
+// Replace every value with your own. In static mode (no database) this file
+// is the whole site; with a database it is the fallback, and
+// db/john-doe.sample.sql loads the same person into Supabase.
 // =============================================================================
 
 const portfolioConfig = {
   // ---------------------------------------------------------------------------
   // IDENTITY
   // ---------------------------------------------------------------------------
-  name: "Akshay Bharadva",
-  title: "AI Engineer",
+  name: "John Doe",
+  title: "Full-Stack Engineer",
   description:
-    "Production RAG & LLM systems, full-stack products and security-aware engineering — from first prototype to deployed, and used by the people it was built for.",
+    "Web products from first sketch to production: clear interfaces, dependable APIs, and the unglamorous work that keeps both fast.",
 
   // The one line a visitor should leave with: the home page's main heading,
   // with your name as the byline under it. Leave empty to lead with your name.
-  headline:
-    "Most AI projects never leave a notebook. I build the ones that do.",
+  headline: "I build web products that stay fast after the launch party.",
 
   // Results you can stand behind, shown as a strip under the hero (up to 4).
   // A figure a client can check beats any adjective.
   proof: [
-    {
-      value: "30%",
-      label: "less time on routine tasks with the “Hey Ami!” assistant",
-    },
-    { value: "20%", label: "Q1 revenue growth from a flagship feature I led" },
-    {
-      value: "3 yrs",
-      label: "shipping full-stack products before moving into AI",
-    },
-    { value: "2", label: "postgraduate certificates — AI and cybersecurity" },
+    { value: "40%", label: "faster checkout after the Northwind rebuild" },
+    { value: "7 yrs", label: "shipping production web software" },
+    { value: "12", label: "products launched, from MVP to scale" },
+    { value: "99.95%", label: "uptime on the last platform I ran" },
   ],
-  profilePicture: "https://github.com/akshay-bharadva.png",
+  // GitHub's own demo account, so the picture is nobody's face. Use your own.
+  profilePicture: "https://github.com/octocat.png",
   showProfilePicture: true,
 
   logo: {
-    main: "akshay",
+    main: "john",
     highlight: ".dev",
   },
 
   bio: [
-    'At Amico Corporation, I designed and deployed "Hey Ami!" — a voice-activated enterprise chatbot powered by RAG and PGVector that reduced routine task handling time by 30%. I also built the Complexity Matrix, an AI-driven tool that transformed how our estimators prioritize projects — replacing gut feel with data.',
-    "My path here: 3 years as a full-stack developer (MERN, Spring Boot, TypeScript) → applied AI implementation → postgraduate studies in both AI and Cybersecurity at Durham College (GPA 4.78/5.00). That combination isn't accidental. I understand how to ship features, how to secure them, and how to make AI systems that non-technical users actually trust and use.",
+    "I'm a full-stack engineer with seven years of turning ideas into products people use every day. At Northwind Labs I led the rebuild of a checkout that had grown slow and fragile; the new one is 40% faster and has not paged anyone at night since.",
+    "I started on the front end, moved to APIs because I wanted to fix the slow parts myself, and now work across both. I care about boring things done well: schemas that make bad states impossible, interfaces that work with a keyboard, and deploys nobody has to watch.",
   ],
 
   // ---------------------------------------------------------------------------
@@ -59,44 +57,52 @@ const portfolioConfig = {
     show: true,
     design: "minimal" as const,
     title: "Current Status",
-    availability: "Open to AI Engineer / LLM Developer roles",
+    availability: "Open to senior full-stack roles and select contracts",
     currentlyExploring: {
       title: "Learning",
-      items: ["Advanced RAG patterns", "Agentic systems", "LLM fine-tuning"],
+      items: ["Rust", "Local-first sync", "Postgres internals"],
     },
     latestProject: {
-      name: "Bookmarkly — local AI for bookmarks",
-      linkText: "View on GitHub",
-      href: "https://github.com/akshay-bharadva/bookmarkly",
+      name: "Taskflow — a keyboard-first task manager",
+      linkText: "See the work",
+      href: "/work",
     },
   },
 
   // ---------------------------------------------------------------------------
   // SOCIAL LINKS
   // ---------------------------------------------------------------------------
+  // example.com addresses are placeholders that go nowhere. Use your own.
   socialLinks: [
+    {
+      id: "email",
+      label: "Email",
+      url: "mailto:john@example.com",
+    },
     {
       id: "github",
       label: "GitHub",
-      url: "https://github.com/akshay-bharadva",
+      url: "https://github.com/octocat",
     },
     {
       id: "linkedin",
       label: "LinkedIn",
-      url: "https://linkedin.com/in/akshay-bharadva",
+      url: "https://example.com/linkedin/john-doe",
     },
   ],
 
   // ---------------------------------------------------------------------------
   // FOOTER
   // ---------------------------------------------------------------------------
-  footerText: "Built with Next.js & Supabase · Toronto, ON",
+  footerText: "Built with Next.js & Supabase · Anytown",
 
   // ---------------------------------------------------------------------------
   // GITHUB PROJECTS
   // ---------------------------------------------------------------------------
+  // "octocat" is GitHub's demo account; its public repositories stand in
+  // until you put your own username here. Set `show: false` to hide the list.
   github: {
-    username: "akshay-bharadva",
+    username: "octocat",
     show: true,
     sortBy: "pushed" as const,
     excludeForks: true,
@@ -136,31 +142,31 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   experience: [
     {
-      title: "AI Implementation Specialist",
-      company: "Amico Corporation",
-      from: "Sep 2024",
+      title: "Senior Full-Stack Engineer",
+      company: "Northwind Labs",
+      from: "Mar 2022",
       to: "Present",
       description:
-        'Built and deployed "Hey Ami!" — a voice-activated RAG chatbot using LangChain + PGVector; cut routine task handling time by 30% across sales and ops. Engineered the Complexity Matrix, an AI-powered project scoring tool. Owned the full pipeline: ingestion, vector storage, retrieval tuning, prompt engineering, and production deployment.',
-      tags: ["LangChain", "PGVector", "Python", "RAG", "OpenAI API"],
+        "Led the rebuild of the checkout and order pipeline for a marketplace handling 30,000 orders a day. Cut median checkout time by 40%, moved the team to trunk-based releases, and wrote the runbooks the on-call rota still uses.",
+      tags: ["TypeScript", "Next.js", "PostgreSQL", "Node.js", "AWS"],
     },
     {
-      title: "MERN Developer",
-      company: "DigiPie Technologies LLP",
-      from: "Dec 2022",
-      to: "Aug 2023",
+      title: "Full-Stack Engineer",
+      company: "Acme Analytics",
+      from: "Jun 2019",
+      to: "Feb 2022",
       description:
-        "Led development of a flagship product feature that drove 20% revenue growth in Q1. Modernized legacy codebases to MERN standards. Owned the full SDLC across multiple concurrent client projects.",
-      tags: ["MongoDB", "Express", "React", "Node.js", "TypeScript"],
+        "Built the dashboard builder customers use to explore their own data: a drag-and-drop editor on the front, a query planner behind it. Took report load times from eight seconds to under one.",
+      tags: ["React", "Python", "FastAPI", "ClickHouse"],
     },
     {
-      title: "Full Stack Developer",
-      company: "NJ Group (Finlogic Technologies)",
-      from: "Nov 2021",
-      to: "Nov 2022",
+      title: "Front-End Developer",
+      company: "Contoso Studio",
+      from: "Aug 2017",
+      to: "May 2019",
       description:
-        "Built microservices with Spring Boot, Docker, and Kubernetes for scalable financial applications. Developed SQL/PL/SQL components optimizing high-volume financial data. Created unit test suites and POCs that reduced rework.",
-      tags: ["Spring Boot", "Java", "Docker", "Kubernetes", "PL/SQL"],
+        "Shipped marketing sites and web apps for a dozen clients. Introduced the studio's first component library and its accessibility checklist.",
+      tags: ["JavaScript", "Vue", "Sass", "Accessibility"],
     },
   ],
 
@@ -169,28 +175,28 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   techStack: [
     {
-      title: "RAG / LangChain",
-      description: "Ingestion → embedding → retrieval tuning → LLM response",
-    },
-    {
-      title: "Python",
-      description: "Production AI services, tooling, and data pipelines",
-    },
-    {
       title: "TypeScript / React / Next.js",
-      description: "Full-stack product frontends",
+      description: "Product front ends, from design system to deploy",
     },
     {
-      title: "PGVector / PostgreSQL",
-      description: "Vector search, schema design, high-volume data",
+      title: "Node.js & Python",
+      description: "APIs, background jobs and the glue between systems",
     },
     {
-      title: "PyTorch / Hugging Face",
-      description: "Model fine-tuning and NLP workflows",
+      title: "PostgreSQL",
+      description: "Schema design, query tuning, row-level security",
     },
     {
-      title: "Docker & Spring Boot",
-      description: "Microservices, containerization, backend depth",
+      title: "AWS & Docker",
+      description: "Containers, queues and infrastructure as code",
+    },
+    {
+      title: "Testing",
+      description: "Unit, integration and browser tests that earn their keep",
+    },
+    {
+      title: "Accessibility",
+      description: "WCAG 2.2 AA as a build requirement, not a retrofit",
     },
   ],
 
@@ -198,16 +204,15 @@ const portfolioConfig = {
   // TOOLS
   // ---------------------------------------------------------------------------
   tools: [
-    { title: "Splunk", description: "Log analysis and security monitoring." },
+    { title: "Figma", description: "Reading designs and prototyping changes." },
     {
-      title: "Wireshark",
-      description:
-        "Network protocol analysis — attack surfaces, not just benchmarks.",
+      title: "Playwright",
+      description: "Browser tests for the flows that must not break.",
     },
-    { title: "Nessus", description: "Vulnerability scanning and assessment." },
+    { title: "Grafana", description: "Dashboards and alerts for what ships." },
     {
-      title: "PFsense / Snort",
-      description: "Firewalling and intrusion detection.",
+      title: "GitHub Actions",
+      description: "Build, test and deploy on every push.",
     },
   ],
 
@@ -216,27 +221,19 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   education: [
     {
-      title: "Postgraduate Certificate, Cybersecurity",
-      institution: "Durham College",
-      from: "Sep 2024",
-      to: "Apr 2025",
+      title: "BSc, Computer Science",
+      institution: "Example State University",
+      from: "Sep 2013",
+      to: "Jun 2017",
       description:
-        "Network Monitoring, Penetration Testing, Access Controls, Security Auditing & Governance.",
+        "First-class honours. Final-year project on offline-first web applications.",
     },
     {
-      title: "Postgraduate Certificate, AI Analysis, Design & Implementation",
-      institution: "Durham College",
-      from: "Sep 2023",
-      to: "Aug 2024",
-      description:
-        "GPA 4.78 / 5.00 · AI Algorithms, NLP, Predictive Modeling, Enterprise AI Systems.",
-    },
-    {
-      title: "Bachelor of Computer Applications",
-      institution: "Veer Narmad South Gujarat University",
-      from: "Jun 2019",
-      to: "Apr 2022",
-      description: "CGPA 8.7 / 10.",
+      title: "Certificate, Web Accessibility",
+      institution: "Example Institute of Technology",
+      from: "Jan 2020",
+      to: "Apr 2020",
+      description: "WCAG auditing, assistive technology and inclusive design.",
     },
   ],
 
@@ -245,18 +242,18 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   showcase: [
     {
-      title: '"Hey Ami!" — Voice-Activated Enterprise RAG Chatbot',
+      title: "Northwind checkout rebuild",
       description:
-        "End-to-end RAG pipeline (LangChain + PGVector) with a voice interface, deployed to production at Amico Corporation. Reduced routine task handling time by 30% across sales and ops teams.",
-      link: "https://amico.ca",
-      tags: ["RAG", "LangChain", "PGVector", "Voice AI"],
+        "A checkout that had grown slow and fragile, rebuilt in place without a day of downtime. Median time to pay fell by 40% and abandoned carts by a fifth.",
+      link: "https://example.com/northwind",
+      tags: ["Next.js", "PostgreSQL", "Payments", "Performance"],
     },
     {
-      title: "Complexity Matrix — AI Project Scoring",
+      title: "Acme dashboard builder",
       description:
-        "AI-driven complexity scoring that moved estimator prioritization from gut feel to data — embedded directly into the existing workflow so adoption required zero process change.",
-      link: "https://amico.ca",
-      tags: ["Applied AI", "Decision Support", "Python"],
+        "A drag-and-drop report editor over a query planner that keeps large reports interactive. Report load time went from eight seconds to under one.",
+      link: "https://example.com/acme",
+      tags: ["React", "FastAPI", "ClickHouse", "Data"],
     },
   ],
 
@@ -265,30 +262,30 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   projects: [
     {
-      title: "Bookmarkly",
-      subtitle: "Local AI for your bookmarks",
+      title: "Taskflow",
+      subtitle: "A keyboard-first task manager",
       description:
-        "Auto-organizes browser bookmarks using on-device LLM inference — no cloud, no data leaves your machine. Python, MIT licensed.\n\n[View Source on GitHub](https://github.com/akshay-bharadva/bookmarkly)",
-      tags: ["Python", "Local LLM", "AI"],
-      link: "https://github.com/akshay-bharadva/bookmarkly",
+        "Tasks, projects and a daily plan you can drive without touching the mouse. Works offline and syncs when it can.\n\n[View the source](https://example.com/taskflow)",
+      tags: ["TypeScript", "Local-first", "PWA"],
+      link: "https://example.com/taskflow",
       image: "",
     },
     {
-      title: "Portmapper",
-      subtitle: "Network security monitoring",
+      title: "Pingboard",
+      subtitle: "Uptime checks you can read at a glance",
       description:
-        "Real-time port scanning and threat detection platform. Security depth meets practical tooling.\n\n[View Source on GitHub](https://github.com/akshay-bharadva/portmapper)",
-      tags: ["Python", "Security", "Networking"],
-      link: "https://github.com/akshay-bharadva/portmapper",
+        "A small self-hosted monitor: checks every minute, one status page, alerts that say what broke.\n\n[View the source](https://example.com/pingboard)",
+      tags: ["Go", "SQLite", "Monitoring"],
+      link: "https://example.com/pingboard",
       image: "",
     },
     {
-      title: "Template Management System",
-      subtitle: "Dynamic PDF generation",
+      title: "Markleaf",
+      subtitle: "Markdown notes that stay plain files",
       description:
-        "Java/Spring MVC web app for generating dynamic PDFs from custom templates with data placeholders.\n\n[View Source on GitHub](https://github.com/akshay-bharadva/template-management-system)",
-      tags: ["Java", "Spring MVC", "PDF"],
-      link: "https://github.com/akshay-bharadva/template-management-system",
+        "A notes app that never locks your writing in: plain Markdown on disk, fast search on top.\n\n[View the source](https://example.com/markleaf)",
+      tags: ["Rust", "Tauri", "Search"],
+      link: "https://example.com/markleaf",
       image: "",
     },
   ],
@@ -298,25 +295,25 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   services: [
     {
-      title: "LLM & RAG Systems",
-      subtitle: "LangChain · PGVector · OpenAI API",
+      title: "Product engineering",
+      subtitle: "React · Next.js · Node.js",
       description:
-        "End-to-end RAG pipeline design — ingestion, embedding, retrieval tuning, and LLM response generation. Built for production, not demos.",
-      tags: ["RAG pipelines", "Chatbots", "Voice AI", "Prompt engineering"],
-    },
-    {
-      title: "Full-Stack Products",
-      subtitle: "React · Next.js · Spring Boot · Node",
-      description:
-        "AI integrated into real products — not just model wrappers. Frontend, backend, database, and deployment handled end to end.",
+        "A feature or a whole product, taken from a rough brief to something your customers use: front end, API, database and deploy.",
       tags: ["Web apps", "APIs", "Auth", "Deployment"],
     },
     {
-      title: "Security-Aware Engineering",
-      subtitle: "Splunk · Wireshark · Nessus",
+      title: "Performance & reliability",
+      subtitle: "Profiling · Caching · Observability",
       description:
-        "I've studied the attack surfaces, not just the benchmarks. AI systems that ship, scale, and don't get compromised.",
-      tags: ["Threat detection", "Network security", "Audits"],
+        "Finding why it is slow or flaky, fixing the cause, and leaving the dashboards and alerts that keep it fixed.",
+      tags: ["Core Web Vitals", "Query tuning", "On-call"],
+    },
+    {
+      title: "Accessibility audits",
+      subtitle: "WCAG 2.2 AA",
+      description:
+        "A review of your product against WCAG with a prioritised list of fixes, and help making them.",
+      tags: ["Audits", "Keyboard", "Screen readers"],
     },
   ],
 
@@ -328,7 +325,7 @@ const portfolioConfig = {
       title: "Discovery call",
       duration: "30 minutes",
       description:
-        "What you're trying to change, what you have today, and whether AI is the right tool for it at all.",
+        "What you're trying to change, what you have today, and whether I'm the right person for it.",
     },
     {
       title: "Scoped proposal",
@@ -356,14 +353,34 @@ const portfolioConfig = {
   // Add `draft: true` to a post to keep it off the site until it is ready.
   blogPosts: [
     {
-      title: 'RAG Lessons from Shipping "Hey Ami!" to Production',
-      slug: "rag-lessons-from-shipping-hey-ami",
+      title: "What a 40% faster checkout actually took",
+      slug: "what-a-faster-checkout-took",
       excerpt:
-        "Most RAG advice comes from demos. Here's what actually mattered when a voice chatbot had to answer real questions for real teams every day.",
+        "No rewrite, no new framework. Three boring changes did almost all of it, and the fourth we tried made things worse.",
       content:
-        "## Draft outline\n\n## The gap between a RAG demo and a RAG product\n\n## Retrieval quality is the product\n\n- Chunking strategy gotchas\n- PGVector tuning that actually moved the needle\n\n## Prompt engineering with non-technical users in the loop\n\n## What I'd do differently next time",
-      tags: ["RAG", "LangChain", "PGVector", "LLM"],
+        "## Where the time went\n\nBefore touching anything we measured. Most of the wait was not rendering or the network: it was four database round trips that could have been one.\n\n## The three changes\n\n- One query for the cart instead of four\n- Prices computed once, on the server\n- The payment form loaded before the customer asks for it\n\n## The change that made it worse\n\nWe added a cache in front of stock levels. It was fast, and it was wrong often enough to oversell. We took it out.\n\n## What I'd do again\n\nMeasure first, change one thing at a time, and keep the dashboard open while you do.",
+      tags: ["Performance", "PostgreSQL", "Checkout"],
       showToc: true,
+    },
+    {
+      title: "Schemas that make bad states impossible",
+      slug: "schemas-that-make-bad-states-impossible",
+      excerpt:
+        "Every validation you write in application code is one a second service will forget. Put the rule where the data lives.",
+      content:
+        "## The bug that started it\n\nAn order with a negative quantity reached the warehouse. Three services had a check for it; a fourth, written later, did not.\n\n## Constraints are documentation that runs\n\nA `CHECK (quantity > 0)` cannot be forgotten by the next service.\n\n```sql\nALTER TABLE order_lines\n  ADD CONSTRAINT quantity_positive CHECK (quantity > 0);\n```\n\n## When not to\n\nRules that change every quarter belong in code. Rules that are true by definition belong in the schema.",
+      tags: ["PostgreSQL", "Data modelling"],
+      showToc: true,
+    },
+    {
+      title: "A keyboard is the best accessibility test you own",
+      slug: "keyboard-accessibility-test",
+      excerpt:
+        "Unplug the mouse for ten minutes. Most of what an audit would find, you will find first.",
+      content:
+        "## Ten minutes, no mouse\n\nTab through your own product. Can you see where you are? Can you reach everything? Can you get out of the dialog you opened?\n\n## What it catches\n\n- Focus that disappears\n- Controls that are only clickable\n- Menus that trap you\n\n## What it does not\n\nContrast, alternative text and reading order still need their own checks.",
+      tags: ["Accessibility", "Testing"],
+      showToc: false,
     },
   ],
 
@@ -374,27 +391,27 @@ const portfolioConfig = {
 
   lifeUpdates: [
     {
-      title: 'Deployed "Hey Ami!" at Amico 🚀',
+      title: "The Northwind checkout is live",
       content:
-        "Voice-activated enterprise RAG chatbot, live in production. Routine task handling time down 30% across sales and ops. Most AI projects never leave a Jupyter notebook — this one did.",
+        "Eight months of work, switched over on a Tuesday afternoon with nobody watching a dashboard in fear. 40% faster, and quieter.",
       category: "milestone" as const,
-      tags: ["RAG", "LLM", "Production"],
+      tags: ["Launch", "Performance"],
       isPinned: true,
     },
     {
-      title: "Completed Cybersecurity postgrad at Durham College",
+      title: "Learning Rust by rewriting Markleaf's search",
       content:
-        "Second postgraduate certificate done — network monitoring, penetration testing, security auditing. AI + security is a rare combination and that's the point.",
-      category: "milestone" as const,
-      tags: ["Cybersecurity", "Durham College"],
+        "The borrow checker and I have reached an understanding. Search over ten thousand notes now answers before the key comes back up.",
+      category: "activity" as const,
+      tags: ["Rust", "Side project"],
       isPinned: false,
     },
     {
-      title: "Building Bookmarkly",
+      title: "A note on estimates",
       content:
-        "Local AI that organizes your bookmarks with on-device LLM inference. No cloud, no tracking — your browsing habits stay yours.",
-      category: "activity" as const,
-      tags: ["Local LLM", "Python", "Side project"],
+        "An estimate is a range, not a number. The honest ones come with what would make them wrong.",
+      category: "thought" as const,
+      tags: ["Engineering"],
       isPinned: false,
     },
   ],
@@ -404,6 +421,7 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   // `show: false` removes /kit and the footer credit — what a site built *with*
   // Foliokit usually wants. Prices are yours to set; nothing here is invented.
+  // `repoUrl` is Foliokit's own repository, not the sample person's.
   product: {
     show: true,
     name: "Foliokit",

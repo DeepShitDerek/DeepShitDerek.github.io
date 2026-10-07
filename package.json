@@ -17,7 +17,7 @@
   "scripts": {
     "predev": "node scripts/copy-excalidraw-assets.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-excalidraw-assets.mjs",
+    "prebuild": "node scripts/copy-excalidraw-assets.mjs && node scripts/clear-fetch-cache.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint src --max-warnings 0",
@@ -25,6 +25,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json,css}\" --ignore-path .gitignore",
     "test": "vitest run",
     "test:db": "node scripts/test-db.mjs",
+    "test:seed": "node scripts/test-sample-seed.mjs",
     "check:prerender": "node scripts/check-prerender.mjs",
     "check:hydration": "node scripts/check-hydration.mjs",
     "check:live-schema": "node scripts/check-live-schema.mjs",
