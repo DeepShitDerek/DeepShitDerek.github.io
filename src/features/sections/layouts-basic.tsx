@@ -5,7 +5,12 @@ import type { PortfolioItem } from "@/types";
 import { distributeColumns, useColumnCount } from "@/hooks/use-column-count";
 import { cn } from "@/lib/cn";
 import { Timeline } from "./timeline";
-import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/layout/motion";
+import {
+  CountUp,
+  Reveal,
+  Stagger,
+  StaggerItem,
+} from "@/components/layout/motion";
 import {
   CARD,
   CARD_INTERACTIVE,
@@ -177,7 +182,10 @@ export function CardsWithImageLayout({ items }: LayoutProps) {
                 <ItemImage
                   src={item.image_url}
                   alt={item.title}
-                  className={cn("aspect-[16/10] w-full object-cover", IMAGE_ZOOM)}
+                  className={cn(
+                    "aspect-[16/10] w-full object-cover",
+                    IMAGE_ZOOM,
+                  )}
                   fallbackLabel={item.title.trim().charAt(0).toUpperCase()}
                 />
               </div>
@@ -348,7 +356,10 @@ export function FeatureAlternatingLayout({ items }: LayoutProps) {
           >
             <Reveal
               from={flip ? "right" : "left"}
-              className={cn("md:col-span-7", flip ? "md:order-2" : "md:order-1")}
+              className={cn(
+                "md:col-span-7",
+                flip ? "md:order-2" : "md:order-1",
+              )}
             >
               <MaybeLink
                 href={item.link_url}
@@ -358,7 +369,10 @@ export function FeatureAlternatingLayout({ items }: LayoutProps) {
                 <ItemImage
                   src={item.image_url}
                   alt={item.image_url ? item.title : ""}
-                  className={cn("aspect-[16/10] w-full object-cover", IMAGE_ZOOM)}
+                  className={cn(
+                    "aspect-[16/10] w-full object-cover",
+                    IMAGE_ZOOM,
+                  )}
                   fallbackLabel={item.title.trim().charAt(0).toUpperCase()}
                 />
               </MaybeLink>

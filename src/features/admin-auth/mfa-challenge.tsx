@@ -19,7 +19,13 @@ function CodeWindow({ seconds }: { seconds: number }) {
   return (
     <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
       <svg viewBox="0 0 24 24" className="size-5 -rotate-90" aria-hidden>
-        <circle cx="12" cy="12" r={radius} className="fill-none stroke-secondary" strokeWidth="3" />
+        <circle
+          cx="12"
+          cy="12"
+          r={radius}
+          className="fill-none stroke-secondary"
+          strokeWidth="3"
+        />
         <circle
           cx="12"
           cy="12"
@@ -30,7 +36,10 @@ function CodeWindow({ seconds }: { seconds: number }) {
           strokeDashoffset={circumference * (1 - seconds / 30)}
         />
       </svg>
-      New code in <span className="font-medium tabular-nums text-foreground">{seconds}s</span>
+      New code in{" "}
+      <span className="font-medium tabular-nums text-foreground">
+        {seconds}s
+      </span>
     </p>
   );
 }

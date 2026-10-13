@@ -26,7 +26,7 @@ import type {
 
 /*
   The public read endpoints delegate to src/lib/public-data.ts, which the
-  public pages also call at build time to prerender the same data (ADR-004).
+  public pages also call at build time to prerender the same data.
   Change a query there, not here.
 */
 export const publicApi = createApi({
@@ -170,7 +170,7 @@ export const publicApi = createApi({
      *
      * **Dynamic mode** inserts the row and stops. The Discord notification is
      * sent by an AFTER INSERT trigger reading the webhook URL from an
-     * admin-only table (`db/migrations/007-contact-inbox.sql`). It used to be
+     * admin-only table (`db/schema.sql`). It used to be
      * sent from here, from the browser, using
      * `NEXT_PUBLIC_CONTACT_WEBHOOK_URL` — which is compiled into the client
      * bundle, so anyone could read the URL out of the JS and post arbitrary
@@ -282,16 +282,14 @@ export const publicApi = createApi({
      *
      * Resolves to null on any failure rather than erroring. A quote is
      * decoration, and it must never be the reason a page shows an error —
-     * including before migration 018 has been run, when the function does not
+     * including on a database set up from an older schema, where the function does not
      * exist yet.
      */
     getRandomHighlight: builder.query<PublicHighlight | null, void>({
       queryFn: async () => {
         if (!rest) return { data: pickRandom(MOCK_HIGHLIGHTS) };
 
-        const { data, error } = await rest.rpc(
-          "get_random_public_highlight",
-        );
+        const { data, error } = await rest.rpc("get_random_public_highlight");
         if (error) return { data: null };
 
         const row = Array.isArray(data) ? data[0] : data;

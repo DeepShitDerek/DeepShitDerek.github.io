@@ -17,13 +17,7 @@ import { KIND_LABELS, statusLabel } from "./library-model";
  * players need scripts and their own origin, and nothing else is granted
  * beyond fullscreen and opening the provider in a new tab.
  */
-export function SourcePlayer({
-  embed,
-  title,
-}: {
-  embed: Embed;
-  title: string;
-}) {
+function SourcePlayer({ embed, title }: { embed: Embed; title: string }) {
   return (
     <div
       className={cn(

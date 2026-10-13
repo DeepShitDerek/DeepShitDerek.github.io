@@ -37,7 +37,7 @@ export interface ResolvedCmsPage {
  * `trailingSlash: true` means every URL the visitor arrives on carries one,
  * and the stored hrefs do not.
  */
-export function normalizePagePath(path: string): string {
+function normalizePagePath(path: string): string {
   const [withoutQuery = ""] = path.split(/[?#]/);
   const trimmed = withoutQuery.replace(/\/+$/, "");
   if (trimmed === "") return "/";

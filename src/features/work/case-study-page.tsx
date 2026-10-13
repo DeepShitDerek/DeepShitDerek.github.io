@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { skipToken } from "@reduxjs/toolkit/query";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { useGetCaseStudyBySlugQuery } from "@/store/api/publicApi";
@@ -62,14 +61,8 @@ function CaseStudyNotFound() {
   );
 }
 
-/** /work/view/?slug= — case studies published since the last build. */
-export function CaseStudyPageFromQuery() {
-  const searchParams = useSearchParams();
-  return <CaseStudyPage slug={searchParams?.get("slug") ?? ""} />;
-}
-
 /**
- * One piece of work, told in full (V2-042): what it was, the facts at a
+ * One piece of work, told in full: what it was, the facts at a
  * glance, the write-up, then the way to start a conversation about it.
  */
 export function CaseStudyPage({ slug }: { slug: string }) {

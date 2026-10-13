@@ -29,7 +29,9 @@ function statusOf(error: unknown): number | null {
 
 async function call(method: "GET" | "POST") {
   if (!supabase) return { status: 503, data: null };
-  const { data, error } = await supabase.functions.invoke("publish-site", { method });
+  const { data, error } = await supabase.functions.invoke("publish-site", {
+    method,
+  });
   if (!error) return { status: method === "POST" ? 202 : 200, data };
   const status = statusOf(error);
   let body: unknown = null;
@@ -43,14 +45,24 @@ async function call(method: "GET" | "POST") {
 
 export function describeRun(run: RunSummary | null, now = Date.now()): string {
   if (!run) return "Not published from here yet.";
-  if (run.status !== "completed") return "Publishing… the site updates when the build finishes.";
-  const minutes = Math.round((now - new Date(run.createdAt).getTime()) / 60_000);
-  const when = minutes < 1 ? "just now" : minutes < 60 ? `${minutes} min ago` : new Date(run.createdAt).toLocaleString();
-  return run.conclusion === "success" ? `Last published ${when}.` : `The last publish failed (${when}).`;
+  if (run.status !== "completed")
+    return "Publishing… the site updates when the build finishes.";
+  const minutes = Math.round(
+    (now - new Date(run.createdAt).getTime()) / 60_000,
+  );
+  const when =
+    minutes < 1
+      ? "just now"
+      : minutes < 60
+        ? `${minutes} min ago`
+        : new Date(run.createdAt).toLocaleString();
+  return run.conclusion === "success"
+    ? `Last published ${when}.`
+    : `The last publish failed (${when}).`;
 }
 
 /**
- * "Publish site" (ADM-009): rebuild the static site, so a new post gets its
+ * "Publish site": rebuild the static site, so a new post gets its
  * own page and link preview now rather than at the next push. Goes through
  * the publish-site Edge Function, which holds the GitHub token; until that
  * function is deployed and configured this says so instead of pretending.
@@ -85,12 +97,16 @@ export function PublishSiteButton() {
     const { status, data } = await call("POST");
     setStarting(false);
     if (status === 202) {
-      toast.success("Publishing", { description: "The site rebuilds and updates in a few minutes." });
+      toast.success("Publishing", {
+        description: "The site rebuilds and updates in a few minutes.",
+      });
     } else if (status === 409) {
       toast.info("A publish is already running");
     } else {
       toast.error("Couldn't start publishing", {
-        description: (data as { error?: string } | null)?.error ?? "The publish function did not answer.",
+        description:
+          (data as { error?: string } | null)?.error ??
+          "The publish function did not answer.",
       });
     }
     if (timer.current) clearTimeout(timer.current);
@@ -104,15 +120,20 @@ export function PublishSiteButton() {
     return (
       <p className="text-xs text-muted-foreground">
         Changes go live with the next deploy. A Publish button appears here once
-        the publish-site function is set up (DEPLOYMENT.md).
+        the publish-site function is set up (see the README).
       </p>
     );
   }
 
-  const running = state.latest?.status !== undefined && state.latest.status !== "completed";
+  const running =
+    state.latest?.status !== undefined && state.latest.status !== "completed";
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button variant="outline" onClick={() => void publish()} disabled={starting || running}>
+      <Button
+        variant="outline"
+        onClick={() => void publish()}
+        disabled={starting || running}
+      >
         {starting || running ? (
           <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
         ) : (
@@ -123,7 +144,12 @@ export function PublishSiteButton() {
       <span role="status" className="text-xs text-muted-foreground">
         {describeRun(state.latest)}{" "}
         {state.latest && (
-          <a href={state.latest.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+          <a
+            href={state.latest.url}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2"
+          >
             Build log
           </a>
         )}

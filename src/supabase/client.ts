@@ -1,7 +1,6 @@
 import {
   createClient,
   Session,
-  User,
   SupabaseClient,
   SupabaseClientOptions,
 } from "@supabase/supabase-js";
@@ -18,4 +17,4 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseConfig.url, supabaseConfig.anonKey, options)
   : null;
 
-export type { Session, User };
+export type { Session };

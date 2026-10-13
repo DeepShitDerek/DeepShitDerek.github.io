@@ -9,7 +9,10 @@ export interface AssetThumbnailProps {
   decorative?: boolean;
 }
 
-export function AssetThumbnail({ asset, decorative = false }: AssetThumbnailProps) {
+export function AssetThumbnail({
+  asset,
+  decorative = false,
+}: AssetThumbnailProps) {
   const isImage = asset.mime_type?.startsWith("image/");
 
   if (isImage) {

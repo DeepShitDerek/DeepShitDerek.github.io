@@ -2,9 +2,19 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The post the browser's query returns: as built, or edited since.
-let current = { id: "p1", slug: "hello", title: "Hello", content: "Built body", updated_at: "2026-09-25T10:00:00Z" };
+let current = {
+  id: "p1",
+  slug: "hello",
+  title: "Hello",
+  content: "Built body",
+  updated_at: "2026-09-25T10:00:00Z",
+};
 vi.mock("@/store/api/publicApi", () => ({
-  useGetBlogPostBySlugQuery: () => ({ data: current, isLoading: false, isError: false }),
+  useGetBlogPostBySlugQuery: () => ({
+    data: current,
+    isLoading: false,
+    isError: false,
+  }),
   useGetSiteIdentityQuery: () => ({ data: undefined }),
   useIncrementPostViewMutation: () => [vi.fn()],
 }));
@@ -24,19 +34,23 @@ class NoopObserver {
     return [];
   }
 }
-globalThis.IntersectionObserver ??= NoopObserver as unknown as typeof IntersectionObserver;
+globalThis.IntersectionObserver ??=
+  NoopObserver as unknown as typeof IntersectionObserver;
 globalThis.ResizeObserver ??= NoopObserver as unknown as typeof ResizeObserver;
 
 const { PostPage } = await import("./post-page");
 const { contentHash } = await import("./content-hash");
 
-const built = { contentHash: contentHash("Built body"), body: <p>build-time body</p> };
+const built = {
+  contentHash: contentHash("Built body"),
+  body: <p>build-time body</p>,
+};
 
 beforeEach(() => {
   loadPostContent.mockClear();
 });
 
-describe("a prerendered post's body (V2-043)", () => {
+describe("a prerendered post's body", () => {
   it("uses the HTML rendered at build, and never loads the markdown pipeline", () => {
     render(<PostPage slug="hello" prerendered={built} />);
     expect(screen.getByText("build-time body")).toBeTruthy();

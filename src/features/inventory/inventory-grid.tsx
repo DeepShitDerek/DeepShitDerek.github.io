@@ -89,7 +89,10 @@ export function InventoryGrid({
 
               <div className="mt-auto flex items-center justify-between gap-2 pt-1.5">
                 <span className="text-sm font-medium tabular-nums">
-                  {formatValue(currentValue(item) * quantity, itemCurrency(item, baseCurrency))}
+                  {formatValue(
+                    currentValue(item) * quantity,
+                    itemCurrency(item, baseCurrency),
+                  )}
                 </span>
 
                 {/*

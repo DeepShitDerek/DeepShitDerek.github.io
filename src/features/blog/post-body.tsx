@@ -2,7 +2,7 @@ import { RichMarkdown } from "@/components/ui/rich-markdown";
 
 /**
  * A published post's body. No directive, so it renders on the server: the
- * post route renders it at build time (V2-043), and `post-content.tsx` makes
+ * post route renders it at build time, and `post-content.tsx` makes
  * it a client component for posts that need rendering in the browser.
  *
  * The pipeline itself now lives in `components/ui/rich-markdown` so notes can
@@ -18,7 +18,7 @@ export function PostBody({ content }: { content: string }) {
     // is well past a readable line length in the table-of-contents layout.
     <RichMarkdown
       // Left-aligned in its column: centring it there was one of the post's
-      // three left edges (P1-13).
+      // three left edges.
       className="post-prose [&>*:first-child]:mt-0"
       components={{
         a: ({ href, children, ...props }) => (

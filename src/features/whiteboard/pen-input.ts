@@ -15,7 +15,7 @@
 export type PenPointerType = "pen" | "touch" | "mouse" | string;
 
 /** Preference key. Persisted so the setting survives a page reload. */
-export const STYLUS_ONLY_STORAGE_KEY = "whiteboard:stylus-only";
+const STYLUS_ONLY_STORAGE_KEY = "whiteboard:stylus-only";
 
 export interface PointerDecisionInput {
   pointerType: PenPointerType;

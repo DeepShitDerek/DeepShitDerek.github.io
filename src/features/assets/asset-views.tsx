@@ -188,7 +188,7 @@ export function AssetGrid({
             {/* The name and whether pages use it, always visible: they were a
               9-10px caption in a dark gradient on hover, unreadable on touch,
               and "in use" was a 10px icon. Usage is the fact that matters
-              before a delete (03-workspace-ui.md §2.17). */}
+              before a delete. */}
             <span className="block min-w-0 px-2.5 py-2">
               <span className="block truncate text-sm font-medium">
                 {asset.file_name}

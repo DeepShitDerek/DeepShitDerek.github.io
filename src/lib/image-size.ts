@@ -1,5 +1,5 @@
 /**
- * Ask an image host for a copy near the size it will be shown at (V2-045).
+ * Ask an image host for a copy near the size it will be shown at.
  *
  * The site is a static export with `images.unoptimized`, so nothing resizes
  * remote images for us. Two hosts will do it themselves, and the default
@@ -17,7 +17,10 @@ export function sizedImageUrl(url: string, px: number): string {
     return url;
   }
   const size = String(Math.ceil(px * 2));
-  if (parsed.hostname === "github.com" && /^\/[^/]+\.png$/.test(parsed.pathname)) {
+  if (
+    parsed.hostname === "github.com" &&
+    /^\/[^/]+\.png$/.test(parsed.pathname)
+  ) {
     parsed.searchParams.set("size", size);
     return parsed.toString();
   }

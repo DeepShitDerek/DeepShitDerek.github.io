@@ -118,7 +118,7 @@ const EMPLOYMENT_PATTERNS: Record<EmploymentType, RegExp> = {
  * being guessed into "full-time", which is the assumption that would hide every
  * freelance role from someone filtering for it.
  */
-export function employmentTypes(posting: Posting): EmploymentType[] {
+function employmentTypes(posting: Posting): EmploymentType[] {
   const haystack = [posting.title, ...posting.tags].join(" ");
   return (Object.keys(EMPLOYMENT_PATTERNS) as EmploymentType[]).filter((type) =>
     EMPLOYMENT_PATTERNS[type].test(haystack),
@@ -143,7 +143,7 @@ const EUROPE =
  * than being quietly dropped: a posting you cannot categorise is still a
  * posting, and hiding it would make the filter lie about what the board holds.
  */
-export function regionOf(posting: Posting): Region {
+function regionOf(posting: Posting): Region {
   const where = posting.location ?? "";
 
   if (NORTH_AMERICA.test(where)) return "north-america";
@@ -186,7 +186,7 @@ export function filterJobs(
 }
 
 /** Newest first, with undated postings last rather than at the top. */
-export function byNewest(postings: Posting[]): Posting[] {
+function byNewest(postings: Posting[]): Posting[] {
   return [...postings].sort((a, b) => {
     if (!a.postedAt) return 1;
     if (!b.postedAt) return -1;

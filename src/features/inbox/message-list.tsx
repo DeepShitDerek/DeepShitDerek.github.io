@@ -15,7 +15,7 @@ import { inboxTimestamp, messageState, type InboxState } from "./inbox-filters";
 
 /**
  * Icons, not colour alone, carry the state: a filled envelope, an open one,
- * an arrow and a box. The colours are the status tokens (P-status).
+ * an arrow and a box. The colours are the status tokens.
  */
 const STATE_META: Record<
   InboxState,
@@ -44,7 +44,7 @@ export interface RowActions {
  * A message list, not a stack of cards: one surface, flush rows divided by a
  * hairline, the shape every mail client converges on.
  *
- * Each row has a checkbox for cleaning up several at once (P-selection). It
+ * Each row has a checkbox for cleaning up several at once. It
  * shows on hover and focus, and on every row once anything is checked, so
  * the list does not read as a form; on a touch screen it is always there.
  * Archive and mark read/unread sit at the row's right edge on hover.

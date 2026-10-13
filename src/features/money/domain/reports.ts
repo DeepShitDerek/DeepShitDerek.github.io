@@ -1,13 +1,31 @@
-import { addDays, endOfMonth, type IsoDate, makeDate, monthStart } from "./dates";
+import {
+  addDays,
+  endOfMonth,
+  type IsoDate,
+  makeDate,
+  monthStart,
+} from "./dates";
 import { periodFlows } from "./flows";
 import { type RateTable, remittanceCost, type RemittanceCost } from "./fx";
-import { portfolio, type PriceBook, replay, type Security, type Trade } from "./invest";
-import { type Account, balances, CANADIAN_REGISTRATIONS, isLiability, type Transaction } from "./ledger";
+import {
+  portfolio,
+  type PriceBook,
+  replay,
+  type Security,
+  type Trade,
+} from "./invest";
+import {
+  type Account,
+  balances,
+  CANADIAN_REGISTRATIONS,
+  isLiability,
+  type Transaction,
+} from "./ledger";
 import { convert, money, type Money } from "./money";
 import { flowsByYear, registeredMovements } from "./room";
 
 /**
- * Reports (V2-080): how each month went, how net worth moved, what sending
+ * Reports: how each month went, how net worth moved, what sending
  * money home really cost, and the year's figures for a Canadian tax return.
  * Everything in the base currency unless it says CAD; anything that could
  * not be converted is counted and reported, never guessed at.
@@ -25,11 +43,21 @@ export interface MonthRow {
 }
 
 /** Income, spending and savings rate for each month (YYYY-MM), oldest first. */
-export function monthlySeries(transactions: readonly Transaction[], months: readonly string[]): MonthRow[] {
+export function monthlySeries(
+  transactions: readonly Transaction[],
+  months: readonly string[],
+): MonthRow[] {
   return months.map((month) => {
     const from = monthStart(month);
     const f = periodFlows(transactions, from, endOfMonth(from));
-    return { month, incomeMinor: f.incomeMinor, spendingMinor: f.spendingMinor, netMinor: f.netMinor, savingsRate: f.savingsRate, unpriced: f.unpriced };
+    return {
+      month,
+      incomeMinor: f.incomeMinor,
+      spendingMinor: f.spendingMinor,
+      netMinor: f.netMinor,
+      savingsRate: f.savingsRate,
+      unpriced: f.unpriced,
+    };
   });
 }
 
@@ -75,7 +103,9 @@ export function netWorthHistory(input: {
   rates: RateTable;
 }): WorthPoint[] {
   return input.dates.map((date) => {
-    const open = input.accounts.filter((a) => a.inNetWorth && a.openingDate <= date);
+    const open = input.accounts.filter(
+      (a) => a.inNetWorth && a.openingDate <= date,
+    );
     const bal = balances(open, input.transactions, date);
     let assets = 0;
     let liabilities = 0;
@@ -83,19 +113,40 @@ export function netWorthHistory(input: {
     for (const account of open) {
       let minor = bal.get(account.id)?.balanceMinor ?? 0;
       if (account.kind === "investment") {
-        minor = portfolio({ accountId: account.id, currency: account.currency, ledgerBalanceMinor: minor, trades: input.trades, securities: input.securities, prices: input.prices, on: date }).valueMinor;
+        minor = portfolio({
+          accountId: account.id,
+          currency: account.currency,
+          ledgerBalanceMinor: minor,
+          trades: input.trades,
+          securities: input.securities,
+          prices: input.prices,
+          on: date,
+        }).valueMinor;
       }
       if (minor === 0) continue;
-      const quote = account.currency === input.base ? { rate: 1 } : input.rates.quote(account.currency, input.base, date);
+      const quote =
+        account.currency === input.base
+          ? { rate: 1 }
+          : input.rates.quote(account.currency, input.base, date);
       if (!quote) {
         unpriced += 1;
         continue;
       }
-      const v = account.currency === input.base ? minor : convert(money(minor, account.currency), quote.rate, input.base).minor;
+      const v =
+        account.currency === input.base
+          ? minor
+          : convert(money(minor, account.currency), quote.rate, input.base)
+              .minor;
       if (v >= 0) assets += v;
       else liabilities += v;
     }
-    return { date, assetsMinor: assets, liabilitiesMinor: liabilities, netMinor: assets + liabilities, unpriced };
+    return {
+      date,
+      assetsMinor: assets,
+      liabilitiesMinor: liabilities,
+      netMinor: assets + liabilities,
+      unpriced,
+    };
   });
 }
 
@@ -130,13 +181,19 @@ export function remittances(input: {
   to: IsoDate;
   base: string;
   rates: RateTable;
-}): { items: Remittance[]; sentBaseMinor: number; costBaseMinor: number; unknownCost: number } {
+}): {
+  items: Remittance[];
+  sentBaseMinor: number;
+  costBaseMinor: number;
+  unknownCost: number;
+} {
   const items: Remittance[] = [];
   let sentBase = 0;
   let costBase = 0;
   let unknown = 0;
   for (const txn of input.transactions) {
-    if (txn.kind !== "transfer" || txn.date < input.from || txn.date > input.to) continue;
+    if (txn.kind !== "transfer" || txn.date < input.from || txn.date > input.to)
+      continue;
     const legs = txn.postings.filter((p) => !p.categoryId);
     const out = legs.find((p) => p.amountMinor < 0);
     const inn = legs.find((p) => p.amountMinor > 0);
@@ -144,7 +201,9 @@ export function remittances(input: {
     const fromCurrency = input.accounts.get(out.accountId)?.currency;
     const toCurrency = input.accounts.get(inn.accountId)?.currency;
     if (!fromCurrency || !toCurrency || fromCurrency === toCurrency) continue;
-    const feeMinor = -txn.postings.filter((p) => p.categoryId && p.accountId === out.accountId).reduce((t, p) => t + p.amountMinor, 0);
+    const feeMinor = -txn.postings
+      .filter((p) => p.categoryId && p.accountId === out.accountId)
+      .reduce((t, p) => t + p.amountMinor, 0);
     const sent = money(-out.amountMinor, fromCurrency);
     const received = money(inn.amountMinor, toCurrency);
     const fee = money(Math.max(0, feeMinor), fromCurrency);
@@ -157,7 +216,9 @@ export function remittances(input: {
         rateSource = "stored";
       }
     }
-    const cost = marketRate ? remittanceCost({ sent, received, fee, marketRate }) : null;
+    const cost = marketRate
+      ? remittanceCost({ sent, received, fee, marketRate })
+      : null;
     const toBase = (m: Money): number | null => {
       if (m.currency === input.base) return m.minor;
       const q = input.rates.quote(m.currency, input.base, txn.date);
@@ -184,7 +245,12 @@ export function remittances(input: {
     });
   }
   items.sort((a, b) => b.date.localeCompare(a.date));
-  return { items, sentBaseMinor: sentBase, costBaseMinor: costBase, unknownCost: unknown };
+  return {
+    items,
+    sentBaseMinor: sentBase,
+    costBaseMinor: costBase,
+    unknownCost: unknown,
+  };
 }
 
 // ── The tax year ───────────────────────────────────────────────────────────
@@ -192,7 +258,7 @@ export function remittances(input: {
 /** Specified foreign property above this cost at any time in the year means filing a T1135. */
 export const T1135_THRESHOLD_MINOR = 10_000_000;
 /** Above this, the detailed method (property by property). */
-export const T1135_DETAILED_MINOR = 25_000_000;
+const T1135_DETAILED_MINOR = 25_000_000;
 
 export interface TaxYear {
   year: number;
@@ -257,13 +323,26 @@ export function taxYear(input: {
   let total = 0;
   let foreign = 0;
   for (const txn of input.transactions) {
-    if (txn.kind !== "income" || txn.status === "pending" || txn.date < from || txn.date > to) continue;
+    if (
+      txn.kind !== "income" ||
+      txn.status === "pending" ||
+      txn.date < from ||
+      txn.date > to
+    )
+      continue;
     for (const p of txn.postings) {
       const account = byId.get(p.accountId);
       // Income inside a TFSA, RRSP or FHSA is sheltered: not on the return.
-      if (!account || CANADIAN_REGISTRATIONS.includes(account.registration)) continue;
-      const v = input.base === "CAD" && p.baseAmountMinor != null ? p.baseAmountMinor : cad(p.amountMinor, account.currency, txn.date);
-      incomeByCategory.set(p.categoryId, (incomeByCategory.get(p.categoryId) ?? 0) + v);
+      if (!account || CANADIAN_REGISTRATIONS.includes(account.registration))
+        continue;
+      const v =
+        input.base === "CAD" && p.baseAmountMinor != null
+          ? p.baseAmountMinor
+          : cad(p.amountMinor, account.currency, txn.date);
+      incomeByCategory.set(
+        p.categoryId,
+        (incomeByCategory.get(p.categoryId) ?? 0) + v,
+      );
       total += v;
       if (account.country !== "CA") foreign += v;
     }
@@ -274,12 +353,15 @@ export function taxYear(input: {
   let interest = 0;
   let gains = 0;
   for (const account of input.accounts) {
-    if (account.kind !== "investment" || account.registration !== "none") continue;
+    if (account.kind !== "investment" || account.registration !== "none")
+      continue;
     const own = input.trades.filter((t) => t.accountId === account.id);
     for (const t of own) {
       if (t.date < from || t.date > to) continue;
-      if (t.kind === "dividend" || t.kind === "reinvest") dividends += cad(t.amountMinor, account.currency, t.date);
-      if (t.kind === "interest") interest += cad(t.amountMinor, account.currency, t.date);
+      if (t.kind === "dividend" || t.kind === "reinvest")
+        dividends += cad(t.amountMinor, account.currency, t.date);
+      if (t.kind === "interest")
+        interest += cad(t.amountMinor, account.currency, t.date);
     }
     for (const d of replay(own, to).dispositions) {
       if (d.date >= from) gains += cad(d.gainMinor, account.currency, d.date);
@@ -287,20 +369,40 @@ export function taxYear(input: {
   }
 
   const contributed = (registration: "rrsp" | "fhsa" | "tfsa") =>
-    flowsByYear(registeredMovements(registration, input.accounts, input.transactions, input.base).movements).get(year)?.contributedMinor ?? 0;
+    flowsByYear(
+      registeredMovements(
+        registration,
+        input.accounts,
+        input.transactions,
+        input.base,
+      ).movements,
+    ).get(year)?.contributedMinor ?? 0;
 
   // Foreign property at each month end.
   let peak = 0;
   let peakDate: IsoDate | null = null;
   for (let m = 1; m <= 12; m += 1) {
     const date = endOfMonth(makeDate(year, m, 1));
-    const held = input.accounts.filter((a) => a.openingDate <= date && !isLiability(a.kind));
+    const held = input.accounts.filter(
+      (a) => a.openingDate <= date && !isLiability(a.kind),
+    );
     const bal = balances(held, input.transactions, date);
     let cost = 0;
     for (const account of held) {
-      if (account.country !== "CA") cost += Math.max(0, cad(bal.get(account.id)?.balanceMinor ?? 0, account.currency, date));
-      else if (account.kind === "investment" && account.registration === "none" && account.currency !== "CAD") {
-        for (const position of replay(input.trades.filter((t) => t.accountId === account.id), date).positions.values()) {
+      if (account.country !== "CA")
+        cost += Math.max(
+          0,
+          cad(bal.get(account.id)?.balanceMinor ?? 0, account.currency, date),
+        );
+      else if (
+        account.kind === "investment" &&
+        account.registration === "none" &&
+        account.currency !== "CAD"
+      ) {
+        for (const position of replay(
+          input.trades.filter((t) => t.accountId === account.id),
+          date,
+        ).positions.values()) {
           cost += cad(position.acbMinor, account.currency, date);
         }
       }
@@ -325,7 +427,12 @@ export function taxYear(input: {
     tfsaContributedMinor: contributed("tfsa"),
     foreignPropertyPeakMinor: peak,
     foreignPropertyPeakDate: peakDate,
-    t1135: peak > T1135_DETAILED_MINOR ? "detailed" : peak > T1135_THRESHOLD_MINOR ? "simplified" : "not_required",
+    t1135:
+      peak > T1135_DETAILED_MINOR
+        ? "detailed"
+        : peak > T1135_THRESHOLD_MINOR
+          ? "simplified"
+          : "not_required",
     unconverted,
   };
 }
@@ -333,7 +440,8 @@ export function taxYear(input: {
 /** Month ends from `from` to `to`, and `to` itself when it is mid-month. */
 export function monthEnds(from: IsoDate, to: IsoDate): IsoDate[] {
   const out: IsoDate[] = [];
-  for (let d = endOfMonth(from); d < to; d = endOfMonth(addDays(d, 1))) out.push(d);
+  for (let d = endOfMonth(from); d < to; d = endOfMonth(addDays(d, 1)))
+    out.push(d);
   out.push(to);
   return out;
 }

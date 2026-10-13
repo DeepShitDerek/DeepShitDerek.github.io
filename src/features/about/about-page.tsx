@@ -123,8 +123,8 @@ export function AboutView({ identity }: { identity: SiteContent }) {
             </Markdown>
           </StaggerItem>
         ))}
-        {/* What the owner is working on and learning. It opened the home
-            page until the redesign; a buyer needs strengths first, and a
+        {/* What the owner is working on and learning. It is here and not on the
+            home page: a buyer needs strengths first, and a
             reader of this page is the one who asked "who is this?". */}
         {profile_data.status_panel?.show && (
           <section aria-labelledby="about-now" className="pt-6">

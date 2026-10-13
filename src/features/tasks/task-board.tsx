@@ -151,10 +151,24 @@ export function TaskBoard({
                 <TaskCard
                   key={task.id}
                   task={task}
-                  onMoveUp={index > 0 ? () => reorderWithin(status, task.id, columnTasks[index - 1].id) : undefined}
+                  onMoveUp={
+                    index > 0
+                      ? () =>
+                          reorderWithin(
+                            status,
+                            task.id,
+                            columnTasks[index - 1].id,
+                          )
+                      : undefined
+                  }
                   onMoveDown={
                     index < columnTasks.length - 1
-                      ? () => reorderWithin(status, task.id, columnTasks[index + 2]?.id ?? null)
+                      ? () =>
+                          reorderWithin(
+                            status,
+                            task.id,
+                            columnTasks[index + 2]?.id ?? null,
+                          )
                       : undefined
                   }
                   project={

@@ -67,7 +67,8 @@ export function PostSettingsPanel({
             onChange={(event) => onChange({ slug: event.target.value })}
             className={cn(
               "h-9",
-              errors.slug && "border-destructive focus-visible:ring-destructive",
+              errors.slug &&
+                "border-destructive focus-visible:ring-destructive",
             )}
           />
           <Button
@@ -87,7 +88,9 @@ export function PostSettingsPanel({
             {errors.slug}
           </p>
         ) : (
-          <p className="mt-1.5 break-all text-xs text-muted-foreground">{url}</p>
+          <p className="mt-1.5 break-all text-xs text-muted-foreground">
+            {url}
+          </p>
         )}
       </Section>
 
@@ -102,7 +105,8 @@ export function PostSettingsPanel({
           </p>
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
-          Title {searchTitle.length}/60 · Description {draft.excerpt.trim().length}
+          Title {searchTitle.length}/60 · Description{" "}
+          {draft.excerpt.trim().length}
           /160
         </p>
       </Section>
@@ -124,7 +128,11 @@ export function PostSettingsPanel({
         {cover && (
           <div className="relative mb-2 overflow-hidden rounded-control bg-secondary">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover} alt="Cover" className="aspect-[16/9] w-full object-cover" />
+            <img
+              src={cover}
+              alt="Cover"
+              className="aspect-[16/9] w-full object-cover"
+            />
             <Button
               type="button"
               size="icon"

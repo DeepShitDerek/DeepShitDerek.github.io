@@ -207,7 +207,9 @@ export function HighlightForm({
             render={({ field }) => (
               <FormItem className="flex items-center justify-between gap-4 space-y-0">
                 <div>
-                  <FormLabel className="font-normal">Show on the site</FormLabel>
+                  <FormLabel className="font-normal">
+                    Show on the site
+                  </FormLabel>
                   <p className="text-xs text-muted-foreground">
                     It can then appear as the random highlight. Your note stays
                     private.

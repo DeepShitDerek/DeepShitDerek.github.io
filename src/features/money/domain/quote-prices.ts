@@ -1,7 +1,7 @@
 import type { Price, Security } from "./invest";
 
 /**
- * Today's prices for held securities, from quotes Discover fetched (ADM-026).
+ * Today's prices for held securities, from quotes Discover fetched.
  *
  * Money has no price feed on purpose: nothing about the portfolio leaves the
  * browser. This is the opt-in exception, for symbols the owner already sends
@@ -41,7 +41,10 @@ export function pricesFromQuotes(
     if (!(quote.price > 0)) {
       skipped.push({ symbol: security.symbol, reason: "no usable price" });
     } else if (!quote.currency) {
-      skipped.push({ symbol: security.symbol, reason: "the quote's currency is unknown" });
+      skipped.push({
+        symbol: security.symbol,
+        reason: "the quote's currency is unknown",
+      });
     } else if (quote.currency.toUpperCase() !== security.currency) {
       skipped.push({
         symbol: security.symbol,

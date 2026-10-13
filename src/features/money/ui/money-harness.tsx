@@ -7,7 +7,7 @@ import MoneyPage from "./money-page";
 
 /**
  * The money module against an in-memory ledger kept in localStorage
- * (V2-080), for exercising every screen in a browser without an admin
+ *, for exercising every screen in a browser without an admin
  * login or a database. Mounted only by /dev/money in harness builds.
  */
 export function MoneyHarness() {
@@ -20,7 +20,7 @@ export function MoneyHarness() {
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-8">
       <Suspense>
-        <MoneyPage basePath="/dev/money/" />
+        <MoneyPage basePath="/dev/money/" syncRates={false} />
       </Suspense>
     </div>
   );

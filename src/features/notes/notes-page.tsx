@@ -44,28 +44,38 @@ export const NOTES_GRID =
  * the button does not leave an empty note behind.
  */
 export default function NotesPage() {
-  const { data: allNotes = [], isLoading, error: loadError, refetch } = useGetNotesQuery();
+  const {
+    data: allNotes = [],
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetNotesQuery();
   const [addNote, { isLoading: isCreating }] = useAddNoteMutation();
   const [updateNote] = useUpdateNoteMutation();
   const [archiveNote] = useArchiveNoteMutation();
   const [deleteNote] = useDeleteNoteMutation();
 
-  // Delete offers Undo instead of asking first (P1-10).
+  // Delete offers Undo instead of asking first.
   const { pending: deleting, remove: removeNote } = useUndoableDelete<Note>(
     async (note) => {
       try {
         await deleteNote(note.id).unwrap();
       } catch (err) {
-        toast.error("Couldn't delete the note", { description: getErrorMessage(err) });
+        toast.error("Couldn't delete the note", {
+          description: getErrorMessage(err),
+        });
       }
     },
   );
   const notes = useMemo(
-    () => (deleting.size ? allNotes.filter((note) => !deleting.has(note.id)) : allNotes),
+    () =>
+      deleting.size
+        ? allNotes.filter((note) => !deleting.has(note.id))
+        : allNotes,
     [allNotes, deleting],
   );
 
-  // The open note lives in the URL, so a reload reopens it (ADM-004).
+  // The open note lives in the URL, so a reload reopens it.
   const [selectedId, setSelectedId] = useUrlParam("note", "replace");
   /** The row just created, until the list refetches with it. */
   const [created, setCreated] = useState<Note | null>(null);
@@ -118,7 +128,10 @@ export default function NotesPage() {
 
   const handleNew = async (title?: string) => {
     try {
-      const note = await addNote({ title: title ?? null, content: null }).unwrap();
+      const note = await addNote({
+        title: title ?? null,
+        content: null,
+      }).unwrap();
       setCreated(note);
       select(note.id);
       // A note created from a link already has its title; it is not blank.
@@ -206,11 +219,15 @@ export default function NotesPage() {
               onEmptyChange={reportEmpty}
             />
           ) : (
-            // The shared empty state (P-states), not a hand-built one.
+            // The shared empty state, not a hand-built one.
             <EmptyState
               icon={NotebookPen}
               variant="bordered"
-              title={notes.length > 0 ? "Pick a note to read or edit" : "No notes yet"}
+              title={
+                notes.length > 0
+                  ? "Pick a note to read or edit"
+                  : "No notes yet"
+              }
               description={
                 notes.length > 0
                   ? "Or start a new one. Link notes by typing [[a title]] in any of them."

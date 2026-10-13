@@ -75,7 +75,7 @@ interface PendingDelete {
 }
 
 /**
- * The contact inbox (03-workspace-ui.md §2.9, P-listdetail).
+ * The contact inbox.
  *
  * List on the left, the message on the right; on a phone the message is its
  * own page with a back button (it was a sheet over the list). The four
@@ -99,15 +99,15 @@ export default function InboxPage() {
   const [sort, setSort] = useState<InboxSort>("newest");
   const [search, setSearch] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  // In the URL (ADM-004): a message can be linked to, and Back leaves it.
+  // In the URL: a message can be linked to, and Back leaves it.
   const [selectedId, setSelectedId] = useUrlParam("message");
-  /** Only a message the reader opened is marked read (ADM-021). */
+  /** Only a message the reader opened is marked read. */
   const [chosen, setChosen] = useState(false);
-  /** Messages checked for a bulk action (P-selection). */
+  /** Messages checked for a bulk action. */
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const narrow = useBelowBreakpoint("lg");
 
-  // Deletes offer Undo instead of asking first (P1-10): nothing leaves the
+  // Deletes offer Undo instead of asking first: nothing leaves the
   // database until the toast closes.
   const pendingIds = useRef(new Map<string, string[]>());
   const { pending: deleting, remove: removeLater } =
@@ -164,7 +164,7 @@ export default function InboxPage() {
   /**
    * Keep a selection that still exists in the current view. On a wide screen
    * the pane is filled with the first message; on a narrow one nothing opens
-   * by itself, so the list stays reachable (ADM-021).
+   * by itself, so the list stays reachable.
    */
   useEffect(() => {
     const next = nextSelection(
@@ -366,7 +366,7 @@ export default function InboxPage() {
 
           {/*
             One row under the tabs: the sort, or, once anything is checked,
-            what to do with the checked messages (P-selection).
+            what to do with the checked messages.
           */}
           <div className="mb-3 flex min-h-10 flex-wrap items-center gap-2">
             <Checkbox

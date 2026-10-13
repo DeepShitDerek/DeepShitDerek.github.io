@@ -21,7 +21,11 @@ import CalendarPage from "./calendar-page";
  * persists past a reload. Injected when this module loads, which only the
  * dev harness route does. The table is on window.__calendar for probes.
  */
-type Row = Record<string, unknown> & { id: string; title: string; start_time: string };
+type Row = Record<string, unknown> & {
+  id: string;
+  title: string;
+  start_time: string;
+};
 
 let settings: CalendarSettings = {
   day_start_hour: 7,
@@ -33,8 +37,19 @@ let settings: CalendarSettings = {
   show_finance: false,
 };
 const CALENDARS = [
-  { id: "00000000-0000-4000-8000-0000000000c1", name: "Personal", color_token: "chart-1", is_visible: true, is_default: true },
-  { id: "00000000-0000-4000-8000-0000000000c2", name: "Work", color_token: "chart-5", is_visible: true },
+  {
+    id: "00000000-0000-4000-8000-0000000000c1",
+    name: "Personal",
+    color_token: "chart-1",
+    is_visible: true,
+    is_default: true,
+  },
+  {
+    id: "00000000-0000-4000-8000-0000000000c2",
+    name: "Work",
+    color_token: "chart-5",
+    is_visible: true,
+  },
 ] as unknown as Calendar[];
 
 function at(dayOffset: number, hour: number, minute = 0): string {
@@ -47,28 +62,66 @@ function at(dayOffset: number, hour: number, minute = 0): string {
 const events = new Map<string, Row>(
   (
     [
-      { id: "e1", title: "Sample event", start_time: at(0, 10), end_time: at(0, 11), calendar_id: "00000000-0000-4000-8000-0000000000c1" },
-      { id: "e2", title: "Sample meeting", start_time: at(0, 10, 30), end_time: at(0, 11, 30), calendar_id: "00000000-0000-4000-8000-0000000000c2", location: "Room 2" },
-      { id: "e3", title: "Weekly sample", start_time: at(-14, 9), end_time: at(-14, 9, 30), calendar_id: "00000000-0000-4000-8000-0000000000c2", rrule: "FREQ=WEEKLY" },
-      { id: "e4", title: "Sample trip", start_time: at(1, 0), end_time: at(3, 0), is_all_day: true, calendar_id: "00000000-0000-4000-8000-0000000000c1" },
+      {
+        id: "e1",
+        title: "Sample event",
+        start_time: at(0, 10),
+        end_time: at(0, 11),
+        calendar_id: "00000000-0000-4000-8000-0000000000c1",
+      },
+      {
+        id: "e2",
+        title: "Sample meeting",
+        start_time: at(0, 10, 30),
+        end_time: at(0, 11, 30),
+        calendar_id: "00000000-0000-4000-8000-0000000000c2",
+        location: "Room 2",
+      },
+      {
+        id: "e3",
+        title: "Weekly sample",
+        start_time: at(-14, 9),
+        end_time: at(-14, 9, 30),
+        calendar_id: "00000000-0000-4000-8000-0000000000c2",
+        rrule: "FREQ=WEEKLY",
+      },
+      {
+        id: "e4",
+        title: "Sample trip",
+        start_time: at(1, 0),
+        end_time: at(3, 0),
+        is_all_day: true,
+        calendar_id: "00000000-0000-4000-8000-0000000000c1",
+      },
       // A busy day, for how a crowded month cell reads.
       ...[8, 9, 11, 13, 15, 17].map((h, i) => ({
         id: `busy${i}`,
         title: `Busy day item ${i + 1}`,
         start_time: at(2, h),
         end_time: at(2, h + 1),
-        calendar_id: i % 2 ? "00000000-0000-4000-8000-0000000000c2" : "00000000-0000-4000-8000-0000000000c1",
+        calendar_id:
+          i % 2
+            ? "00000000-0000-4000-8000-0000000000c2"
+            : "00000000-0000-4000-8000-0000000000c1",
       })),
     ] as Row[]
   ).map((r) => [r.id, r]),
 );
 const exceptions = new Map<string, EventException>();
 let nextId = 1;
-(globalThis as unknown as { __calendar: unknown }).__calendar = { events, exceptions };
+(globalThis as unknown as { __calendar: unknown }).__calendar = {
+  events,
+  exceptions,
+};
 
 const TASK_DUE = new Date();
 const TASKS = [
-  { id: "k1", title: "Unscheduled sample task", status: "todo", estimate_minutes: 30 },
+  {
+    id: "k1",
+    title: "Unscheduled sample task",
+    status: "todo",
+    estimate_minutes: 30,
+  },
 ] as unknown as Task[];
 
 function rows(): CalendarRow[] {
@@ -145,7 +198,11 @@ calendarSetupApi.injectEndpoints({
     }),
     saveEventException: b.mutation<EventException, Partial<EventException>>({
       queryFn: async (input) => {
-        const row = { is_cancelled: false, ...input, id: `x-${nextId++}` } as EventException;
+        const row = {
+          is_cancelled: false,
+          ...input,
+          id: `x-${nextId++}`,
+        } as EventException;
         exceptions.set(row.id, row);
         return { data: row };
       },
@@ -180,9 +237,13 @@ tasksApi.injectEndpoints({
 moneyApi.injectEndpoints({
   overrideExisting: true,
   endpoints: (b) => ({
-    getSchedules: b.query<never[], void>({ queryFn: async () => ({ data: [] }) }),
+    getSchedules: b.query<never[], void>({
+      queryFn: async () => ({ data: [] }),
+    }),
     getSkips: b.query<string[], void>({ queryFn: async () => ({ data: [] }) }),
-    getAccounts: b.query<never[], void>({ queryFn: async () => ({ data: [] }) }),
+    getAccounts: b.query<never[], void>({
+      queryFn: async () => ({ data: [] }),
+    }),
   }),
 });
 

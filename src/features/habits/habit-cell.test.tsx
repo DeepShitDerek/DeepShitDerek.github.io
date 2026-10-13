@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { HabitCell } from "./habit-cell";
 import { StreakBadge } from "./habit-streak";
 
-const cell = (partial?: { ratio: number; label: string } | null, isCompleted = false) => (
+const cell = (
+  partial?: { ratio: number; label: string } | null,
+  isCompleted = false,
+) => (
   <HabitCell
     dateStr="2026-10-01"
     isCompleted={isCompleted}
@@ -21,13 +24,19 @@ describe("habit history cell", () => {
     expect(screen.getByRole("button").getAttribute("aria-label")).toBe(
       "Mark Oct 1st as complete (3 of 8 so far)",
     );
-    expect((screen.getByRole("button") as HTMLElement).style.backgroundColor).not.toBe("");
+    expect(
+      (screen.getByRole("button") as HTMLElement).style.backgroundColor,
+    ).not.toBe("");
   });
 
   it("leaves an untouched day unfilled", () => {
     render(cell(null));
-    expect(screen.getByRole("button").getAttribute("aria-label")).toBe("Mark Oct 1st as complete");
-    expect((screen.getByRole("button") as HTMLElement).style.backgroundColor).toBe("");
+    expect(screen.getByRole("button").getAttribute("aria-label")).toBe(
+      "Mark Oct 1st as complete",
+    );
+    expect(
+      (screen.getByRole("button") as HTMLElement).style.backgroundColor,
+    ).toBe("");
   });
 });
 

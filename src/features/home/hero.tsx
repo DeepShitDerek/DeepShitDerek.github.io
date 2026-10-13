@@ -21,7 +21,7 @@ const ROTATE_MS = 3200;
  * Cycles through `title` parts separated by `|`; static when only one.
  *
  * The one piece of text on the site that moves, kept because it stops by
- * itself (WCAG 2.2.2, V2-060): it goes round once and settles on the first
+ * itself (WCAG 2.2.2): it goes round once and settles on the first
  * part, never moves under reduced motion, and a small button pauses it or
  * plays it again. Screen readers get every part once, in order, instead of
  * whichever one is showing. Each part fades in by CSS; there is no animation
@@ -92,7 +92,7 @@ function RotatingTitle({ title }: { title: string }) {
 
 /**
  * Who is available, as one line of meta. The dot is the success colour and
- * holds still: nothing on the first screen moves (north star §3.6).
+ * holds still: nothing on the first screen moves.
  */
 function Availability({ label }: { label: string }) {
   return (
@@ -106,7 +106,7 @@ function Availability({ label }: { label: string }) {
 /**
  * Two ways forward: start the conversation, or look at the evidence first.
  * "Work with me", not "Start a project" — the same path serves a role, a
- * project or anything else (V2-040), and it matches the header's CTA.
+ * project or anything else, and it matches the header's CTA.
  */
 function Actions() {
   return (
@@ -174,9 +174,7 @@ function Byline({
  * setup in the secondary text colour, the payoff in the foreground (north
  * star §3.1). A one-sentence headline is all payoff.
  */
-export function splitHeadline(
-  headline: string,
-): [setup: string, payoff: string] {
+function splitHeadline(headline: string): [setup: string, payoff: string] {
   const match = /^(.+?[.!?])\s+(\S[\s\S]*)$/.exec(headline.trim());
   return match ? [match[1], match[2]] : ["", headline.trim()];
 }
@@ -218,13 +216,13 @@ export function Hero() {
  *
  * **One composition, in reading order:** availability → promise → who →
  * what → two actions → results. At 1280×720 the actions end above 680px and
- * the results sit right under them (P0-1); on a phone the results follow the
+ * the results sit right under them; on a phone the results follow the
  * actions before anything else.
  *
  * **Nothing in it animates on load.** The headline is the largest paint on
  * the page; it used to fade in from `opacity: 0` after the animation library
  * loaded, which held every visitor's first meaningful paint for the length of
- * a script download (P0-2). The status panel that shared this band moved to
+ * a script download. The status panel that shared this band moved to
  * About: what the owner is learning is not the first thing a buyer needs.
  *
  * Takes identity rather than fetching it, so the settings preview renders the

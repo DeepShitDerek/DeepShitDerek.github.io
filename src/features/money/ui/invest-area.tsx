@@ -9,7 +9,7 @@ import { useUrlTab } from "@/hooks/use-url-tab";
 
 const TABS = ["holdings", "trades", "prices", "room"] as const;
 
-/** Investing (V2-080): holdings, trades, securities and prices, and contribution room. */
+/** Investing: holdings, trades, securities and prices, and contribution room. */
 export function InvestArea() {
   // In the URL (?tab=), so Back and a reload return to it.
   const [tab, setTab] = useUrlTab("holdings", TABS);
@@ -23,10 +23,18 @@ export function InvestArea() {
           <TabsTrigger value="room">Contribution room</TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="holdings"><HoldingsPanel /></TabsContent>
-      <TabsContent value="trades"><TradesPanel /></TabsContent>
-      <TabsContent value="prices"><PricesPanel /></TabsContent>
-      <TabsContent value="room"><RoomPanel /></TabsContent>
+      <TabsContent value="holdings">
+        <HoldingsPanel />
+      </TabsContent>
+      <TabsContent value="trades">
+        <TradesPanel />
+      </TabsContent>
+      <TabsContent value="prices">
+        <PricesPanel />
+      </TabsContent>
+      <TabsContent value="room">
+        <RoomPanel />
+      </TabsContent>
     </Tabs>
   );
 }

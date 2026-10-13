@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
+import { isImmersive, resolveSiteStyle } from "@/lib/site-style";
 import { Caveat } from "next/font/google";
 import { MotionConfig } from "framer-motion";
 import { ThemeProvider } from "next-themes";
@@ -32,7 +34,24 @@ const caveatFont = Caveat({
   display: "swap",
 });
 
-/** Keeps `dark` on <html> matching the active theme, however it was set (V2-060). */
+/**
+ * The owner's site style on the document, when it is not Classic. Rendered at
+ * build too (the identity is in the cache by then), so the first paint is in
+ * the style.
+ */
+const SiteStyleDocument = dynamic(() =>
+  import("@/features/immersive/shell/document-style").then(
+    (mod) => mod.SiteStyleDocument,
+  ),
+);
+function SiteStyle() {
+  const { data } = useGetSiteIdentityQuery();
+  return isImmersive(resolveSiteStyle(data?.profile_data?.site_style)) ? (
+    <SiteStyleDocument />
+  ) : null;
+}
+
+/** Keeps `dark` on <html> matching the active theme, however it was set. */
 function DarkClassSync() {
   React.useEffect(() => watchDarkClass(), []);
   return null;
@@ -87,10 +106,14 @@ export function Providers({
           <MotionConfig reducedMotion="user">
             <ConfirmDialogProvider>
               <DarkClassSync />
+              {/* Noir, Paper or Dusk: the whole app takes the style, the
+                  workspace included. A lazy chunk, so a Classic site carries
+                  none of it. */}
+              <SiteStyle />
               <ThemeSync>
                 {/* Font-variable carrier only — page landmarks live in the route layouts.
                     Admin-only globals (command palette, learning-session timer)
-                    live in AdminShell, so visitors never load them (V2-024). */}
+                    live in AdminShell, so visitors never load them. */}
                 <div className={caveatFont.variable}>
                   {children}
                   <SonnerToaster />

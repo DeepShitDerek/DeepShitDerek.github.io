@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useSpring,
-} from "framer-motion";
+import { motion, useReducedMotion, useScroll, useSpring } from "framer-motion";
 import { ArrowUpRight, GitBranch, GitMerge } from "lucide-react";
 import type { PortfolioItem } from "@/types";
 import { safeImageUrl } from "@/lib/safe-url";
@@ -45,7 +40,7 @@ import { ItemImage, ItemTags, Markdown, PlainText, TextLink } from "./shared";
  *
  * Work that ran *alongside* other work (derived from overlapping dates) is set
  * in as a side track — a smaller, hollow node and an indented card — and names
- * what it ran alongside. A declared merge (migration 017) is said on the card.
+ * what it ran alongside. A declared merge is said on the card.
  * Neither is drawn as a lane: lanes were accurate and hard to read, and had to
  * collapse on a phone regardless.
  *
@@ -150,9 +145,7 @@ function Node({
       data-ongoing={ongoing || undefined}
       className={cn(
         "relative z-raised block shrink-0 rounded-full border-2 border-primary bg-card",
-        branch
-          ? "mt-1.5 size-2.5 md:mt-[1.85rem]"
-          : "mt-1 size-3.5 md:mt-7",
+        branch ? "mt-1.5 size-2.5 md:mt-[1.85rem]" : "mt-1 size-3.5 md:mt-7",
       )}
     >
       {ongoing && (
@@ -175,7 +168,13 @@ function Node({
   );
 }
 
-function Relation({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+function Relation({
+  icon,
+  children,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5 [overflow-wrap:anywhere]">
       {icon}
@@ -239,13 +238,13 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
             !!item.date_from?.trim() && (!to || isOngoingWord(to));
           const duration = timelineDuration(item.date_from, item.date_to, now);
 
-          const alongsideRow = branch ? trunkAlongside(graph.rows, index) : null;
+          const alongsideRow = branch
+            ? trunkAlongside(graph.rows, index)
+            : null;
           const alongside =
             alongsideRow !== null ? graph.rows[alongsideRow]?.item.title : null;
           const merge = graph.merges.find((edge) => edge.fromRow === index);
-          const mergedInto = merge
-            ? graph.rows[merge.toRow]?.item.title
-            : null;
+          const mergedInto = merge ? graph.rows[merge.toRow]?.item.title : null;
 
           const image = safeImageUrl(item.image_url);
           const linked = !!item.link_url;
@@ -256,9 +255,7 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
               className="relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-4 md:grid-cols-[9.5rem_1.5rem_minmax(0,1fr)] md:gap-x-6"
             >
               {/* When — its own column from md up, sticky beside a long card. */}
-              <div
-                className="hidden md:col-start-1 md:row-start-1 md:block md:self-start md:pt-5 md:sticky md:top-28"
-              >
+              <div className="hidden md:col-start-1 md:row-start-1 md:block md:self-start md:pt-5 md:sticky md:top-28">
                 <Period item={item} duration={duration} ongoing={ongoing} />
               </div>
 
@@ -340,14 +337,24 @@ export function Timeline({ items }: { items: PortfolioItem[] }) {
                     <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
                       {alongside && (
                         <Relation
-                          icon={<GitBranch className="size-3.5 shrink-0" aria-hidden />}
+                          icon={
+                            <GitBranch
+                              className="size-3.5 shrink-0"
+                              aria-hidden
+                            />
+                          }
                         >
                           Alongside {alongside}
                         </Relation>
                       )}
                       {mergedInto && (
                         <Relation
-                          icon={<GitMerge className="size-3.5 shrink-0" aria-hidden />}
+                          icon={
+                            <GitMerge
+                              className="size-3.5 shrink-0"
+                              aria-hidden
+                            />
+                          }
                         >
                           Became part of {mergedInto}
                         </Relation>

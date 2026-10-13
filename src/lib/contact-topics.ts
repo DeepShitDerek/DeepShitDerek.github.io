@@ -1,5 +1,5 @@
 /**
- * What a contact message is about (V2-040b).
+ * What a contact message is about.
  *
  * Its own module, with no zod, on purpose: publicApi — loaded by every public
  * page — needs the labels for the static-mode webhook, and importing them from

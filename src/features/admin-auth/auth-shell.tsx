@@ -20,9 +20,21 @@ import { cn } from "@/lib/cn";
 import { AuthPanel, AuthPending } from "./auth-card";
 
 const WORKSPACE_POINTS = [
-  { icon: PenLine, title: "Publish", text: "Pages, posts and updates, edited in the browser." },
-  { icon: CalendarCheck, title: "Plan", text: "Tasks, calendar, notes and habits in one place." },
-  { icon: Wallet, title: "Keep track", text: "Money, learning and what you own." },
+  {
+    icon: PenLine,
+    title: "Publish",
+    text: "Pages, posts and updates, edited in the browser.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Plan",
+    text: "Tasks, calendar, notes and habits in one place.",
+  },
+  {
+    icon: Wallet,
+    title: "Keep track",
+    text: "Money, learning and what you own.",
+  },
 ];
 
 function Brand({ className }: { className?: string }) {
@@ -131,9 +143,13 @@ export function AuthShell({ children }: { children: ReactNode }) {
  * database, or with one whose schema was never run, gets the steps to finish
  * instead of a form that cannot succeed.
  */
-export function SetupGate({ children }: { children: ReactNode }) {
-  const { data: status, isLoading, refetch, isFetching } =
-    useGetSetupStatusQuery();
+function SetupGate({ children }: { children: ReactNode }) {
+  const {
+    data: status,
+    isLoading,
+    refetch,
+    isFetching,
+  } = useGetSetupStatusQuery();
 
   if (isLoading) return <AuthPending text="Checking this site's setup…" />;
   if (status === "no-database" || status === "no-schema") {
@@ -157,7 +173,9 @@ function SetupGuide({
   onRecheck: () => void;
   rechecking: boolean;
 }) {
-  const guide = PRODUCT.repoUrl ? `${PRODUCT.repoUrl}#dynamic-mode-setup` : null;
+  const guide = PRODUCT.repoUrl
+    ? `${PRODUCT.repoUrl}#dynamic-mode-setup`
+    : null;
 
   const steps =
     status === "no-database"
@@ -194,8 +212,8 @@ function SetupGuide({
             title: "Run the schema",
             text: (
               <>
-                Paste <code>db/schema.sql</code> into the Supabase SQL editor and
-                run it. It creates the tables, the security policies and the
+                Paste <code>db/schema.sql</code> into the Supabase SQL editor
+                and run it. It creates the tables, the security policies and the
                 defaults.
               </>
             ),

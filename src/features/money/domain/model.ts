@@ -1,5 +1,5 @@
 /**
- * The money module's shared record shapes (V2-080), in domain terms
+ * The money module's shared record shapes, in domain terms
  * (camelCase, amounts as safe integers). `data/rows.ts` maps database rows
  * onto these; nothing here knows the database exists.
  */

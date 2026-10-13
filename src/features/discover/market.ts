@@ -117,7 +117,7 @@ export function describeSignal(signal: SendSignal, quote: string): string {
 
 /* ── Crypto ──────────────────────────────────────────────────────────────── */
 
-export const COINS = [
+const COINS = [
   { id: "bitcoin", label: "Bitcoin", symbol: "BTC" },
   { id: "ethereum", label: "Ethereum", symbol: "ETH" },
 ] as const;
@@ -215,6 +215,10 @@ export function parseIndicator(body: unknown): Indicator | null {
  * A percentage. A change carries its "+", so its direction never rests on
  * colour (1.4.1); a level (unemployment, inflation) is `signed: false`.
  */
-export function formatPercent(value: number, digits = 1, signed = true): string {
+export function formatPercent(
+  value: number,
+  digits = 1,
+  signed = true,
+): string {
   return `${signed && value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
 }

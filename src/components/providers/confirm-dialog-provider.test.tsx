@@ -1,6 +1,11 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { type Choice, ConfirmDialogProvider, useChoice, useConfirm } from "./confirm-dialog-provider";
+import {
+  type Choice,
+  ConfirmDialogProvider,
+  useChoice,
+  useConfirm,
+} from "./confirm-dialog-provider";
 
 // Captures the hooks so a test can open a dialog and inspect the answer.
 let confirm: ReturnType<typeof useConfirm>;
@@ -17,9 +22,13 @@ const mount = () =>
     </ConfirmDialogProvider>,
   );
 
-const series = { title: "Delete the whole series?", confirmText: "Whole series", alternativeText: "Just this one" };
+const series = {
+  title: "Delete the whole series?",
+  confirmText: "Whole series",
+  alternativeText: "Just this one",
+};
 
-describe("confirm dialog (ADM-010)", () => {
+describe("confirm dialog", () => {
   it("offers a way out of a series choice, and says which button was pressed", async () => {
     mount();
     for (const [button, expected] of [
@@ -42,7 +51,9 @@ describe("confirm dialog (ADM-010)", () => {
     act(() => {
       answer = confirm({ title: "Delete it?" });
     });
-    fireEvent.keyDown(await screen.findByRole("alertdialog"), { key: "Escape" });
+    fireEvent.keyDown(await screen.findByRole("alertdialog"), {
+      key: "Escape",
+    });
     await expect(answer!).resolves.toBe(false);
   });
 
@@ -52,6 +63,9 @@ describe("confirm dialog (ADM-010)", () => {
       void confirm({ title: "Delete it?" });
     });
     await screen.findByRole("alertdialog");
-    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Cancel", "Confirm"]);
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Cancel",
+      "Confirm",
+    ]);
   });
 });

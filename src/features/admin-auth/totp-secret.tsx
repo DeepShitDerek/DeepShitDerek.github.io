@@ -7,9 +7,15 @@ import { Button } from "@/components/ui/button";
 
 /**
  * The QR code and the key for manual entry of a TOTP factor being enrolled.
- * Shared by first-time setup and "Add another method" in Security (ADM-025).
+ * Shared by first-time setup and "Add another method" in Security.
  */
-export function TotpSecret({ qrCodeUrl, secret }: { qrCodeUrl: string; secret: string }) {
+export function TotpSecret({
+  qrCodeUrl,
+  secret,
+}: {
+  qrCodeUrl: string;
+  secret: string;
+}) {
   const [showSecret, setShowSecret] = useState(false);
 
   const copySecret = async () => {
@@ -28,11 +34,18 @@ export function TotpSecret({ qrCodeUrl, secret }: { qrCodeUrl: string; secret: s
         <div className="mt-4 inline-flex rounded-surface bg-white p-3 shadow-e1">
           {/* Supabase returns the QR as an SVG data URL. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrCodeUrl} alt="QR code for MFA enrollment" className="size-40" />
+          <img
+            src={qrCodeUrl}
+            alt="QR code for MFA enrollment"
+            className="size-40"
+          />
         </div>
       ) : (
         <div className="mt-4 flex size-44 items-center justify-center rounded-surface bg-secondary">
-          <Loader2 className="animate-spin text-muted-foreground" aria-label="Loading QR code" />
+          <Loader2
+            className="animate-spin text-muted-foreground"
+            aria-label="Loading QR code"
+          />
         </div>
       )}
       <div className="mt-4">
@@ -41,7 +54,9 @@ export function TotpSecret({ qrCodeUrl, secret }: { qrCodeUrl: string; secret: s
         </p>
         <div className="mt-2 flex items-center gap-1 rounded-control bg-secondary py-1.5 pl-3 pr-1">
           <code className="min-w-0 flex-1 break-all text-sm tracking-widest text-foreground">
-            {showSecret ? secret.match(/.{1,4}/g)?.join(" ") : "•••• •••• •••• ••••"}
+            {showSecret
+              ? secret.match(/.{1,4}/g)?.join(" ")
+              : "•••• •••• •••• ••••"}
           </code>
           <Button
             type="button"
@@ -51,7 +66,11 @@ export function TotpSecret({ qrCodeUrl, secret }: { qrCodeUrl: string; secret: s
             onClick={() => setShowSecret((v) => !v)}
             aria-label={showSecret ? "Hide secret key" : "Show secret key"}
           >
-            {showSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            {showSecret ? (
+              <EyeOff className="size-4" />
+            ) : (
+              <Eye className="size-4" />
+            )}
           </Button>
           <Button
             type="button"

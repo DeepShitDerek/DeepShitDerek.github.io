@@ -41,7 +41,11 @@ export function OpenSourceLayout({ items }: LayoutProps) {
           <StaggerItem key={item.id}>
             <MaybeLink
               href={item.link_url}
-              className={cn(CARD, "flex h-full flex-col p-5", linked && CARD_INTERACTIVE)}
+              className={cn(
+                CARD,
+                "flex h-full flex-col p-5",
+                linked && CARD_INTERACTIVE,
+              )}
             >
               <div className="flex items-start gap-3">
                 {safeImageUrl(item.image_url) ? (
@@ -70,7 +74,10 @@ export function OpenSourceLayout({ items }: LayoutProps) {
                   >
                     {item.title}
                   </h3>
-                  <PlainText className="mt-0.5 text-xs text-muted-foreground" clamp={1}>
+                  <PlainText
+                    className="mt-0.5 text-xs text-muted-foreground"
+                    clamp={1}
+                  >
                     {item.subtitle}
                   </PlainText>
                 </div>
@@ -91,13 +98,25 @@ export function OpenSourceLayout({ items }: LayoutProps) {
 /** The mark for a talk, podcast, article… read from the subtitle's words. */
 const KINDS: { pattern: RegExp; kind: string; icon: LucideIcon }[] = [
   { pattern: /podcast|episode/i, kind: "podcast", icon: Headphones },
-  { pattern: /workshop|course|training|class/i, kind: "workshop", icon: Presentation },
+  {
+    pattern: /workshop|course|training|class/i,
+    kind: "workshop",
+    icon: Presentation,
+  },
   { pattern: /video|youtube|stream|webinar/i, kind: "video", icon: Video },
-  { pattern: /article|post|essay|blog|interview|paper/i, kind: "article", icon: Newspaper },
-  { pattern: /talk|keynote|conference|meetup|panel|lecture/i, kind: "talk", icon: Mic },
+  {
+    pattern: /article|post|essay|blog|interview|paper/i,
+    kind: "article",
+    icon: Newspaper,
+  },
+  {
+    pattern: /talk|keynote|conference|meetup|panel|lecture/i,
+    kind: "talk",
+    icon: Mic,
+  },
 ];
 
-export function speakingKind(subtitle?: string | null): {
+function speakingKind(subtitle?: string | null): {
   kind: string;
   icon: LucideIcon;
 } {
@@ -116,7 +135,11 @@ export function SpeakingLayout({ items }: LayoutProps) {
           <StaggerItem as="li" key={item.id}>
             <MaybeLink
               href={item.link_url}
-              className={cn(CARD, "flex items-start gap-4 p-5", linked && CARD_INTERACTIVE)}
+              className={cn(
+                CARD,
+                "flex items-start gap-4 p-5",
+                linked && CARD_INTERACTIVE,
+              )}
             >
               <span
                 aria-hidden
@@ -160,7 +183,11 @@ export function PressAwardsLayout({ items }: LayoutProps) {
           <StaggerItem as="li" key={item.id} className="min-w-0">
             <MaybeLink
               href={item.link_url}
-              className={cn(CARD, "flex h-full items-center gap-3 p-4", linked && CARD_INTERACTIVE)}
+              className={cn(
+                CARD,
+                "flex h-full items-center gap-3 p-4",
+                linked && CARD_INTERACTIVE,
+              )}
             >
               <span
                 aria-hidden

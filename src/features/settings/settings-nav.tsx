@@ -145,7 +145,7 @@ function NavItem({
 }
 
 /**
- * Below `lg`, the same groups as a select (03-workspace-ui.md §2.14): the
+ * Below `lg`, the same groups as a select: the
  * rail lived in a sheet behind an "All settings" button, one more step
  * than choosing from a list. Unsaved and failing groups say so in words.
  */

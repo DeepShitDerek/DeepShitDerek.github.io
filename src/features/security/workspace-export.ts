@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * A backup of everything the owner has written, as one JSON file (ADM-008).
+ * A backup of everything the owner has written, as one JSON file.
  *
  * Notes, tasks, habits, learning and the ledger otherwise exist only in a
  * free Supabase project that has to be kept awake by a workflow.
@@ -17,7 +17,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *
  * Each table is read in pages: PostgREST returns at most 1,000 rows a call.
  */
-export const EXPORT_TABLES: readonly { table: string; order: readonly string[] }[] = [
+export const EXPORT_TABLES: readonly {
+  table: string;
+  order: readonly string[];
+}[] = [
   ...[
     "site_identity",
     "navigation_links",
@@ -98,7 +101,8 @@ async function readTable(
   const rows: unknown[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     let query = client.from(table).select("*");
-    for (const column of order) query = query.order(column, { ascending: true });
+    for (const column of order)
+      query = query.order(column, { ascending: true });
     const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
     rows.push(...(data ?? []));
@@ -125,7 +129,8 @@ export async function exportWorkspace(
     try {
       result.tables[table] = await readTable(client, table, order);
     } catch (error) {
-      result.errors[table] = error instanceof Error ? error.message : String(error);
+      result.errors[table] =
+        error instanceof Error ? error.message : String(error);
     }
     onProgress?.(++done, EXPORT_TABLES.length);
   }
@@ -138,7 +143,9 @@ export async function exportWorkspace(
  */
 export function parseBackup(
   text: string,
-): { ok: true; backup: WorkspaceExport; rows: number; tables: number } | { ok: false; reason: string } {
+):
+  | { ok: true; backup: WorkspaceExport; rows: number; tables: number }
+  | { ok: false; reason: string } {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -146,13 +153,22 @@ export function parseBackup(
     return { ok: false, reason: "The file is not JSON." };
   }
   const backup = parsed as Partial<WorkspaceExport> | null;
-  if (!backup || backup.format !== "two.oooo-workspace" || backup.version !== 1) {
-    return { ok: false, reason: "The file is not a workspace backup this version can read." };
+  if (
+    !backup ||
+    backup.format !== "two.oooo-workspace" ||
+    backup.version !== 1
+  ) {
+    return {
+      ok: false,
+      reason: "The file is not a workspace backup this version can read.",
+    };
   }
   if (!backup.tables || typeof backup.tables !== "object") {
     return { ok: false, reason: "The backup has no tables." };
   }
-  const counts = Object.values(backup.tables).map((rows) => (Array.isArray(rows) ? rows.length : 0));
+  const counts = Object.values(backup.tables).map((rows) =>
+    Array.isArray(rows) ? rows.length : 0,
+  );
   return {
     ok: true,
     backup: backup as WorkspaceExport,

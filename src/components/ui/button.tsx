@@ -4,14 +4,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 /**
- * Controls (design-system.md §3.11, north star §3.4).
+ * Controls.
  *
  * One shape everywhere: the control radius, set per theme (6px in Field
- * Notes). Pills are for chips and status only (X6).
+ * Notes). Pills are for chips and status only.
  *
  * - **primary** (default) is filled and changes fill on hover. It does not
  *   lift: a button that moves under the pointer is decoration (concept A),
- *   and one filled primary per viewport is the rule (X7).
+ *   and one filled primary per viewport is the rule.
  * - **outline** is the secondary: a 1px `--input` edge, which every preset
  *   holds at 3:1 against its ground (WCAG 1.4.11, gated by check:themes).
  * - **destructive** is for confirm flows that cannot be undone.
@@ -51,7 +51,7 @@ const buttonVariants = cva(
   },
 );
 
-export interface ButtonProps
+interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;

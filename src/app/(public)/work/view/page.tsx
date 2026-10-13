@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { CaseStudyPageFromQuery } from "@/features/work/case-study-page";
+import { CaseStudySwitchFromQuery } from "@/features/immersive/case-study/from-query";
 
 export const metadata: Metadata = {
   title: "Case study",
@@ -11,7 +11,7 @@ export default function Page() {
   // a Suspense boundary.
   return (
     <Suspense>
-      <CaseStudyPageFromQuery />
+      <CaseStudySwitchFromQuery />
     </Suspense>
   );
 }

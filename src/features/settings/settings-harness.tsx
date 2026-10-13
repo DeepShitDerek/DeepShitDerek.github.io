@@ -18,7 +18,11 @@ export function SettingsHarness() {
   useEffect(() => {
     // Cast: the store's dispatch type is not exported to features.
     (dispatch as (action: unknown) => void)(
-      siteApi.util.upsertQueryData("getSiteSettings", undefined, MOCK_SITE_IDENTITY),
+      siteApi.util.upsertQueryData(
+        "getSiteSettings",
+        undefined,
+        MOCK_SITE_IDENTITY,
+      ),
     );
     setSeeded(true);
   }, [dispatch]);
@@ -29,7 +33,9 @@ export function SettingsHarness() {
         Workspace
       </header>
       <main className="flex-1 px-4 pb-6 pt-6 sm:px-6">
-        <div className="mx-auto w-full max-w-wide">{seeded && <SettingsPage />}</div>
+        <div className="mx-auto w-full max-w-wide">
+          {seeded && <SettingsPage />}
+        </div>
       </main>
     </div>
   );

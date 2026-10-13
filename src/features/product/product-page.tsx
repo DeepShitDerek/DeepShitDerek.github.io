@@ -107,7 +107,9 @@ function ThemePreview() {
     [],
   );
 
-  const labels = new Map(THEME_PRESETS.map((t) => [t.value as string, t.label]));
+  const labels = new Map(
+    THEME_PRESETS.map((t) => [t.value as string, t.label]),
+  );
 
   return (
     <div>
@@ -130,7 +132,9 @@ function ThemePreview() {
               className={cn(
                 "group rounded-surface bg-card p-2 text-left transition-shadow duration-base ease-enter",
                 "focus-ring",
-                selected ? "shadow-e3 ring-2 ring-primary" : "shadow-e1 hover:shadow-e2",
+                selected
+                  ? "shadow-e3 ring-2 ring-primary"
+                  : "shadow-e1 hover:shadow-e2",
               )}
             >
               <span
@@ -195,12 +199,17 @@ function PlanCard({ plan }: { plan: ProductPlan }) {
           <span className="text-sm text-muted-foreground">{plan.period}</span>
         )}
       </p>
-      <p className="mt-3 text-pretty text-muted-foreground">{plan.description}</p>
+      <p className="mt-3 text-pretty text-muted-foreground">
+        {plan.description}
+      </p>
       {plan.features.length > 0 && (
         <ul className="mt-6 space-y-2.5">
           {plan.features.map((feature) => (
             <li key={feature} className="flex items-start gap-2.5 text-sm">
-              <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+              <Check
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-primary"
+              />
               <span className="[overflow-wrap:anywhere]">{feature}</span>
             </li>
           ))}
@@ -237,7 +246,11 @@ export function ProductPage() {
         actions. The disclosure line answers "what does it cost and what is
         it built on" before anyone has to ask (conversion-strategy.md §6).
       */}
-      <Band weight="feature" aria-labelledby="kit-heading" className="hero-band">
+      <Band
+        weight="feature"
+        aria-labelledby="kit-heading"
+        className="hero-band"
+      >
         <div className="flex max-w-hero flex-col items-start gap-6">
           <p className="t-eyebrow">{PRODUCT.name}</p>
           <h1 id="kit-heading" className="t-display text-balance">
@@ -286,12 +299,20 @@ export function ProductPage() {
                 <span className="flex size-11 items-center justify-center rounded-control bg-primary/10 text-primary">
                   <Icon className="size-5" aria-hidden />
                 </span>
-                <h3 className="mt-5 font-heading text-xl font-semibold">{mode.name}</h3>
+                <h3 className="mt-5 font-heading text-xl font-semibold">
+                  {mode.name}
+                </h3>
                 <p className="mt-1 text-muted-foreground">{mode.tagline}</p>
                 <ul className="mt-6 space-y-2.5">
                   {mode.points.map((point) => (
-                    <li key={point} className="flex items-start gap-2.5 text-sm">
-                      <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <li
+                      key={point}
+                      className="flex items-start gap-2.5 text-sm"
+                    >
+                      <Check
+                        aria-hidden
+                        className="mt-0.5 size-4 shrink-0 text-primary"
+                      />
                       {point}
                     </li>
                   ))}
@@ -313,8 +334,12 @@ export function ProductPage() {
           {WORKSPACE.map((group) => (
             <section key={group.group} aria-label={group.group}>
               <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="font-heading text-lg font-semibold">{group.group}</h3>
-                <p className="text-sm text-muted-foreground">{group.description}</p>
+                <h3 className="font-heading text-lg font-semibold">
+                  {group.group}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {group.description}
+                </p>
               </div>
               <Stagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {group.modules.map((module) => {
@@ -372,7 +397,9 @@ export function ProductPage() {
                 <h3 className="mt-4 font-heading text-base font-semibold">
                   {point.title}
                 </h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{point.text}</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  {point.text}
+                </p>
               </StaggerItem>
             );
           })}
@@ -380,8 +407,17 @@ export function ProductPage() {
       </Band>
 
       {PRODUCT.plans.length > 0 && (
-        <Band weight="content" id="plans" aria-labelledby="kit-plans" className="scroll-mt-24">
-          <BandHeading id="kit-plans" eyebrow="Plans" title="Run it yourself, or have it set up for you." />
+        <Band
+          weight="content"
+          id="plans"
+          aria-labelledby="kit-plans"
+          className="scroll-mt-24"
+        >
+          <BandHeading
+            id="kit-plans"
+            eyebrow="Plans"
+            title="Run it yourself, or have it set up for you."
+          />
           <div
             className={cn(
               "mt-10 grid items-stretch gap-5",
@@ -411,7 +447,11 @@ export function ProductPage() {
       </Band>
 
       <Band weight="content" aria-labelledby="kit-faq">
-        <BandHeading id="kit-faq" eyebrow="Questions" title="What people ask first." />
+        <BandHeading
+          id="kit-faq"
+          eyebrow="Questions"
+          title="What people ask first."
+        />
         <div className="mt-10">
           <FaqLayout items={FAQ} />
         </div>

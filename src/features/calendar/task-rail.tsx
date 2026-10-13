@@ -28,7 +28,7 @@ export function TaskRail({
   /** Task ids that already have a block on the calendar. */
   scheduledTaskIds: ReadonlySet<string>;
   /**
-   * Block time for a task without dragging (WCAG 2.1.1 and 2.5.7, V2-060):
+   * Block time for a task without dragging (WCAG 2.1.1 and 2.5.7):
    * the drag is a mouse-only gesture, so every card also has a button.
    */
   onSchedule: (taskId: string) => void;
@@ -122,9 +122,6 @@ export function TaskRail({
     </section>
   );
 }
-
-/** A block with no estimate defaults to an hour, and says so rather than lying. */
-export const DEFAULT_BLOCK_MINUTES = 60;
 
 function formatEstimate(minutes: number): string {
   if (minutes < 60) return `${minutes}m`;

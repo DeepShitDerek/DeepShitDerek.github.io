@@ -43,7 +43,9 @@ export function NotesHarness() {
         />
         <article aria-label="Note 6" className="min-w-0 space-y-4">
           {Array.from({ length: 80 }, (_, i) => (
-            <p key={i}>Paragraph {i + 1} of a long note, so the page itself scrolls.</p>
+            <p key={i}>
+              Paragraph {i + 1} of a long note, so the page itself scrolls.
+            </p>
           ))}
         </article>
       </div>

@@ -10,10 +10,12 @@ import { plainPreview } from "@/lib/text-preview";
 import { socialMetadata } from "@/lib/og/metadata";
 import { CaseStudyPage } from "@/features/work/case-study-page";
 import { PublicPreload } from "@/store/public-preload";
+import { pagePreload } from "@/lib/public-preload-server";
+import { StyleSwitch } from "@/features/immersive/style-switch";
 
 /*
-  One prerendered page per case study published at build time (V2-042), the
-  same way /blog/<slug>/ works (ADR-004). Newer ones are served by /work/view
+  One prerendered page per case study published at build time, the
+  same way /blog/<slug>/ works. Newer ones are served by /work/view
   until the next build (see caseStudyHref).
 */
 
@@ -60,14 +62,28 @@ export async function generateMetadata(props: {
   };
 }
 
-export default async function Page(props: { params: Promise<{ slug: string }> }) {
+export default async function Page(props: {
+  params: Promise<{ slug: string }>;
+}) {
   const params = await props.params;
-  const study = await orUndefined(fetchCaseStudyBySlug(params.slug));
+  // The work sections too: the immersive hand-off needs the next project in
+  // the HTML, and it is the data /work already preloads.
+  const [study, work] = await Promise.all([
+    orUndefined(fetchCaseStudyBySlug(params.slug)),
+    pagePreload({ sections: ["/work"] }),
+  ]);
   return (
     <PublicPreload
-      data={study ? { caseStudiesBySlug: { [params.slug]: study } } : undefined}
+      data={{
+        ...work,
+        ...(study ? { caseStudiesBySlug: { [params.slug]: study } } : {}),
+      }}
     >
-      <CaseStudyPage slug={params.slug} />
+      <StyleSwitch
+        layout="case-study"
+        slug={params.slug}
+        classic={<CaseStudyPage slug={params.slug} />}
+      />
     </PublicPreload>
   );
 }

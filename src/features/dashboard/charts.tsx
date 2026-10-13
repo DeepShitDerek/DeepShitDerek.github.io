@@ -2,13 +2,7 @@
 
 import { useId } from "react";
 import { cn } from "@/lib/cn";
-import {
-  areaPath,
-  heatLevel,
-  linePath,
-  ringDash,
-  scalePoints,
-} from "./chart-geometry";
+import { areaPath, heatLevel, linePath, scalePoints } from "./chart-geometry";
 
 /**
  * The dashboard's graphics.
@@ -109,69 +103,6 @@ export function Sparkline({
 }
 
 /* ── Progress ring ───────────────────────────────────────────────────────── */
-
-export function Ring({
-  percent,
-  className,
-  size = 96,
-  label,
-  children,
-}: {
-  percent: number;
-  className?: string;
-  size?: number;
-  label: string;
-  children?: React.ReactNode;
-}) {
-  const stroke = 8;
-  const radius = (size - stroke) / 2;
-  const { dash, gap } = ringDash(percent, radius);
-
-  return (
-    <div
-      className="relative shrink-0"
-      style={{ width: size, height: size }}
-      role="img"
-      aria-label={label}
-    >
-      <svg
-        viewBox={`0 0 ${size} ${size}`}
-        className={cn("size-full", className)}
-      >
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          // The track is the foreground at low opacity rather than a grey
-          // literal, so it stays visible on both light and dark grounds.
-          stroke="currentColor"
-          strokeOpacity={0.12}
-          strokeWidth={stroke}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${gap}`}
-          // Starts at twelve o'clock; SVG circles start at three.
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          className="transition-[stroke-dasharray] duration-700 ease-enter"
-        />
-      </svg>
-
-      {children && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ── Heatmap ─────────────────────────────────────────────────────────────── */
 

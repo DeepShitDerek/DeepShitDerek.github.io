@@ -37,7 +37,7 @@ export interface SetupItem {
  */
 const SEEDED_NAME = "your name";
 const SEEDED_TITLE = "your professional title";
-/** What installs before the redesign were seeded with; it is not a choice either. */
+/** What older installs were seeded with; it is not a choice either. */
 const LEGACY_SEEDED_THEME = "theme-blueprint";
 const SEEDED_URL = /your-username|your-profile|your-email@example\.com/i;
 
@@ -73,7 +73,8 @@ export function setupItems({
     {
       id: "pitch",
       title: "Write your headline",
-      description: "The one line a visitor should leave with — and your results.",
+      description:
+        "The one line a visitor should leave with — and your results.",
       href: "/admin/settings",
       done: !!profile?.headline?.trim(),
     },
@@ -92,14 +93,16 @@ export function setupItems({
     {
       id: "links",
       title: "Add where people find you",
-      description: "GitHub, LinkedIn, email — shown in the hero and the footer.",
+      description:
+        "GitHub, LinkedIn, email — shown in the hero and the footer.",
       href: "/admin/settings",
       done: hasLink,
     },
     {
       id: "pages",
       title: "Fill your pages",
-      description: "Services, case studies and experience, from ready-made sections.",
+      description:
+        "Services, case studies and experience, from ready-made sections.",
       href: "/admin/content",
       done: sectionCount > 0,
     },

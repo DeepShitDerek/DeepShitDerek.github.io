@@ -1,70 +1,5 @@
 export const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-// Layout spacing constants
-export const LAYOUT = {
-  SIDEBAR_WIDTH: 256,
-  SIDEBAR_COLLAPSED_WIDTH: 64,
-  HEADER_HEIGHT: 64,
-  PAGE_PADDING: {
-    mobile: 16,
-    desktop: 24,
-  },
-  CONTENT_MAX_WIDTH: 1400,
-} as const;
-
-// Public page layout constants
-export const PUBLIC_LAYOUT = {
-  PAGE_PADDING_Y: {
-    mobile: "py-12",
-    tablet: "md:py-16",
-    desktop: "lg:py-20",
-  },
-  SECTION_SPACING: {
-    tight: "space-y-8",
-    default: "space-y-12",
-    loose: "space-y-16",
-  },
-  MAX_WIDTH: {
-    narrow: "max-w-3xl", // About, single-column content
-    default: "max-w-5xl", // Most pages
-    wide: "max-w-6xl", // Projects, galleries
-    full: "max-w-7xl", // Homepage, wide layouts
-  },
-} as const;
-
-// Admin manager layout constants
-export const ADMIN_MANAGER = {
-  HEADER_SPACING: "space-y-4",
-  CONTENT_SPACING: "space-y-6",
-  CARD_PADDING: {
-    mobile: "p-4",
-    desktop: "md:p-6",
-  },
-  MOBILE_BOTTOM_PADDING: "pb-20 md:pb-0", // Account for mobile nav
-} as const;
-
-// Component spacing constants
-export const COMPONENT_SPACING = {
-  HERO_SECTION: "py-16 lg:py-32",
-  SECTION_GAP: "gap-12 lg:gap-16",
-  CARD_GAP: "gap-4 md:gap-6",
-} as const;
-
-// Breakpoints (align with Tailwind)
-export const BREAKPOINTS = {
-  sm: 640,
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-} as const;
-export const HABIT_WINDOW_DAYS = 14;
-export const LEARNING_SESSIONS_LIMIT = 100;
-export const STREAK_ALIVE_THRESHOLD_DAYS = 1;
-export const DAY_OF_WEEK_MIN = 0;
-export const DAY_OF_WEEK_MAX = 6;
-export const DAY_OF_MONTH_MIN = 1;
-export const DAY_OF_MONTH_MAX = 31;
-
 export const BUCKET_NAME = process.env.NEXT_PUBLIC_BUCKET_NAME || "assets";
 
 export const NOTE_COLORS = [
@@ -89,16 +24,6 @@ export const HABIT_COLORS = [
   "#ec4899", // pink
 ] as const;
 
-export const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(var(--primary))",
-  "hsl(var(--accent))",
-] as const;
-
 /**
  * Fallbacks for rows written before a colour was required, and the starting
  * value for a new record. Both palettes are user data stored on the row — they
@@ -108,7 +33,7 @@ export const CHART_COLORS = [
 export const DEFAULT_HABIT_COLOR = "#3b82f6";
 
 // =============================================================================
-// HABIT DEFINITION — mirrors the CHECK constraints in db/migrations/002-habits.sql
+// HABIT DEFINITION — mirrors the CHECK constraints in db/schema.sql
 // =============================================================================
 
 export const HABIT_KIND_OPTIONS = [
@@ -152,9 +77,6 @@ export const WEEKDAYS = [
 
 /** Mirrors habits_target_value_positive / habit_logs_value_range. */
 export const HABIT_VALUE_MAX = 100000;
-/** Mirrors habit_logs_note_length. */
-export const HABIT_NOTE_MAX = 500;
-export const DEFAULT_NOTE_COLOR = "#facc15";
 
 export const TASK_STATUS = {
   TODO: "todo",
@@ -162,8 +84,6 @@ export const TASK_STATUS = {
   REVIEW: "review",
   DONE: "done",
 } as const;
-
-export type TaskStatusValue = (typeof TASK_STATUS)[keyof typeof TASK_STATUS];
 
 export const TASK_STATUS_OPTIONS = [
   { value: TASK_STATUS.TODO, label: "To Do" },
@@ -183,9 +103,6 @@ export const TASK_RECURRENCE = {
   MONTHLY: "monthly",
 } as const;
 
-export type TaskRecurrenceValue =
-  (typeof TASK_RECURRENCE)[keyof typeof TASK_RECURRENCE];
-
 export const TASK_RECURRENCE_OPTIONS = [
   { value: TASK_RECURRENCE.DAILY, label: "Daily" },
   { value: TASK_RECURRENCE.WEEKLY, label: "Weekly" },
@@ -203,39 +120,10 @@ export const TASK_PRIORITY = {
   HIGH: "high",
 } as const;
 
-export type TaskPriorityValue =
-  (typeof TASK_PRIORITY)[keyof typeof TASK_PRIORITY];
-
 export const TASK_PRIORITY_OPTIONS = [
   { value: TASK_PRIORITY.LOW, label: "Low" },
   { value: TASK_PRIORITY.MEDIUM, label: "Medium" },
   { value: TASK_PRIORITY.HIGH, label: "High" },
-] as const;
-
-export const TRANSACTION_TYPE = {
-  EARNING: "earning",
-  EXPENSE: "expense",
-} as const;
-
-export type TransactionTypeValue =
-  (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
-
-export const FREQUENCY = {
-  DAILY: "daily",
-  WEEKLY: "weekly",
-  BI_WEEKLY: "bi-weekly",
-  MONTHLY: "monthly",
-  YEARLY: "yearly",
-} as const;
-
-export type FrequencyValue = (typeof FREQUENCY)[keyof typeof FREQUENCY];
-
-export const FREQUENCY_OPTIONS = [
-  { value: FREQUENCY.DAILY, label: "Daily" },
-  { value: FREQUENCY.WEEKLY, label: "Weekly" },
-  { value: FREQUENCY.BI_WEEKLY, label: "Bi-weekly (Every 2 Weeks)" },
-  { value: FREQUENCY.MONTHLY, label: "Monthly" },
-  { value: FREQUENCY.YEARLY, label: "Yearly" },
 ] as const;
 
 export const LEARNING_STATUS = {
@@ -245,26 +133,6 @@ export const LEARNING_STATUS = {
   MASTERED: "Mastered",
 } as const;
 
-export type LearningStatusValue =
-  (typeof LEARNING_STATUS)[keyof typeof LEARNING_STATUS];
-
-export const LEARNING_STATUS_OPTIONS = [
-  { value: LEARNING_STATUS.TO_LEARN, label: "To Learn" },
-  { value: LEARNING_STATUS.LEARNING, label: "Learning" },
-  { value: LEARNING_STATUS.PRACTICING, label: "Practicing" },
-  { value: LEARNING_STATUS.MASTERED, label: "Mastered" },
-] as const;
-
-export const DAYS_OF_WEEK = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-] as const;
-
 export const LIFE_UPDATE_CATEGORY = {
   WATCHING: "watching",
   ACTIVITY: "activity",
@@ -272,9 +140,6 @@ export const LIFE_UPDATE_CATEGORY = {
   THOUGHT: "thought",
   MILESTONE: "milestone",
 } as const;
-
-export type LifeUpdateCategoryValue =
-  (typeof LIFE_UPDATE_CATEGORY)[keyof typeof LIFE_UPDATE_CATEGORY];
 
 export const LIFE_UPDATE_CATEGORY_OPTIONS = [
   { value: LIFE_UPDATE_CATEGORY.WATCHING, label: "Watching" },
@@ -494,9 +359,6 @@ export const TYPOGRAPHY_PRESETS = [
     families: [],
   },
 ] as const;
-
-export type TypographyPresetValue =
-  (typeof TYPOGRAPHY_PRESETS)[number]["value"];
 
 export const THEME_PRESETS = [
   { value: "theme-field-notes-light", label: "Field Notes" },

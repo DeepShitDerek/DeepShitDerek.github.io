@@ -65,8 +65,7 @@ export function HeroSection({ form }: { form: SettingsForm }) {
               <Input {...field} placeholder="Software Engineer" />
             </FormControl>
             <FormDescription>
-              Separate with <code>|</code> to rotate
-              through several.
+              Separate with <code>|</code> to rotate through several.
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -152,7 +151,10 @@ export function HeroSection({ form }: { form: SettingsForm }) {
 
 /** The results strip under the hero: a figure and what it measures. */
 function ProofEditor({ form }: { form: SettingsForm }) {
-  const proof = useFieldArray({ control: form.control, name: "profile_data.proof" });
+  const proof = useFieldArray({
+    control: form.control,
+    name: "profile_data.proof",
+  });
 
   return (
     <FieldGroup
@@ -166,7 +168,9 @@ function ProofEditor({ form }: { form: SettingsForm }) {
             position={`result ${index + 1}`}
             removeLabel={`Remove result ${index + 1}`}
             onRemove={() => proof.remove(index)}
-            onMoveUp={index > 0 ? () => proof.swap(index, index - 1) : undefined}
+            onMoveUp={
+              index > 0 ? () => proof.swap(index, index - 1) : undefined
+            }
             onMoveDown={
               index < proof.fields.length - 1
                 ? () => proof.swap(index, index + 1)

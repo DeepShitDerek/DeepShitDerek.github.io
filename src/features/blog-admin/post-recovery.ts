@@ -2,7 +2,7 @@ import type { BlogPost } from "@/types";
 import { draftFromPost, type PostDraft, sameDraft } from "./post-draft";
 
 /**
- * Unsaved edits kept when the blog editor closes (ADM-001).
+ * Unsaved edits kept when the blog editor closes.
  *
  * Leaving the editor through the sidebar, the launcher or the palette
  * unmounts it without asking. A draft is saved on the way out; a published
@@ -17,11 +17,19 @@ export interface Recovery {
   at: string;
 }
 
-export const recoveryKey = (post: Pick<BlogPost, "id"> | null) => `blog-editor-recovery:${post?.id ?? "new"}`;
+export const recoveryKey = (post: Pick<BlogPost, "id"> | null) =>
+  `blog-editor-recovery:${post?.id ?? "new"}`;
 
-export function keepRecovery(key: string, draft: PostDraft, now = new Date()): void {
+export function keepRecovery(
+  key: string,
+  draft: PostDraft,
+  now = new Date(),
+): void {
   try {
-    localStorage.setItem(key, JSON.stringify({ draft, at: now.toISOString() } satisfies Recovery));
+    localStorage.setItem(
+      key,
+      JSON.stringify({ draft, at: now.toISOString() } satisfies Recovery),
+    );
   } catch {
     // Storage full or blocked: nothing more can be done from here.
   }

@@ -1,7 +1,11 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type Options = { action: { onClick: () => void }; onAutoClose: () => void; onDismiss: () => void };
+type Options = {
+  action: { onClick: () => void };
+  onAutoClose: () => void;
+  onDismiss: () => void;
+};
 const shown: Options[] = [];
 vi.mock("sonner", () => ({
   toast: (_title: string, options: Options) => {

@@ -96,13 +96,13 @@ export default function InventoryPage() {
     error: loadError,
     refetch,
   } = useGetInventoryQuery();
-  // An item with no currency of its own is in the base currency (ADM-024).
+  // An item with no currency of its own is in the base currency.
   const { data: moneySettings } = useGetMoneySettingsQuery();
   const baseCurrency = moneySettings?.baseCurrency ?? "CAD";
   const [archiveItem] = useArchiveInventoryItemMutation();
   const [deleteItem] = useDeleteInventoryItemMutation();
 
-  // Delete offers Undo instead of asking first (P1-10).
+  // Delete offers Undo instead of asking first.
   const { pending: deleting, remove: removeItem } =
     useUndoableDelete<InventoryItem>(async (item) => {
       try {
@@ -202,7 +202,7 @@ export default function InventoryPage() {
         description="What you own, what it's worth, and what's about to lose cover."
         actions={
           // One primary (G7). The archive opens from the foot of the list,
-          // as Habits' does (P-archive).
+          // as Habits' does.
           <Button onClick={openCreate}>
             <Plus className="mr-2 size-4" aria-hidden /> Add item
           </Button>

@@ -7,11 +7,13 @@
  * A build made for /<repo>/ writes that prefix into every asset URL, so a
  * check that serves or reads out/ has to take it back off to find the file.
  */
-export const BASE_PATH = (process.env.BASE_PATH ?? "").replace(/\/+$/, "");
+const BASE_PATH = (process.env.BASE_PATH ?? "").replace(/\/+$/, "");
 
 /** `/repo/_next/x.js` -> `/_next/x.js`; anything else unchanged. */
 export function stripBasePath(pathname) {
   if (!BASE_PATH) return pathname;
   if (pathname === BASE_PATH) return "/";
-  return pathname.startsWith(`${BASE_PATH}/`) ? pathname.slice(BASE_PATH.length) : pathname;
+  return pathname.startsWith(`${BASE_PATH}/`)
+    ? pathname.slice(BASE_PATH.length)
+    : pathname;
 }

@@ -21,7 +21,12 @@ const post = (published: boolean) =>
 const mount = (published: boolean, onToggleStatus = vi.fn()) =>
   render(
     <ul>
-      <PostRow post={post(published)} onEdit={vi.fn()} onToggleStatus={onToggleStatus} onDelete={vi.fn()} />
+      <PostRow
+        post={post(published)}
+        onEdit={vi.fn()}
+        onToggleStatus={onToggleStatus}
+        onDelete={vi.fn()}
+      />
     </ul>,
   );
 
@@ -37,8 +42,12 @@ describe("post row", () => {
   it("offers Publish on the row at every width, with its name spoken", () => {
     const onToggleStatus = vi.fn();
     mount(false, onToggleStatus);
-    fireEvent.click(screen.getByRole("button", { name: "Publish RAG lessons" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Publish RAG lessons" }),
+    );
     expect(onToggleStatus).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "More actions for RAG lessons" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "More actions for RAG lessons" }),
+    ).toBeTruthy();
   });
 });

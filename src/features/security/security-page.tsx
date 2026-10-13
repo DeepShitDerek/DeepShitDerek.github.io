@@ -39,7 +39,11 @@ import {
 } from "./lockdown";
 import { assessPassword, passwordFormError } from "./password-strength";
 import { AddFactorDialog } from "./add-factor-dialog";
-import { exportWorkspace, parseBackup, restoreWorkspace } from "./workspace-export";
+import {
+  exportWorkspace,
+  parseBackup,
+  restoreWorkspace,
+} from "./workspace-export";
 import { downloadText } from "@/lib/download";
 import {
   SecurityHealth,
@@ -49,7 +53,7 @@ import {
 } from "./security-health";
 
 /**
- * A settings-style section (03-workspace-ui.md §2.15, P-form): what it is
+ * A settings-style section: what it is
  * and why on the left, the controls on the right at `lg`. `scroll-mt` keeps
  * the heading clear of the top bar when the status summary links here.
  */
@@ -91,7 +95,7 @@ export default function SecurityPage() {
   const [restoring, setRestoring] = useState(false);
   const [restoreResult, setRestoreResult] = useState<string | null>(null);
 
-  // Restore (runbook gap after ADM-008): merge only, one transaction.
+  // Restore: merge only, one transaction.
   const handleRestore = async (file: File) => {
     if (!supabase) return;
     setRestoreResult(null);
@@ -113,7 +117,9 @@ export default function SecurityPage() {
       setRestoreResult(
         total === 0
           ? "Nothing to add: everything in the backup is already here."
-          : `Added ${total} row${total === 1 ? "" : "s"}: ${Object.entries(added)
+          : `Added ${total} row${total === 1 ? "" : "s"}: ${Object.entries(
+              added,
+            )
               .filter(([, n]) => n > 0)
               .map(([t, n]) => `${t.replace(/_/g, " ")} ${n}`)
               .join(", ")}.`,
@@ -151,7 +157,9 @@ export default function SecurityPage() {
         toast.success("Backup saved");
       }
     } catch (err) {
-      toast.error("Couldn't make the backup", { description: getErrorMessage(err) });
+      toast.error("Couldn't make the backup", {
+        description: getErrorMessage(err),
+      });
     } finally {
       setExportProgress(null);
     }
@@ -375,7 +383,7 @@ export default function SecurityPage() {
           {/*
             The honest part. Maintenance is a client-side check on a static
             export — it hides the interface, not the data. Level 2's write
-            block is restrictive RLS in db/schema.sql (V2-016), so it holds
+            block is restrictive RLS in db/schema.sql, so it holds
             only on a database that has had the current schema applied.
             A security screen that overstates what it does is worse than one
             that does less.
@@ -470,7 +478,7 @@ export default function SecurityPage() {
           )}
           {!isLoadingFactors && verified.length === 1 && (
             // Supabase has no recovery codes: a second factor is the only
-            // way back in without the dashboard (ADM-025).
+            // way back in without the dashboard.
             <Alert className="mt-3">
               <AlertCircle className="size-4" aria-hidden />
               <AlertDescription>
@@ -515,12 +523,18 @@ export default function SecurityPage() {
               Download a backup
             </Button>
             <span role="status" className="text-xs text-muted-foreground">
-              {exportProgress ?? "The ledger also exports as CSV from Money → Transactions."}
+              {exportProgress ??
+                "The ledger also exports as CSV from Money → Transactions."}
             </span>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button variant="outline" asChild disabled={restoring}>
-              <label className={cn("cursor-pointer focus-within:ring-2 focus-within:ring-ring", restoring && "pointer-events-none opacity-50")}>
+              <label
+                className={cn(
+                  "cursor-pointer focus-within:ring-2 focus-within:ring-ring",
+                  restoring && "pointer-events-none opacity-50",
+                )}
+              >
                 {restoring ? (
                   <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
                 ) : (
@@ -541,7 +555,8 @@ export default function SecurityPage() {
               </label>
             </Button>
             <span role="status" className="text-xs text-muted-foreground">
-              {restoreResult ?? "Adds back what is missing; never changes or removes what is here."}
+              {restoreResult ??
+                "Adds back what is missing; never changes or removes what is here."}
             </span>
           </div>
         </Section>

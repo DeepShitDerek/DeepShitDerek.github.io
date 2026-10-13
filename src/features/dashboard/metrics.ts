@@ -20,7 +20,7 @@ import { heatmapDates } from "./chart-geometry";
  * fact nothing was spent in between — the same failure the analytics series
  * had. Every day gets a point.
  */
-export function dailySeries(
+function dailySeries(
   rows: { day: string; total: number }[],
   days: number,
   today = new Date(),

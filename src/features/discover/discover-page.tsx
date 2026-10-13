@@ -28,7 +28,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LoadError, ModuleTabs, PageHeader, type ModuleTab } from "@/components/admin/shared";
+import {
+  LoadError,
+  ModuleTabs,
+  PageHeader,
+  type ModuleTab,
+} from "@/components/admin/shared";
 import { useUrlParam } from "@/hooks/use-url-param";
 import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { discoverPlaceSchema, discoverTopicSchema } from "@/lib/schemas";
@@ -87,8 +92,16 @@ const LANES: ModuleTab<Lane>[] = [
 const LANE_IDS = LANES.map((l) => l.id);
 
 export default function DiscoverPage() {
-  const { data: places = [], error: placesError, refetch: refetchPlaces } = useGetDiscoverPlacesQuery();
-  const { data: topics = [], error: topicsError, refetch: refetchTopics } = useGetDiscoverTopicsQuery();
+  const {
+    data: places = [],
+    error: placesError,
+    refetch: refetchPlaces,
+  } = useGetDiscoverPlacesQuery();
+  const {
+    data: topics = [],
+    error: topicsError,
+    refetch: refetchTopics,
+  } = useGetDiscoverTopicsQuery();
   // Your places and topics shape every lane; without them the lanes fall back
   // to defaults, which would pass for your choices unless this says otherwise.
   const listsError = placesError ?? topicsError;
@@ -97,7 +110,9 @@ export default function DiscoverPage() {
 
   // In the URL (?lane=), so Back and a reload return to the same lane.
   const [laneParam, setLaneParam] = useUrlParam("lane", "replace");
-  const lane: Lane = (LANE_IDS as string[]).includes(laneParam ?? "") ? (laneParam as Lane) : "money";
+  const lane: Lane = (LANE_IDS as string[]).includes(laneParam ?? "")
+    ? (laneParam as Lane)
+    : "money";
   const setLane = (next: Lane) => setLaneParam(next === "money" ? null : next);
   const [window, setWindow] = useState<Window>("day");
 
@@ -147,7 +162,12 @@ export default function DiscoverPage() {
         (ModuleTabs), like every other module's: a hand-rolled tablist with
         its own look sat here. The row scrolls on a phone, with an edge cue.
       */}
-      <ModuleTabs label="Discover sections" tabs={LANES} current={lane} onSelect={setLane} />
+      <ModuleTabs
+        label="Discover sections"
+        tabs={LANES}
+        current={lane}
+        onSelect={setLane}
+      />
 
       {lane === "money" && (
         <MoneyLane
@@ -391,7 +411,7 @@ function WeatherCard({ place }: { place: DiscoverPlace }) {
 }
 
 /**
- * Add a place by name (03-workspace-ui.md §2.18): type a city, pick it from
+ * Add a place by name: type a city, pick it from
  * the matches, keep or change its name, add. It asked for latitude and
  * longitude, which nobody knows for their own city; the coordinates are
  * still there under "Enter coordinates" for a place the search cannot find.
@@ -451,7 +471,11 @@ function AddPlace() {
           longitude: chosen.longitude,
           ...(chosen.timezone ? { timezone: chosen.timezone } : {}),
         }
-      : { label: label.trim(), latitude: Number(latitude), longitude: Number(longitude) };
+      : {
+          label: label.trim(),
+          latitude: Number(latitude),
+          longitude: Number(longitude),
+        };
 
     // Checked before the write: the columns bound the label at 80 and the
     // coordinates to real ranges, and a typo would otherwise fail at Postgres
@@ -506,7 +530,11 @@ function AddPlace() {
             className="h-9 text-sm"
             aria-describedby="place-search-status"
           />
-          <p id="place-search-status" aria-live="polite" className="min-h-5 text-xs text-muted-foreground">
+          <p
+            id="place-search-status"
+            aria-live="polite"
+            className="min-h-5 text-xs text-muted-foreground"
+          >
             {query.trim().length < 2
               ? ""
               : searching
@@ -528,7 +556,9 @@ function AddPlace() {
                     className="flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-secondary focus-ring"
                   >
                     <span className="font-medium">{match.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{match.where}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {match.where}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -595,7 +625,12 @@ function AddPlace() {
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
         {naming && (
-          <Button type="button" size="sm" disabled={isLoading} onClick={() => void submit()}>
+          <Button
+            type="button"
+            size="sm"
+            disabled={isLoading}
+            onClick={() => void submit()}
+          >
             Add
           </Button>
         )}

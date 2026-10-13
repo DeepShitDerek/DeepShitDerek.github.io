@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import type { LibraryHighlight, LibraryKind, LibrarySource, LibraryStatus } from "@/types";
+import type {
+  LibraryHighlight,
+  LibraryKind,
+  LibrarySource,
+  LibraryStatus,
+} from "@/types";
 import { libraryApi } from "@/store/api/admin/libraryApi";
 import LibraryPage from "./library-page";
 
@@ -37,8 +42,16 @@ export function LibraryHarness() {
   const dispatch = useDispatch() as (action: unknown) => void;
   const [seeded, setSeeded] = useState(false);
   useEffect(() => {
-    dispatch(libraryApi.util.upsertQueryData("getLibrarySources", undefined, SOURCES));
-    dispatch(libraryApi.util.upsertQueryData("getLibraryHighlights", undefined, HIGHLIGHTS));
+    dispatch(
+      libraryApi.util.upsertQueryData("getLibrarySources", undefined, SOURCES),
+    );
+    dispatch(
+      libraryApi.util.upsertQueryData(
+        "getLibraryHighlights",
+        undefined,
+        HIGHLIGHTS,
+      ),
+    );
     setSeeded(true);
   }, [dispatch]);
 
@@ -48,7 +61,9 @@ export function LibraryHarness() {
         Workspace
       </header>
       <main className="flex-1 px-4 pb-6 pt-6 sm:px-6">
-        <div className="mx-auto w-full max-w-wide">{seeded && <LibraryPage />}</div>
+        <div className="mx-auto w-full max-w-wide">
+          {seeded && <LibraryPage />}
+        </div>
       </main>
     </div>
   );

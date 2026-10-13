@@ -8,7 +8,7 @@ import {
 } from "./query-helpers";
 
 /** Admin CRUD for "life updates" (the `public_notes` table). */
-export const lifeUpdatesApi = adminApi.injectEndpoints({
+const lifeUpdatesApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getLifeUpdates: builder.query<LifeUpdate[], void>({
       queryFn: getAllQueryFn<LifeUpdate>("public_notes", [

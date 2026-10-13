@@ -54,10 +54,9 @@ function SectionBody({ section }: { section: PortfolioSection }) {
   const items = sortedItems(section.portfolio_items);
 
   /**
-   * FIX — an item-less section used to render a heading over nothing. The
-   * seeded "Empty By Design" section made the page look broken. Now the whole
-   * section is suppressed in production (see SectionRenderer) and explained in
-   * development.
+   * A section with no items would be a heading over nothing, which looks
+   * broken. The whole section is left out in production (see SectionRenderer)
+   * and explained in development.
    */
   if (!items.length) return <EmptySection />;
 
@@ -77,9 +76,8 @@ function SectionBody({ section }: { section: PortfolioSection }) {
  *    title in an `aria-label`, so screen readers announce it once.
  *  - `scroll-mt-24` + an id make every section deep-linkable without the
  *    sticky header covering it.
- *  - Nothing fades in. Each section used to prerender at `opacity: 0` and
- *    wait for an IntersectionObserver; on the redesign's first capture that
- *    left the home page's CMS sections as 2,500px of blank page (P0-2, X10).
+ *  - Nothing fades in. A section prerendered at `opacity: 0`, waiting for an
+ *    IntersectionObserver, is blank page until the script runs.
  *  - Sections with no renderable body are dropped in production rather than
  *    leaving an orphan heading.
  */
@@ -128,7 +126,7 @@ export default function SectionRenderer({
         <h2
           id={headingId}
           className={cn(
-            // The title role, like the home page's own section titles (P1-4).
+            // The title role, like the home page's own section titles.
             "t-title text-balance [overflow-wrap:anywhere]",
             !showTitle && "sr-only",
           )}

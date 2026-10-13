@@ -257,7 +257,7 @@ export function InventoryToolbar({
           {children}
         </div>
       </div>
-      {/* What is set stays visible once the popover shuts (P-toolbar). */}
+      {/* What is set stays visible once the popover shuts. */}
       {chips.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {chips.map((chip) => (

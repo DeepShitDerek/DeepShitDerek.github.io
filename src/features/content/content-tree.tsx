@@ -169,7 +169,7 @@ export function ContentTree({
                     <SectionTreeRow
                       key={section.id}
                       section={section}
-                      // Moving without dragging (WCAG 2.5.7, V2-060).
+                      // Moving without dragging (WCAG 2.5.7).
                       onMoveUp={
                         index > 0
                           ? () =>

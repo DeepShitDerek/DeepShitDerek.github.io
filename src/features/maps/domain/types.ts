@@ -1,8 +1,8 @@
 /**
- * The Maps graph model (V2-070).
+ * The Maps graph model.
  *
  * Pure data, no rendering concerns: nothing in `domain/` may import React or
- * the canvas library (ADR-006). The canvas renders a `Graph`; it never owns
+ * the canvas library. The canvas renders a `Graph`; it never owns
  * one.
  *
  * The model is a general directed graph, not a tree. Cycles, multiple parents,
@@ -45,7 +45,7 @@ export const NODE_SHAPES = [
   "circle",
   "diamond",
 ] as const;
-export type NodeShape = (typeof NODE_SHAPES)[number];
+type NodeShape = (typeof NODE_SHAPES)[number];
 
 export const RELATIONSHIPS = [
   "related",
@@ -137,7 +137,7 @@ export class GraphError extends Error {
  * glance separates problems from actions — but always paired with the type's
  * icon and name, because colour must never be the only signal (§48).
  */
-export const TYPE_DEFAULT_COLOR: Record<NodeType, NodeColor | null> = {
+const TYPE_DEFAULT_COLOR: Record<NodeType, NodeColor | null> = {
   idea: null,
   problem: "red",
   question: "yellow",

@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
   Static checks over db/schema.sql. There is no application server: every
   access rule is row-level security or a function, so a regression here is a
   data leak, not a bug. These tests do not replace running the policies against
-  a real Postgres (V2-015); they catch the mistakes that are visible in the text.
+  a real Postgres; they catch the mistakes that are visible in the text.
 */
 
 const sql = readFileSync(
@@ -92,7 +92,7 @@ describe("db/schema.sql", () => {
   });
 
   /*
-    Lockdown (V2-016). Definer functions bypass the restrictive policies, so an
+    Lockdown. Definer functions bypass the restrictive policies, so an
     admin-facing definer that writes must check the level itself.
   */
   it.each(
@@ -127,7 +127,7 @@ describe("db/schema.sql", () => {
     );
   });
 
-  it("items of hidden sections are not public (SEC-002)", () => {
+  it("items of hidden sections are not public", () => {
     const policy =
       /CREATE POLICY "Public read items" ON portfolio_items[^;]*;/i.exec(
         sql,
@@ -137,7 +137,7 @@ describe("db/schema.sql", () => {
     expect(policy).toMatch(/portfolio_sections[\s\S]*is_visible = true/i);
   });
 
-  it("anonymous visit inserts have a daily ceiling that bots can't opt out of (SEC-004)", () => {
+  it("anonymous visit inserts have a daily ceiling that bots can't opt out of", () => {
     const limiter = functions().find((f) => f.name === "limit_site_visits");
     const daily =
       /interval '24 hours'[\s\S]*?IF recent >= \d+ THEN\s+RETURN NULL/i.exec(
@@ -147,14 +147,14 @@ describe("db/schema.sql", () => {
     expect(daily).not.toMatch(/is_bot/i);
   });
 
-  it("the visit ping dedupes visits without a hash (SEC-007)", () => {
+  it("the visit ping dedupes visits without a hash", () => {
     const notify = functions().find((f) => f.name === "notify_site_visit");
     expect(notify?.text).toMatch(
       /visitor_hash IS NOT DISTINCT FROM NEW\.visitor_hash/i,
     );
   });
 
-  it("learning subject names are unique per owner, not globally (DB-004)", () => {
+  it("learning subject names are unique per owner, not globally", () => {
     expect(sql).toMatch(/learning_subjects\s*\(user_id, name\)/i);
     expect(sql).not.toMatch(
       /name TEXT NOT NULL UNIQUE,\s*description TEXT,\s*color/i,

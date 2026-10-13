@@ -7,7 +7,7 @@ import { effectiveColor, TYPE_LABEL, type GraphNode } from "../domain/types";
 import { COLOR_HSL, TYPE_ICON } from "../ui/visuals";
 import { useEditor } from "../ui/editor-context";
 
-export type MapNodeData = {
+type MapNodeData = {
   node: GraphNode;
   editing: boolean;
 };

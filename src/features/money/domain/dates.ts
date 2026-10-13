@@ -1,5 +1,5 @@
 /**
- * Calendar dates as "YYYY-MM-DD" strings (V2-080).
+ * Calendar dates as "YYYY-MM-DD" strings.
  *
  * A transaction happens on a *day*, not at an instant, so the ledger never
  * touches `Date` objects in local time: a purchase at 11 pm in Toronto must
@@ -16,7 +16,7 @@ export type IsoDate = string;
 const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DAY_MS = 86_400_000;
 
-export class DateError extends Error {
+class DateError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "DateError";
@@ -26,7 +26,11 @@ export class DateError extends Error {
 function parts(date: IsoDate): [number, number, number] {
   const match = ISO.exec(date);
   if (!match) throw new DateError(`Not a date: "${date}"`);
-  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const [year, month, day] = [
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3]),
+  ];
   if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
     throw new DateError(`Not a date: "${date}"`);
   }
@@ -43,12 +47,25 @@ export function isIsoDate(value: unknown): value is IsoDate {
   }
 }
 
-export function isLeapYear(year: number): boolean {
+function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
 export function daysInMonth(year: number, month: number): number {
-  return [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  return [
+    31,
+    isLeapYear(year) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ][month - 1];
 }
 
 export function toDayNumber(date: IsoDate): number {
@@ -57,7 +74,8 @@ export function toDayNumber(date: IsoDate): number {
 }
 
 export function fromDayNumber(dayNumber: number): IsoDate {
-  if (!Number.isInteger(dayNumber)) throw new DateError(`Not a day number: ${dayNumber}`);
+  if (!Number.isInteger(dayNumber))
+    throw new DateError(`Not a day number: ${dayNumber}`);
   return new Date(dayNumber * DAY_MS).toISOString().slice(0, 10);
 }
 
@@ -86,18 +104,24 @@ export function daysBetween(from: IsoDate, to: IsoDate): number {
  * `anchorDay` is the day the series *wants* — without it, Jan 31 → Feb 28 →
  * Mar 28 would drift; with it, the third step is Mar 31 again.
  */
-export function addMonths(date: IsoDate, months: number, anchorDay?: number): IsoDate {
-  if (!Number.isInteger(months)) throw new DateError(`Not a whole number of months: ${months}`);
+export function addMonths(
+  date: IsoDate,
+  months: number,
+  anchorDay?: number,
+): IsoDate {
+  if (!Number.isInteger(months))
+    throw new DateError(`Not a whole number of months: ${months}`);
   const [year, month, day] = parts(date);
   const index = year * 12 + (month - 1) + months;
   const targetYear = Math.floor(index / 12);
   const targetMonth = (index % 12) + 1;
   const wanted = anchorDay ?? day;
-  return makeDate(targetYear, targetMonth, Math.min(wanted, daysInMonth(targetYear, targetMonth)));
+  return makeDate(
+    targetYear,
+    targetMonth,
+    Math.min(wanted, daysInMonth(targetYear, targetMonth)),
+  );
 }
-
-export const addYears = (date: IsoDate, years: number, anchorDay?: number): IsoDate =>
-  addMonths(date, years * 12, anchorDay);
 
 /** "2026-02". */
 export const monthKey = (date: IsoDate): string => date.slice(0, 7);
@@ -121,7 +145,11 @@ export function monthStart(key: string): IsoDate {
 /** Every month key from `from` to `to`, inclusive, in order. */
 export function monthsBetween(from: IsoDate, to: IsoDate): string[] {
   const keys: string[] = [];
-  for (let cursor = startOfMonth(from); cursor <= to; cursor = addMonths(cursor, 1)) {
+  for (
+    let cursor = startOfMonth(from);
+    cursor <= to;
+    cursor = addMonths(cursor, 1)
+  ) {
     keys.push(monthKey(cursor));
   }
   return keys;

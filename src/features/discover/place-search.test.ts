@@ -12,8 +12,22 @@ describe("place search", () => {
 
   it("keeps results with coordinates, with the region and country to tell them apart", () => {
     expect(parsePlaces(fixture)).toEqual([
-      { id: 1275339, name: "Mumbai", where: "Maharashtra, India", latitude: 19.07283, longitude: 72.88261, timezone: "Asia/Kolkata" },
-      { id: 6058560, name: "London", where: "Ontario, Canada", latitude: 42.98339, longitude: -81.23304, timezone: "America/Toronto" },
+      {
+        id: 1275339,
+        name: "Mumbai",
+        where: "Maharashtra, India",
+        latitude: 19.07283,
+        longitude: 72.88261,
+        timezone: "Asia/Kolkata",
+      },
+      {
+        id: 6058560,
+        name: "London",
+        where: "Ontario, Canada",
+        latitude: 42.98339,
+        longitude: -81.23304,
+        timezone: "America/Toronto",
+      },
     ]);
   });
 

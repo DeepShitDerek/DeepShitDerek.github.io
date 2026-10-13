@@ -13,6 +13,8 @@ export function useUrlTab<T extends string>(
   allowed: readonly T[],
 ): [T, (next: string) => void] {
   const [raw, set] = useUrlParam("tab", "replace");
-  const value = (allowed as readonly string[]).includes(raw ?? "") ? (raw as T) : defaultValue;
+  const value = (allowed as readonly string[]).includes(raw ?? "")
+    ? (raw as T)
+    : defaultValue;
   return [value, (next: string) => set(next === defaultValue ? null : next)];
 }

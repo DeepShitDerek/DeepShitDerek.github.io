@@ -43,10 +43,12 @@ export function ProcessLayout({ items }: LayoutProps) {
             {index + 1}
           </span>
           <h3 className="mt-5 font-heading text-lg font-semibold [overflow-wrap:anywhere]">
-            <span className="sr-only">{`Step ${index + 1}:`}</span>{" "}
-            {item.title}
+            <span className="sr-only">{`Step ${index + 1}:`}</span> {item.title}
           </h3>
-          <PlainText className="mt-1 text-sm font-medium text-primary" clamp={1}>
+          <PlainText
+            className="mt-1 text-sm font-medium text-primary"
+            clamp={1}
+          >
             {item.subtitle}
           </PlainText>
           <Markdown className="mt-3 text-muted-foreground">
@@ -71,7 +73,10 @@ export function FaqLayout({ items }: LayoutProps) {
       {items.map((item) => (
         <details
           key={item.id}
-          className={cn(CARD, "group [&_summary::-webkit-details-marker]:hidden")}
+          className={cn(
+            CARD,
+            "group [&_summary::-webkit-details-marker]:hidden",
+          )}
         >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-surface px-6 py-5 text-left font-heading text-base font-semibold focus-ring">
             <span className="[overflow-wrap:anywhere]">{item.title}</span>
@@ -81,7 +86,9 @@ export function FaqLayout({ items }: LayoutProps) {
             />
           </summary>
           <div className="px-6 pb-6">
-            <Markdown className="text-muted-foreground">{item.description}</Markdown>
+            <Markdown className="text-muted-foreground">
+              {item.description}
+            </Markdown>
           </div>
         </details>
       ))}

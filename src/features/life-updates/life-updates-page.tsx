@@ -67,7 +67,9 @@ export default function LifeUpdatesPage() {
   // keyboard user lands in the field they asked for.
   useEffect(() => {
     if (composing)
-      composerRef.current?.querySelector<HTMLElement>("input, textarea, [contenteditable=true]")?.focus();
+      composerRef.current
+        ?.querySelector<HTMLElement>("input, textarea, [contenteditable=true]")
+        ?.focus();
   }, [composing]);
 
   const {
@@ -79,7 +81,7 @@ export default function LifeUpdatesPage() {
   const [updateLifeUpdate] = useUpdateLifeUpdateMutation();
   const [deleteLifeUpdate] = useDeleteLifeUpdateMutation();
 
-  // Delete offers Undo instead of asking first (P1-10). A published update
+  // Delete offers Undo instead of asking first. A published update
   // stays on /updates until the toast closes, so Undo leaves the site as it was.
   const { pending: deleting, remove: removeUpdate } =
     useUndoableDelete<LifeUpdate>(async (update) => {
@@ -207,8 +209,7 @@ export default function LifeUpdatesPage() {
 
       <div className="mx-auto max-w-3xl space-y-8">
         {/*
-          A one-line "What's new?" that opens the composer (03-workspace-ui.md
-          §2.13): the composer was always open and pushed the feed down on
+          A one-line "What's new?" that opens the composer: the composer was always open and pushed the feed down on
           every visit. Closed, it is hidden rather than removed, so whatever
           you had typed is still there when you open it again.
         */}

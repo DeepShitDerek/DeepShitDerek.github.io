@@ -24,22 +24,30 @@ export function stackLine(tags?: string[] | null): string {
 }
 
 /** The when and where of a row, for the margin. */
-function railText(subtitle?: string | null, from?: string | null, to?: string | null) {
+function railText(
+  subtitle?: string | null,
+  from?: string | null,
+  to?: string | null,
+) {
   const start = from?.trim();
   const end = to?.trim();
-  const when = start ? `${start} — ${end || "Present"}` : end ? `Until ${end}` : "";
+  const when = start
+    ? `${start} — ${end || "Present"}`
+    : end
+      ? `Until ${end}`
+      : "";
   return [subtitle?.trim(), when].filter(Boolean);
 }
 
 /**
- * The first three pieces of work, as ruled rows (V2-041, north star §3.4).
+ * The first three pieces of work, as ruled rows.
  *
  * Rows, not cards: a row reads top to bottom like a list of results, and
  * there is no image box to fill — the old cards drew a letter tile when a
- * project had no picture, the most unfinished-looking thing on the page (X1).
+ * project had no picture, the most unfinished-looking thing on the page.
  * The margin carries where and when; the row is one link, to the case study
- * when one is written (V2-042) and to /work otherwise, with no second
- * "View project" button inside it (X7).
+ * when one is written and to /work otherwise, with no second
+ * "View project" button inside it.
  *
  * Reads the /work sections, case studies first as ordered in Content, so the
  * home page shows proof without the owner curating a second copy. Renders
@@ -76,7 +84,10 @@ export function FeaturedWork() {
                 {rail.length > 0 ? (
                   <p className="font-mono text-micro leading-relaxed text-muted-foreground lg:pt-1.5">
                     {rail.map((line, index) => (
-                      <span key={index} className="mr-3 inline-block lg:mr-0 lg:block">
+                      <span
+                        key={index}
+                        className="mr-3 inline-block lg:mr-0 lg:block"
+                      >
                         {line}
                       </span>
                     ))}

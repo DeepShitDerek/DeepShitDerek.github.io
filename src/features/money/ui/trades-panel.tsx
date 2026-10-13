@@ -9,7 +9,7 @@ import { useMoney } from "./money-context";
 import { AccountSelect } from "./pickers";
 import { TRADE_KIND_LABEL, TradeSheet } from "./trade-sheet";
 
-/** Every trade, newest first, by account (V2-080). */
+/** Every trade, newest first, by account. */
 export function TradesPanel() {
   const { trades, accounts, accountById, securityById } = useMoney();
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -20,7 +20,13 @@ export function TradesPanel() {
     () =>
       trades
         .filter((t) => !accountId || t.accountId === accountId)
-        .sort((a, b) => (a.date === b.date ? b.createdAt.localeCompare(a.createdAt) : a.date < b.date ? 1 : -1)),
+        .sort((a, b) =>
+          a.date === b.date
+            ? b.createdAt.localeCompare(a.createdAt)
+            : a.date < b.date
+              ? 1
+              : -1,
+        ),
     [trades, accountId],
   );
 
@@ -29,7 +35,14 @@ export function TradesPanel() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         {investment.length > 1 ? (
           <div className="w-64">
-            <AccountSelect id="trades-account" value={accountId} onChange={setAccountId} accounts={investment} allowNone noneLabel="All investment accounts" />
+            <AccountSelect
+              id="trades-account"
+              value={accountId}
+              onChange={setAccountId}
+              accounts={investment}
+              allowNone
+              noneLabel="All investment accounts"
+            />
           </div>
         ) : (
           <span />
@@ -40,32 +53,61 @@ export function TradesPanel() {
       </div>
       {shown.length === 0 ? (
         <p className="rounded-surface border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No trades yet. Record buys and sells from your broker&apos;s confirmations, and dividends as they arrive.
+          No trades yet. Record buys and sells from your broker&apos;s
+          confirmations, and dividends as they arrive.
         </p>
       ) : (
         <ul className="divide-y rounded-surface border bg-card text-sm">
           {shown.map((t) => {
             const account = accountById.get(t.accountId);
-            const security = t.securityId ? securityById.get(t.securityId) : undefined;
+            const security = t.securityId
+              ? securityById.get(t.securityId)
+              : undefined;
             const currency = account?.currency ?? "CAD";
-            const cash = t.kind === "buy" ? -(t.amountMinor + t.feeMinor) : t.kind === "sell" ? t.amountMinor - t.feeMinor : t.kind === "fee" ? -t.amountMinor : t.kind === "split" || t.kind === "reinvest" ? null : t.amountMinor;
+            const cash =
+              t.kind === "buy"
+                ? -(t.amountMinor + t.feeMinor)
+                : t.kind === "sell"
+                  ? t.amountMinor - t.feeMinor
+                  : t.kind === "fee"
+                    ? -t.amountMinor
+                    : t.kind === "split" || t.kind === "reinvest"
+                      ? null
+                      : t.amountMinor;
             return (
               <li key={t.id}>
-                <button type="button" className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary/40" onClick={() => setEditing(t)}>
-                  <span className="w-24 shrink-0 tabular-nums text-muted-foreground">{t.date}</span>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-secondary/40"
+                  onClick={() => setEditing(t)}
+                >
+                  <span className="w-24 shrink-0 tabular-nums text-muted-foreground">
+                    {t.date}
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">
                       {TRADE_KIND_LABEL[t.kind]}
                       {security ? ` · ${security.symbol}` : ""}
-                      {t.quantity != null ? (t.kind === "split" ? ` · ${t.quantity}-for-1` : ` · ${t.quantity} units`) : ""}
+                      {t.quantity != null
+                        ? t.kind === "split"
+                          ? ` · ${t.quantity}-for-1`
+                          : ` · ${t.quantity} units`
+                        : ""}
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">{account?.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {account?.name}
+                    </span>
                   </span>
                   <span className="text-right">
-                    {cash !== null ? <Amount minor={cash} currency={currency} tone="balance" /> : t.kind === "reinvest" ? <Amount minor={t.amountMinor} currency={currency} /> : null}
+                    {cash !== null ? (
+                      <Amount minor={cash} currency={currency} tone="balance" />
+                    ) : t.kind === "reinvest" ? (
+                      <Amount minor={t.amountMinor} currency={currency} />
+                    ) : null}
                     {t.feeMinor > 0 && (
                       <span className="block text-xs text-muted-foreground">
-                        incl. <Amount minor={t.feeMinor} currency={currency} /> commission
+                        incl. <Amount minor={t.feeMinor} currency={currency} />{" "}
+                        commission
                       </span>
                     )}
                   </span>

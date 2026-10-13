@@ -4,7 +4,7 @@ import { occurrences, type Schedule } from "./domain/schedule";
 
 /**
  * What money is *expected* on a day — the money module's one contract with
- * the calendar (V2-080).
+ * the calendar.
  *
  * `get_calendar_data` summarises money that has already happened; this
  * projects the schedules forward, so the calendar can show the rent due on
@@ -17,7 +17,7 @@ import { occurrences, type Schedule } from "./domain/schedule";
  * both, kept distinguishable by the calendar's `data.expected` flag.
  */
 
-export interface ExpectedMoneyItem {
+interface ExpectedMoneyItem {
   scheduleId: string;
   name: string;
   /** Always positive; `direction` carries the sign. */
@@ -68,11 +68,23 @@ export function expectedMoneyDays({
     const direction = schedule.kind === "income" ? "in" : "out";
     for (const date of occurrences(schedule, first, last)) {
       if (skips.has(`${schedule.id}|${date}`)) continue;
-      const day: ExpectedMoneyDay = byDate.get(date) ?? { date, inMinor: 0, outMinor: 0, currency, items: [] };
+      const day: ExpectedMoneyDay = byDate.get(date) ?? {
+        date,
+        inMinor: 0,
+        outMinor: 0,
+        currency,
+        items: [],
+      };
       if (currency !== day.currency) continue;
       if (direction === "in") day.inMinor += schedule.amountMinor;
       else day.outMinor += schedule.amountMinor;
-      day.items.push({ scheduleId: schedule.id, name: schedule.name, amountMinor: schedule.amountMinor, direction, currency });
+      day.items.push({
+        scheduleId: schedule.id,
+        name: schedule.name,
+        amountMinor: schedule.amountMinor,
+        direction,
+        currency,
+      });
       byDate.set(date, day);
     }
   }

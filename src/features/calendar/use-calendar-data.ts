@@ -27,7 +27,7 @@ import { buildEntries, filterEntries } from "./build-entries";
 import { withCalendarColors } from "./entry-color";
 
 /** A task dragged in without an estimate gets an hour. */
-export const DEFAULT_BLOCK_MINUTES = 60;
+const DEFAULT_BLOCK_MINUTES = 60;
 
 const NO_ROWS: CalendarRow[] = [];
 const NO_TASKS: Task[] = [];

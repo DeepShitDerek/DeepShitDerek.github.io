@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 
 /**
- * Ask before leaving a page with unsaved input (ADM-002).
+ * Ask before leaving a page with unsaved input.
  *
  * Covers closing or reloading the tab, and following a link to another admin
  * page. A link that stays on the same page (Settings moving between its own
@@ -23,7 +23,8 @@ export function useUnsavedGuard(dirty: boolean): void {
     // link's router navigation never starts unless the answer is yes.
     const click = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
       const link = (event.target as Element | null)?.closest?.("a[href]");
       if (!(link instanceof HTMLAnchorElement)) return;
       if (link.target === "_blank" || link.hasAttribute("download")) return;

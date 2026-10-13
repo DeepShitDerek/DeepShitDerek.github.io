@@ -90,7 +90,6 @@ CREATE TRIGGER block_additional_signups
 -- =========================================================
 
 DO $$ BEGIN CREATE TYPE task_status AS ENUM ('todo', 'inprogress', 'review', 'done'); EXCEPTION WHEN duplicate_object THEN null; END $$;
--- Existing databases pick this up via db/migrations/001-tasks-projects-dependencies.sql.
 -- 'blocked' is deliberately absent: it is derived from unmet dependencies, so a
 -- stored value could disagree with the dependency graph.
 DO $$ BEGIN CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -167,7 +166,7 @@ CREATE TABLE IF NOT EXISTS portfolio_sections (
   page_path TEXT NOT NULL DEFAULT '/',
   layout_style TEXT NOT NULL DEFAULT 'default',
   is_visible BOOLEAN DEFAULT true,
-  -- Hidden titles stay in the markup, screen-reader-only (migration 019).
+  -- Hidden titles stay in the markup, screen-reader-only.
   show_title BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -201,8 +200,7 @@ CREATE TABLE IF NOT EXISTS portfolio_items (
 ALTER TABLE portfolio_items ENABLE ROW LEVEL SECURITY;
 -- A branch that fed into another item. Derived concurrency is honest, but a
 -- *merge* is a relationship between two items and needs saying explicitly —
--- inferring it from adjacency would draw a claim nobody made. See
--- db/migrations/017.
+-- inferring it from adjacency would draw a claim nobody made.
 ALTER TABLE portfolio_items
   ADD COLUMN IF NOT EXISTS merged_into_id UUID
     REFERENCES portfolio_items(id) ON DELETE SET NULL;
@@ -214,28 +212,9 @@ CREATE INDEX IF NOT EXISTS portfolio_items_merged_into_idx
   ON portfolio_items(merged_into_id)
   WHERE merged_into_id IS NOT NULL;
 
--- Case studies (V2-042): an item with a slug and a markdown body gets its own
+-- Case studies: an item with a slug and a markdown body gets its own
 -- page at /work/<slug>/. `has_case_study` lets list views know without
 -- downloading every body. 'view' is taken by the /work/view/ fallback route.
--- /showcase and /projects are gone; their sections live on /work
--- (owner, 2026-10-01). Case studies keep their order and come first;
--- project sections follow. Runs once in effect: afterwards nothing matches.
-UPDATE portfolio_sections
-   SET display_order = CASE
-         WHEN page_path = '/projects' THEN display_order + (
-           SELECT COALESCE(MAX(display_order), -1) + 1
-             FROM portfolio_sections WHERE page_path IN ('/showcase', '/work'))
-         ELSE display_order
-       END,
-       page_path = '/work'
- WHERE page_path IN ('/showcase', '/projects');
--- Menu links to the old pages: dropped where a Work link exists, else repointed.
-DELETE FROM navigation_links
- WHERE href IN ('/showcase', '/projects')
-   AND EXISTS (SELECT 1 FROM navigation_links WHERE href = '/work');
-UPDATE navigation_links SET href = '/work'
- WHERE href IN ('/showcase', '/projects');
-
 ALTER TABLE portfolio_items ADD COLUMN IF NOT EXISTS slug TEXT;
 ALTER TABLE portfolio_items ADD COLUMN IF NOT EXISTS case_study TEXT;
 ALTER TABLE portfolio_items
@@ -310,7 +289,7 @@ CREATE TRIGGER reject_portfolio_merge_cycle
   BEFORE INSERT OR UPDATE OF merged_into_id ON portfolio_items
   FOR EACH ROW EXECUTE FUNCTION public.reject_merge_cycle();
 
--- An item is public only while its section is (V2-011). This was USING (true),
+-- An item is public only while its section is. This was USING (true),
 -- so hiding a section hid it from the site but not from anyone querying the
 -- table. The admin policy below is OR'ed with this one, so the owner still
 -- reads every item.
@@ -360,7 +339,7 @@ DROP TRIGGER IF EXISTS update_blog_posts_updated_at ON blog_posts;
 -- Only when the post itself changes. A read (increment_blog_post_view bumps
 -- `views`) used to stamp updated_at too, so every view marked the post as
 -- edited: its link preview's modifiedTime moved with each reader, and the
--- site could not tell a prerendered post from a changed one (V2-043).
+-- site could not tell a prerendered post from a changed one.
 -- Every column but views and the timestamps; a new column belongs here too
 -- (db/test/40-posts.sql fails when one is missing).
 CREATE TRIGGER update_blog_posts_updated_at
@@ -368,7 +347,7 @@ CREATE TRIGGER update_blog_posts_updated_at
     published, published_at, show_toc, tags, internal_notes
   ON blog_posts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Public columns (V2-010). Row-level security chooses rows, not columns: a
+-- Public columns. Row-level security chooses rows, not columns: a
 -- published post's `internal_notes` was readable by anyone holding the anon
 -- key, which ships in the site bundle. A column-level REVOKE does nothing while
 -- the table-level grant exists, so anon's SELECT is replaced by an explicit
@@ -494,8 +473,7 @@ ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admin manage notes" ON notes;
 CREATE POLICY "Admin manage notes" ON notes FOR ALL USING (auth.uid() = user_id AND public.is_aal2()) WITH CHECK (auth.uid() = user_id AND public.is_aal2());
 -- `updated_at` on a note means "the content changed", so filing a note —
--- pinning it, reordering it — deliberately leaves the timestamp alone. See
--- db/migrations/013 for why. Written as a JSONB difference rather than a list
+-- pinning it, reordering it — deliberately leaves the timestamp alone. Written as a JSONB difference rather than a list
 -- of comparisons so a column added later counts as content by default.
 CREATE OR REPLACE FUNCTION public.touch_notes_updated_at()
 RETURNS TRIGGER
@@ -576,7 +554,7 @@ CREATE TABLE IF NOT EXISTS learning_subjects (
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
--- Subject names are unique per owner, not across the table (DB-004). The old
+-- Subject names are unique per owner, not across the table. The old
 -- inline UNIQUE made one user's "Math" block every other user's.
 ALTER TABLE learning_subjects DROP CONSTRAINT IF EXISTS learning_subjects_name_key;
 CREATE UNIQUE INDEX IF NOT EXISTS learning_subjects_user_name_idx
@@ -610,7 +588,7 @@ CREATE TABLE IF NOT EXISTS learning_topics (
 );
 -- Not everything you learn is a flashcard: reference material is read,
 -- recall is the classic prompt-then-reveal, and quiz carries a right answer to
--- be marked against. See db/migrations/015.
+-- be marked against.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'learning_material_kind') THEN
@@ -802,7 +780,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   archived_at TIMESTAMPTZ,
   archived_reason TEXT CHECK (archived_reason IS NULL OR archived_reason IN ('sold', 'gifted', 'lost', 'discarded', 'returned')),
   -- The ledger transaction that bought it. The FK is added after
-  -- `money_transaction` exists, further down (V2-080), because this table is
+  -- `money_transaction` exists, further down, because this table is
   -- created long before that one.
   transaction_id UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -810,7 +788,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   CONSTRAINT inventory_reason_needs_archive CHECK (archived_reason IS NULL OR archived_at IS NOT NULL),
   CONSTRAINT inventory_warranty_after_purchase CHECK (purchase_date IS NULL OR warranty_expiry IS NULL OR warranty_expiry >= purchase_date)
 );
--- The currency the item was bought and valued in (ADM-024). NULL means the
+-- The currency the item was bought and valued in. NULL means the
 -- money base currency, so rows written before this column keep their meaning.
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS currency CHAR(3)
   CHECK (currency IS NULL OR currency ~ '^[A-Z]{3}$');
@@ -890,7 +868,7 @@ CREATE TABLE IF NOT EXISTS contact_submissions (
     AND char_length(message) BETWEEN 10 AND 5000
   )
 );
--- What the message is about (V2-040b): the one "Work with me" path serves
+-- What the message is about: the one "Work with me" path serves
 -- roles, projects and anything else, and the owner triages by it. Nullable:
 -- messages from before the question have no answer to it.
 ALTER TABLE contact_submissions ADD COLUMN IF NOT EXISTS topic TEXT;
@@ -1281,7 +1259,7 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- Daily ceiling (V2-012). The per-minute cap alone still admits ~864k rows a
+  -- Daily ceiling. The per-minute cap alone still admits ~864k rows a
   -- day, and the per-visitor cap keys on a hash of a forgeable header — enough
   -- to fill the free tier's 500 MB in about three days of sustained abuse. A
   -- personal site does not see 20k views a day; if it ever does, raise this.
@@ -1330,7 +1308,7 @@ BEGIN
     RAISE EXCEPTION 'Not authorised';
   END IF;
 
-  -- Lockdown (V2-016): definer rights bypass the restrictive policies, so
+  -- Lockdown: definer rights bypass the restrictive policies, so
   -- write functions check the level themselves.
   IF public.writes_locked() THEN
     RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
@@ -1792,7 +1770,7 @@ BEGIN
 
   UNION ALL
 
-  -- Money, from the ledger (V2-080). `money_day_flows` is defined further
+  -- Money, from the ledger. `money_day_flows` is defined further
   -- down, with the tables it reads; a plpgsql body is not resolved until it
   -- runs, so the forward reference is fine here. The dashboard reads the same
   -- function, so the two cannot disagree about a day.
@@ -1831,7 +1809,7 @@ BEGIN
     RAISE EXCEPTION 'Not authorised';
   END IF;
 
-  -- Lockdown (V2-016): definer rights bypass the restrictive policies, so
+  -- Lockdown: definer rights bypass the restrictive policies, so
   -- write functions check the level themselves.
   IF public.writes_locked() THEN
     RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
@@ -2047,7 +2025,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Items within one section, the same way (migration 024). Invoker rights, so
+-- Items within one section, the same way. Invoker rights, so
 -- row-level security on portfolio_items still decides who may write.
 CREATE OR REPLACE FUNCTION public.update_item_order(section_uuid UUID, item_ids UUID[])
 RETURNS void
@@ -2064,86 +2042,6 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION public.update_item_order(UUID, UUID[]) TO authenticated;
-
--- Total Blog Views
-CREATE OR REPLACE FUNCTION get_total_blog_views()
-RETURNS BIGINT AS $$
-DECLARE total_views BIGINT;
-BEGIN
-  SELECT SUM(views) INTO total_views FROM blog_posts WHERE published = true;
-  RETURN COALESCE(total_views, 0);
-END;
-$$ LANGUAGE plpgsql;
-
--- Learning Heatmap
-CREATE OR REPLACE FUNCTION get_learning_heatmap_data(start_date DATE, end_date DATE)
-RETURNS TABLE(day DATE, total_minutes INT) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT DATE(s.start_time AT TIME ZONE 'UTC') AS day, COALESCE(SUM(s.duration_minutes), 0)::INT AS total_minutes
-  FROM learning_sessions s
-  WHERE s.user_id = auth.uid()
-    AND s.start_time AT TIME ZONE 'UTC' >= start_date
-    AND s.start_time AT TIME ZONE 'UTC' <= end_date
-  GROUP BY day ORDER BY day;
-END;
-$$ LANGUAGE plpgsql;
-
--- Calendar Data (aggregated view of events, tasks, habits, finance)
--- Analytics Overview
-CREATE OR REPLACE FUNCTION get_analytics_overview()
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
--- Pinned: a definer function resolves unqualified names through the caller's
--- search_path, so anyone able to create an object earlier in it could have
--- theirs used instead.
-SET search_path = public, auth
-AS $$
-DECLARE
-  analytics_data JSONB;
-  current_user_id UUID := auth.uid();
-BEGIN
-  -- SECURITY DEFINER bypasses RLS, so the AAL2 check the policies would have
-  -- applied has to be made here. Without it this read was a way around the
-  -- mandatory second factor.
-  IF current_user_id IS NULL OR NOT public.is_aal2() THEN
-    RAISE EXCEPTION 'Not authorised';
-  END IF;
-
-  WITH
-  task_stats AS (
-    SELECT status, count(*) AS count FROM tasks WHERE user_id = current_user_id GROUP BY status
-  ),
-  tasks_completed_weekly AS (
-    SELECT date_trunc('week', updated_at)::date AS week_start, count(*) AS completed_count
-    FROM tasks WHERE user_id = current_user_id AND status = 'done' AND updated_at > now() - interval '8 weeks'
-    GROUP BY week_start ORDER BY week_start
-  ),
-  productivity_heatmap AS (
-    SELECT (updated_at AT TIME ZONE 'UTC')::date AS day, count(*)::INT AS count
-    FROM tasks WHERE user_id = current_user_id AND status = 'done' GROUP BY day
-  ),
-  blog_stats AS (
-    SELECT id, title, slug, views FROM blog_posts WHERE user_id = current_user_id AND published = true ORDER BY views DESC LIMIT 5
-  ),
-  learning_stats AS (
-    SELECT ls.name AS subject_name, SUM(lse.duration_minutes)::INT AS total_minutes
-    FROM learning_sessions lse
-    JOIN learning_topics lt ON lse.topic_id = lt.id
-    JOIN learning_subjects ls ON lt.subject_id = ls.id
-    WHERE lse.user_id = current_user_id GROUP BY ls.name
-  )
-  SELECT jsonb_build_object(
-    'task_status_distribution', (SELECT jsonb_agg(jsonb_build_object('name', status, 'value', count)) FROM task_stats),
-    'tasks_completed_weekly', (SELECT jsonb_agg(jsonb_build_object('week', to_char(week_start, 'Mon DD'), 'completed', completed_count)) FROM tasks_completed_weekly),
-    'productivity_heatmap', (SELECT jsonb_agg(jsonb_build_object('date', day, 'count', count)) FROM productivity_heatmap),
-    'top_blog_posts', (SELECT jsonb_agg(jsonb_build_object('id', id, 'title', title, 'slug', slug, 'views', views)) FROM blog_stats),
-    'learning_time_by_subject', (SELECT jsonb_agg(jsonb_build_object('name', subject_name, 'value', total_minutes)) FROM learning_stats)
-  ) INTO analytics_data;
-  RETURN analytics_data;
-END;
-$$;
 
 -- Asset Usage Tracker
 CREATE OR REPLACE FUNCTION update_asset_usage()
@@ -2248,7 +2146,7 @@ VALUES (1,
 INSERT INTO security_settings (id, lockdown_level) VALUES (1, 0) ON CONFLICT DO NOTHING;
 INSERT INTO integration_settings (id) VALUES (1) ON CONFLICT DO NOTHING;
 
--- Default Navigation Links (work-led IA, V2-040a). The /contact link renders
+-- Default Navigation Links, led by the work. The /contact link renders
 -- as the header's call to action; Updates lives in the footer.
 --
 -- Seeded only into an empty table. navigation_links has no natural key, so
@@ -2267,7 +2165,7 @@ SELECT v.label, v.href, v.display_order, true
 
 
 -- =========================================================
--- 12. DISCOVER  (migration 012)
+-- 12. DISCOVER
 -- =========================================================
 --
 -- Two small tables behind a module that reads from public APIs. Nothing
@@ -2341,8 +2239,7 @@ CREATE INDEX IF NOT EXISTS discover_topics_user_idx
 -- LIBRARY — what you read and watch, and the lines worth keeping
 -- =========================================================
 -- Neither table has a public read policy; visitors reach one random public
--- highlight through get_random_public_highlight() and nothing else. See
--- db/migrations/018.
+-- highlight through get_random_public_highlight() and nothing else.
 
 CREATE TABLE IF NOT EXISTS library_sources (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2471,7 +2368,7 @@ REVOKE ALL ON FUNCTION public.get_random_public_highlight() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_random_public_highlight() TO anon, authenticated;
 
 -- ============================================================================
--- MONEY — finance v3 (V2-080)
+-- MONEY
 -- ============================================================================
 --
 -- A personal ledger for someone whose money lives in two countries. The design
@@ -2491,45 +2388,6 @@ GRANT EXECUTE ON FUNCTION public.get_random_public_highlight() TO anon, authenti
 -- * Balances are derived, never stored: opening anchor + postings.
 -- * An exchange rate is frozen onto each posting when it is written, so last
 --   February's report says what last February cost.
---
--- Replaces finance v2 (`fin_*`, migrations 025–032), retired below. The owner
--- confirmed on 2026-09-24 that v2 held no data.
-
-
--- ── Retire finance v2 ───────────────────────────────────────────────────────
---
--- One-way and idempotent: nothing in this file recreates a `fin_*` name, so a
--- re-run finds nothing to drop. Functions first (their triggers go with
--- them), then tables, then types.
-
-ALTER TABLE IF EXISTS inventory_items
-  DROP CONSTRAINT IF EXISTS inventory_items_transaction_fkey;
-
-DO $$
-DECLARE
-  f RECORD;
-BEGIN
-  FOR f IN
-    SELECT p.oid::regprocedure AS signature
-      FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public' AND p.proname LIKE 'fin\_%'
-  LOOP
-    EXECUTE format('DROP FUNCTION IF EXISTS %s CASCADE', f.signature);
-  END LOOP;
-END $$;
-
-DROP TABLE IF EXISTS
-  fin_category_rule, fin_import_batch, fin_scenario, fin_goal_contribution,
-  fin_goal, fin_budget, fin_commitment_skip, fin_commitment_event,
-  fin_posting, fin_transaction, fin_commitment, fin_category, fin_account,
-  fin_rate, fin_settings, fin_currency
-  CASCADE;
-
-DROP TYPE IF EXISTS
-  fin_account_kind, fin_bucket, fin_transaction_kind, fin_frequency,
-  fin_commitment_kind, fin_rate_effect, fin_commitment_event_kind
-  CASCADE;
 
 
 -- ── Currencies ──────────────────────────────────────────────────────────────
@@ -3300,7 +3158,7 @@ BEGIN
   IF v_uid IS NULL OR NOT public.is_aal2() THEN
     RAISE EXCEPTION 'Not authorised';
   END IF;
-  -- Definer rights bypass the lockdown policies (V2-016), so check here.
+  -- Definer rights bypass the lockdown policies, so check here.
   IF public.writes_locked() THEN
     RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
       USING ERRCODE = 'insufficient_privilege';
@@ -3359,7 +3217,7 @@ BEGIN
   IF v_uid IS NULL OR NOT public.is_aal2() THEN
     RAISE EXCEPTION 'Not authorised';
   END IF;
-  -- Definer rights bypass the lockdown policies (V2-016), so check here.
+  -- Definer rights bypass the lockdown policies, so check here.
   IF public.writes_locked() THEN
     RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
       USING ERRCODE = 'insufficient_privilege';
@@ -3411,7 +3269,7 @@ BEGIN
   IF v_uid IS NULL OR NOT public.is_aal2() THEN
     RAISE EXCEPTION 'Not authorised';
   END IF;
-  -- Definer rights bypass the lockdown policies (V2-016), so check here.
+  -- Definer rights bypass the lockdown policies, so check here.
   IF public.writes_locked() THEN
     RAISE EXCEPTION 'Writes are locked: lower the lockdown level first'
       USING ERRCODE = 'insufficient_privilege';
@@ -4389,10 +4247,10 @@ GRANT EXECUTE ON FUNCTION public.money_day_flows(DATE, DATE) TO authenticated;
 
 
 -- =========================================================
--- 20. MAPS — visual concept & problem-solving maps (V2-070)
+-- 20. MAPS — visual concept & problem-solving maps
 -- =========================================================
 --
--- One row per map; the whole graph lives in `doc` (ADR-007), the same
+-- One row per map; the whole graph lives in `doc`, the same
 -- document the app exports as JSON. Saves are whole-document and debounced.
 --
 -- `revision` is optimistic concurrency: the app saves with
@@ -4433,7 +4291,7 @@ CREATE TRIGGER update_thinking_maps_updated_at BEFORE UPDATE ON thinking_maps
 
 
 -- =========================================================
--- 99. LOCKDOWN ENFORCEMENT (V2-016)
+-- 99. LOCKDOWN ENFORCEMENT
 -- =========================================================
 --
 -- The Security page promised that level 2 makes the database refuse every
@@ -4511,7 +4369,7 @@ DROP POLICY IF EXISTS "Lockdown blocks asset deletes" ON storage.objects;
 CREATE POLICY "Lockdown blocks asset deletes" ON storage.objects AS RESTRICTIVE
   FOR DELETE USING (bucket_id <> 'assets' OR NOT public.writes_locked());
 
--- ── Restore from a workspace backup (runbook gap after ADM-008) ─────────────
+-- ── Restore from a workspace backup ─────────────
 -- Admin → Security → "Download a backup" writes every owner table to one JSON
 -- file; this reads it back. One call, one transaction: the money ledger's
 -- balance checks are deferred to commit, so a transaction and its postings

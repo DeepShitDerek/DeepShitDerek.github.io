@@ -48,7 +48,7 @@ function fillAndSend() {
 
 beforeEach(() => submit.mockReset());
 
-describe("ContactForm outcomes (V2-044)", () => {
+describe("ContactForm outcomes", () => {
   it("replaces the form with a lasting confirmation and focuses it", async () => {
     submit.mockResolvedValue({});
     render(<ContactForm />);
@@ -136,14 +136,18 @@ describe("contact topic from the link", () => {
     window.history.replaceState(null, "", "/contact/?topic=project");
     const { unmount } = render(<ContactForm />);
     await waitFor(() =>
-      expect((screen.getByLabelText("A project") as HTMLInputElement).checked).toBe(true),
+      expect(
+        (screen.getByLabelText("A project") as HTMLInputElement).checked,
+      ).toBe(true),
     );
     unmount();
 
     window.history.replaceState(null, "", "/contact/?topic=nonsense");
     render(<ContactForm />);
     expect(
-      screen.getAllByRole("radio").some((radio) => (radio as HTMLInputElement).checked),
+      screen
+        .getAllByRole("radio")
+        .some((radio) => (radio as HTMLInputElement).checked),
     ).toBe(false);
     window.history.replaceState(null, "", "/");
   });

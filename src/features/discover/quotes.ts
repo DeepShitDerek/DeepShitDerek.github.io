@@ -15,7 +15,7 @@ import type { InstrumentKind, WatchlistEntry } from "./watchlist";
  * The key is stored on `integration_settings`, which has RLS and **no public
  * read policy at all**, and Discover is an admin route — so the owner's own
  * browser reads it and it never enters the bundle. That is the same argument
- * migration 007 made about the Discord webhook, and the reason a
+ * as for the Discord webhook, and the reason a
  * `NEXT_PUBLIC_*` key is not an option here.
  *
  * **Funds and bonds stay a link-out.** Neither free tier covers them, and a
@@ -47,12 +47,7 @@ export const QUOTE_PROVIDERS: {
 ];
 
 /** Kinds a provider can actually price. The rest link out. */
-export const QUOTABLE_KINDS: InstrumentKind[] = [
-  "stock",
-  "etf",
-  "index",
-  "crypto",
-];
+const QUOTABLE_KINDS: InstrumentKind[] = ["stock", "etf", "index", "crypto"];
 
 export function isQuotable(kind: InstrumentKind, hasKey: boolean): boolean {
   if (kind === "crypto") return true; // keyless
@@ -104,12 +99,12 @@ const COIN_IDS: Record<string, string> = {
   USDC: "usd-coin",
 };
 
-export function coinIdFor(symbol: string): string {
+function coinIdFor(symbol: string): string {
   const upper = symbol.trim().toUpperCase();
   return COIN_IDS[upper] ?? upper.toLowerCase();
 }
 
-export function cryptoQuotesUrl(symbols: string[], vs: string): string {
+function cryptoQuotesUrl(symbols: string[], vs: string): string {
   const ids = Array.from(new Set(symbols.map(coinIdFor))).join(",");
   return (
     "https://api.coingecko.com/api/v3/simple/price" +
@@ -119,7 +114,7 @@ export function cryptoQuotesUrl(symbols: string[], vs: string): string {
   );
 }
 
-export function parseCryptoQuotes(
+function parseCryptoQuotes(
   body: unknown,
   entries: WatchlistEntry[],
   vs: string,
@@ -154,7 +149,7 @@ export function parseCryptoQuotes(
  * Data's 800-a-day, and it is the reason the panel fetches on demand rather
  * than on every render.
  */
-export function equityQuoteUrl(
+function equityQuoteUrl(
   provider: QuoteProvider,
   symbol: string,
   key: string,
@@ -175,7 +170,7 @@ export function equityQuoteUrl(
  * the kind of confident wrong answer to guard against. A price of zero is
  * treated as no quote.
  */
-export function parseEquityQuote(
+function parseEquityQuote(
   provider: QuoteProvider,
   body: unknown,
   entryId: string,

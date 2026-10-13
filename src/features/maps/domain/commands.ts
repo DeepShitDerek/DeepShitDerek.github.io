@@ -43,7 +43,7 @@ export type NodeInit = Partial<
   Omit<GraphNode, "id" | "createdAt" | "updatedAt">
 >;
 
-export function makeNode(env: Env, init: NodeInit = {}): GraphNode {
+function makeNode(env: Env, init: NodeInit = {}): GraphNode {
   const now = env.now();
   return {
     id: env.id(),
@@ -70,7 +70,7 @@ export type EdgeInit = Partial<
   Omit<GraphEdge, "id" | "source" | "target" | "createdAt">
 >;
 
-export function makeEdge(
+function makeEdge(
   env: Env,
   source: string,
   target: string,
@@ -227,7 +227,7 @@ function clearRoot(graph: Graph, except?: string): GraphMutation[] {
 }
 
 /** The same patch on many nodes — colour, type, lock. */
-export function updateNodes(
+function updateNodes(
   graph: Graph,
   ids: readonly string[],
   patch: NodePatch,

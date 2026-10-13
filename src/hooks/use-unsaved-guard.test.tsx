@@ -22,7 +22,7 @@ const mount = (dirty: boolean) =>
     </ConfirmDialogProvider>,
   );
 
-describe("leaving a page with unsaved changes (ADM-002)", () => {
+describe("leaving a page with unsaved changes", () => {
   it("asks before following a link to another page", async () => {
     push.mockClear();
     mount(true);

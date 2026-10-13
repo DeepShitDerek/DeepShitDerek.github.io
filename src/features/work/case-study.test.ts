@@ -17,7 +17,9 @@ describe("caseStudyHref", () => {
   });
 
   it("encodes the slug", () => {
-    expect(caseStudyHref("x&y=1", undefined)).toBe("/work/view/?slug=x%26y%3D1");
+    expect(caseStudyHref("x&y=1", undefined)).toBe(
+      "/work/view/?slug=x%26y%3D1",
+    );
   });
 });
 

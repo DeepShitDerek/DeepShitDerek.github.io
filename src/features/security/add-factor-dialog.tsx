@@ -16,7 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { TotpSecret } from "@/features/admin-auth/totp-secret";
 
 type Enrolment = { factorId: string; qrCodeUrl: string; secret: string };
@@ -24,7 +28,7 @@ type Enrolment = { factorId: string; qrCodeUrl: string; secret: string };
 const DEFAULT_NAME = "Backup authenticator";
 
 /**
- * Enrol another authenticator from Security (ADM-025).
+ * Enrol another authenticator from Security.
  *
  * The page listed factors and could remove them but not add one, so a sole
  * owner with one phone had no backup short of the Supabase dashboard.
@@ -53,7 +57,9 @@ export function AddFactorDialog({
   const [busy, setBusy] = useState(false);
 
   const trimmed = name.trim();
-  const taken = existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase());
+  const taken = existingNames.some(
+    (n) => n.toLowerCase() === trimmed.toLowerCase(),
+  );
 
   const reset = () => {
     setName(DEFAULT_NAME);
@@ -82,7 +88,9 @@ export function AddFactorDialog({
     const stale = (listed?.all ?? []).filter(
       (f) => f.factor_type === "totp" && f.status === "unverified",
     );
-    await Promise.all(stale.map((f) => client.auth.mfa.unenroll({ factorId: f.id })));
+    await Promise.all(
+      stale.map((f) => client.auth.mfa.unenroll({ factorId: f.id })),
+    );
 
     const { data, error: enrollError } = await client.auth.mfa.enroll({
       factorType: "totp",
@@ -93,7 +101,11 @@ export function AddFactorDialog({
       setError(enrollError?.message || "Couldn't start adding the method.");
       return;
     }
-    setEnrolment({ factorId: data.id, qrCodeUrl: data.totp.qr_code, secret: data.totp.secret });
+    setEnrolment({
+      factorId: data.id,
+      qrCodeUrl: data.totp.qr_code,
+      secret: data.totp.secret,
+    });
   };
 
   const verify = async (event: FormEvent) => {
@@ -107,7 +119,9 @@ export function AddFactorDialog({
     });
     setBusy(false);
     if (verifyError) {
-      setError(verifyError.message || "That code didn't match. Try the next one.");
+      setError(
+        verifyError.message || "That code didn't match. Try the next one.",
+      );
       setCode("");
       return;
     }
@@ -120,13 +134,16 @@ export function AddFactorDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : void close())}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : void close())}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add another method</DialogTitle>
           <DialogDescription>
-            A second authenticator (another phone, or your password manager) lets you in if you
-            lose the first.
+            A second authenticator (another phone, or your password manager)
+            lets you in if you lose the first.
           </DialogDescription>
         </DialogHeader>
 
@@ -153,7 +170,11 @@ export function AddFactorDialog({
               </p>
             )}
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => void close()}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void close()}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={busy || !trimmed || taken}>
@@ -163,11 +184,21 @@ export function AddFactorDialog({
           </form>
         ) : (
           <form onSubmit={verify} className="space-y-4">
-            <p className="text-sm text-muted-foreground">Scan this with the new app.</p>
-            <TotpSecret qrCodeUrl={enrolment.qrCodeUrl} secret={enrolment.secret} />
+            <p className="text-sm text-muted-foreground">
+              Scan this with the new app.
+            </p>
+            <TotpSecret
+              qrCodeUrl={enrolment.qrCodeUrl}
+              secret={enrolment.secret}
+            />
             <div className="space-y-2">
               <Label htmlFor="factor-code">The 6-digit code it shows</Label>
-              <InputOTP id="factor-code" maxLength={6} value={code} onChange={setCode}>
+              <InputOTP
+                id="factor-code"
+                maxLength={6}
+                value={code}
+                onChange={setCode}
+              >
                 <InputOTPGroup>
                   {[0, 1, 2, 3, 4, 5].map((index) => (
                     <InputOTPSlot key={index} index={index} />
@@ -181,7 +212,11 @@ export function AddFactorDialog({
               </p>
             )}
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => void close()}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void close()}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={busy || code.length !== 6}>

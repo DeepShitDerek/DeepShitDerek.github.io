@@ -53,7 +53,7 @@
        with breakpoint variants at every call site. */
     /* 36 → 68px. It was 40 → 80px, which set the headline in five lines on a
        laptop and pushed the hero's call to action below the fold
-       (design-research/redesign-roadmap.md P0-1). */
+       (docs/design-research/redesign-roadmap.md). */
     --t-display: clamp(2.25rem, 1.5rem + 3.2vw, 4.25rem);
     --t-title: clamp(1.875rem, 1.4rem + 2.2vw, 3rem);
     --t-heading: clamp(1.25rem, 1.1rem + 0.8vw, 1.75rem);
@@ -70,8 +70,7 @@
      *
      * A shadow also has to be strong enough to replace the border it stands
      * in for. The first attempt sat at 5–6% opacity, which gave a card *less*
-     * definition than the bordered version it replaced, so the redesign read
-     * as no change at all.
+     * definition than the bordered version it replaced.
      */
     --e-shadow: 240 40% 4%;
     --e-0: none;
@@ -162,10 +161,10 @@
   }
 
   html {
-    /* Smooth only for those who haven't asked for less motion (V2-060). */
+    /* Smooth only for those who haven't asked for less motion. */
     @apply motion-safe:scroll-smooth antialiased;
     /*
-     * WCAG 2.4.11 Focus Not Obscured (V2-060): when focus moves to something
+     * WCAG 2.4.11 Focus Not Obscured: when focus moves to something
      * off-screen, the browser scrolls it clear of the sticky site header /
      * admin top bar, and of the admin's fixed bottom nav on small screens.
      */
@@ -266,7 +265,7 @@
   }
 
   /*
-   * Highlighted code keeps One Dark's own ground in every theme (V2-060).
+   * Highlighted code keeps One Dark's own ground in every theme.
    * The rule above painted it with the light `muted` surface, leaving One
    * Dark's pale text on a pale ground at 1.8:1. And on its own ground One
    * Dark's comments (2.3:1) and reds (4.4 and 3.0:1) are below AA, so those
@@ -302,7 +301,10 @@
   pre.language-markdown .token.strike .token.punctuation,
   pre.language-markdown .token.list.punctuation,
   pre.language-markdown .token.title.important > .token.punctuation,
-  pre.language-javascript .token.template-string > .token.interpolation > .token.interpolation-punctuation.punctuation {
+  pre.language-javascript
+    .token.template-string
+    > .token.interpolation
+    > .token.interpolation-punctuation.punctuation {
     color: #e57f88;
   }
 
@@ -401,7 +403,7 @@
 
   /* A blog post reads at 17px (18px with the long-form preset), with its
      section headings at the heading role rather than the generic 20px
-     (P1-13). Notes and CMS markdown keep the compact sizes above. */
+. Notes and CMS markdown keep the compact sizes above. */
   .post-prose {
     font-size: 1.0625rem;
     line-height: 1.7;
@@ -748,7 +750,7 @@
   }
 
   /* The hero starts close under the header: its call to action has to end
-     above 680px on a 1280×720 screen (P0-1). Below it, the route links
+     above 680px on a 1280×720 screen. Below it, the route links
      answer it at the tight step, so the two read as one opening. */
   .hero-band {
     padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--band-y-tight);
@@ -830,7 +832,7 @@
      and the fluid scale is not re-derived per page.
      ========================================================================= */
 
-  /* Tracking follows the typography preset (X9): a fixed -0.03em was right
+  /* Tracking follows the typography preset: a fixed -0.03em was right
      for a grotesk and wrong for a serif, and squeezed wide faces like
      Unbounded into extra lines. A preset may set --display-letter-spacing
      for the display size alone. */
@@ -876,7 +878,7 @@
 
   /* An eyebrow is a small label above a heading, in the meta voice: the
      code face, sentence case, muted. Primary is for things you can act on
-     (north star §3.2), so a label no longer wears it. */
+, so a label no longer wears it. */
   .t-eyebrow {
     font-family: var(--font-code);
     font-size: var(--t-micro);

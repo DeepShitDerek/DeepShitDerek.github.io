@@ -83,7 +83,7 @@ export const MOCK_LIFE_UPDATES: LifeUpdate[] = config.lifeUpdates.map(
 // --- 3. BLOG POSTS (For /blog) ---
 
 /**
- * Whether a post from portfolio.config.ts may appear on the site (V2-043).
+ * Whether a post from portfolio.config.ts may appear on the site.
  * `draft: true` keeps it out of the list, its page and its link-preview card
  * — the static-mode twin of `published = false` in the database,
  * which static mode otherwise has no way to say.
@@ -92,20 +92,22 @@ export function isPublicConfigPost(post: object): boolean {
   return !("draft" in post && (post as { draft?: unknown }).draft === true);
 }
 
-export const MOCK_BLOG_POSTS: BlogPost[] = config.blogPosts.filter(isPublicConfigPost).map((post, i) => ({
-  id: String(i + 1),
-  title: post.title,
-  slug: post.slug,
-  excerpt: post.excerpt,
-  content: post.content,
-  published: true,
-  published_at: new Date(Date.now() - 86400000 * i * 5).toISOString(),
-  show_toc: post.showToc ?? false,
-  tags: post.tags,
-  // views: 0, // If you wants to show the No. of Views
-  created_at: new Date(Date.now() - 86400000 * i * 5).toISOString(),
-  updated_at: new Date(Date.now() - 86400000 * i * 5).toISOString(),
-}));
+export const MOCK_BLOG_POSTS: BlogPost[] = config.blogPosts
+  .filter(isPublicConfigPost)
+  .map((post, i) => ({
+    id: String(i + 1),
+    title: post.title,
+    slug: post.slug,
+    excerpt: post.excerpt,
+    content: post.content,
+    published: true,
+    published_at: new Date(Date.now() - 86400000 * i * 5).toISOString(),
+    show_toc: post.showToc ?? false,
+    tags: post.tags,
+    // views: 0, // If you wants to show the No. of Views
+    created_at: new Date(Date.now() - 86400000 * i * 5).toISOString(),
+    updated_at: new Date(Date.now() - 86400000 * i * 5).toISOString(),
+  }));
 
 // --- 4. SECTIONS (For Home, About, Work, Contact) ---
 
@@ -162,7 +164,7 @@ export const MOCK_SECTIONS: PortfolioSection[] = [
     ),
   },
   // No "Selected work" here: the home page draws it from /work (FeaturedWork),
-  // and a second copy repeated the same projects twice on one page (X12).
+  // and a second copy repeated the same projects twice on one page.
   {
     id: "home-process",
     title: "How I work",

@@ -6,7 +6,7 @@ import {
   orUndefined,
 } from "@/lib/public-data";
 
-// One card per case study built at this time (V2-045); same list as /work/[slug].
+// One card per case study built at this time; same list as /work/[slug].
 export const dynamic = "force-static";
 export const dynamicParams = false;
 

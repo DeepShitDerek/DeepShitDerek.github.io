@@ -23,7 +23,7 @@ import { cn } from "@/lib/cn";
  *
  * No "use client": it has no state, so it renders on the server too. A
  * prerendered blog post's body is rendered here at build time and its
- * visitors never download the pipeline (V2-043). Imported from a client
+ * visitors never download the pipeline. Imported from a client
  * module (notes, the /blog/view fallback) it is client code as before, still
  * only behind `next/dynamic` boundaries or on admin routes.
  */
@@ -65,7 +65,12 @@ export function RichMarkdown({
           rehypePrism,
           rehypeSlug,
         ]}
-        components={components}
+        components={{
+          // A long line scrolls the block sideways; the tab stop is what lets
+          // a keyboard scroll it (WCAG 2.1.1).
+          pre: ({ node: _node, ...props }) => <pre tabIndex={0} {...props} />,
+          ...components,
+        }}
       >
         {children}
       </ReactMarkdown>

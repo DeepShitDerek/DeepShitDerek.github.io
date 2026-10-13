@@ -76,7 +76,12 @@ export default function HabitsPage() {
   const today = todayIso();
 
   // History needs the archived ones too, to offer "Show archived (n)".
-  const { data: habits = [], isLoading, error: loadError, refetch } = useGetHabitsQuery(
+  const {
+    data: habits = [],
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useGetHabitsQuery(
     view === "today" ? undefined : { includeArchived: true },
   );
   const [setHabitLog] = useSetHabitLogMutation();
@@ -100,23 +105,27 @@ export default function HabitsPage() {
     }
   };
 
-  // Delete offers Undo instead of asking first (P1-10). The delete runs when
+  // Delete offers Undo instead of asking first. The delete runs when
   // the toast closes, so Undo restores the habit and every logged day.
   const { pending: deleting, remove: removeHabit } = useUndoableDelete<Habit>(
     async (habit) => {
       try {
         await deleteHabit(habit.id).unwrap();
       } catch (err) {
-        toast.error("Couldn't delete the habit", { description: getErrorMessage(err) });
+        toast.error("Couldn't delete the habit", {
+          description: getErrorMessage(err),
+        });
       }
     },
   );
   const active = useMemo(
-    () => habits.filter((habit) => !habit.archived_at && !deleting.has(habit.id)),
+    () =>
+      habits.filter((habit) => !habit.archived_at && !deleting.has(habit.id)),
     [habits, deleting],
   );
   const archived = useMemo(
-    () => habits.filter((habit) => habit.archived_at && !deleting.has(habit.id)),
+    () =>
+      habits.filter((habit) => habit.archived_at && !deleting.has(habit.id)),
     [habits, deleting],
   );
 
@@ -172,7 +181,9 @@ export default function HabitsPage() {
     removeHabit(
       habit,
       `Deleted "${habit.title}"`,
-      count > 0 ? `With its ${count} recorded day${count === 1 ? "" : "s"}.` : undefined,
+      count > 0
+        ? `With its ${count} recorded day${count === 1 ? "" : "s"}.`
+        : undefined,
     );
   };
 
@@ -199,7 +210,7 @@ export default function HabitsPage() {
       />
 
       {/*
-        The two views as the module's tabs (03-workspace-ui.md §2.5): they
+        The two views as the module's tabs: they
         were a small right-aligned toggle under the summary and read as a
         filter. Archived is not a third view of the same habits; it opens
         from the foot of History.
@@ -236,17 +247,31 @@ export default function HabitsPage() {
             <h2 className="t-heading mb-3">Archived</h2>
             <ul className="divide-y rounded-surface border bg-card">
               {archived.map((habit) => (
-                <li key={habit.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                  <span className="min-w-0 flex-1 break-words text-sm font-medium">{habit.title}</span>
+                <li
+                  key={habit.id}
+                  className="flex flex-wrap items-center gap-3 px-4 py-3"
+                >
+                  <span className="min-w-0 flex-1 break-words text-sm font-medium">
+                    {habit.title}
+                  </span>
                   <span className="text-xs tabular-nums text-muted-foreground">
                     {habit.habit_logs?.length ?? 0} days recorded
                   </span>
-                  <Button variant="outline" size="sm" onClick={() => handleArchive(habit, false)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleArchive(habit, false)}
+                  >
                     Restore
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8" aria-label={`Actions: ${habit.title}`}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        aria-label={`Actions: ${habit.title}`}
+                      >
                         <MoreHorizontal aria-hidden className="size-4" />
                       </Button>
                     </DropdownMenuTrigger>

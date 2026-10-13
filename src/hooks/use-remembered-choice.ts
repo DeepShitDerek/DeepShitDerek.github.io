@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * A view choice remembered in this browser (ADM-004): board or list, week or
+ * A view choice remembered in this browser: board or list, week or
  * month, grid or table. They reset on every visit before.
  *
  * Read after mount, not in the initial state: the page is prerendered with
@@ -20,7 +20,8 @@ export function useRememberedChoice<T extends string>(
   useEffect(() => {
     try {
       const stored = localStorage.getItem(storageKey);
-      if (stored && (options as readonly string[]).includes(stored)) setValue(stored as T);
+      if (stored && (options as readonly string[]).includes(stored))
+        setValue(stored as T);
     } catch {
       // Storage blocked: the default it is.
     }

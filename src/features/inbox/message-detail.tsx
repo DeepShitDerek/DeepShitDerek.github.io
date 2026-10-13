@@ -27,7 +27,7 @@ import { contactTopicLabel } from "@/lib/contact-topics";
 import { messageState, replyMailto } from "./inbox-filters";
 
 /**
- * One message (03-workspace-ui.md §2.9): a tool header (back on a phone ·
+ * One message: a tool header (back on a phone ·
  * subject · ⋯), who sent it, the message at a reading measure, and the reply
  * bar at the bottom.
  *

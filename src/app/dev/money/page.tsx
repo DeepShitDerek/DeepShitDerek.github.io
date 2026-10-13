@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { MoneyHarness } from "@/features/money/ui/money-harness";
 
 /**
- * Dev-only harness for the money module (V2-080): the real screens against
+ * Dev-only harness for the money module: the real screens against
  * an in-memory ledger instead of Supabase. Exists only in builds made with
  * NEXT_PUBLIC_DEV_HARNESS=1; every other build answers 404.
  */

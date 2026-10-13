@@ -16,7 +16,7 @@
  * plausible one; it is not ranked at all.
  */
 
-export type ReadingSource = "hackernews" | "devto";
+type ReadingSource = "hackernews" | "devto";
 
 export interface ReadingItem {
   id: string;
@@ -44,7 +44,7 @@ function count(value: unknown): number {
 }
 
 /** Algolia's Hacker News search response. */
-export function parseHackerNews(body: unknown): ReadingItem[] {
+function parseHackerNews(body: unknown): ReadingItem[] {
   const hits = (body as { hits?: unknown[] } | null)?.hits;
   if (!Array.isArray(hits)) return [];
 
@@ -76,7 +76,7 @@ export function parseHackerNews(body: unknown): ReadingItem[] {
     .filter((item): item is ReadingItem => item !== null);
 }
 
-export function parseDevTo(body: unknown): ReadingItem[] {
+function parseDevTo(body: unknown): ReadingItem[] {
   if (!Array.isArray(body)) return [];
 
   return body
@@ -122,7 +122,7 @@ export function parseDevTo(body: unknown): ReadingItem[] {
  * against here, and a fitted constant would imply a precision this does not
  * have.
  */
-export function heat(item: ReadingItem, now = Date.now()): number {
+function heat(item: ReadingItem, now = Date.now()): number {
   const signal = item.points + item.comments * 0.5;
   if (signal <= 0) return 0;
 
@@ -140,7 +140,7 @@ export function heat(item: ReadingItem, now = Date.now()): number {
  * headed "most worth reading" that runs out into things nobody read is a list
  * whose bottom half is noise.
  */
-export function rankReading(
+function rankReading(
   lists: ReadingItem[][],
   options: { limit?: number; now?: number } = {},
 ): ReadingItem[] {
@@ -184,7 +184,7 @@ export function rankReading(
  * and "this week" are different questions and the caller knows which is being
  * asked.
  */
-export function hackerNewsUrl(days: number, minPoints = 20): string {
+function hackerNewsUrl(days: number, minPoints = 20): string {
   const since = Math.floor(Date.now() / 1000) - days * 86_400;
   return (
     "https://hn.algolia.com/api/v1/search?tags=story" +
@@ -194,7 +194,7 @@ export function hackerNewsUrl(days: number, minPoints = 20): string {
 }
 
 /** dev.to's own "most reacted in the last N days". */
-export function devToUrl(days: number): string {
+function devToUrl(days: number): string {
   return `https://dev.to/api/articles?top=${days}&per_page=30`;
 }
 

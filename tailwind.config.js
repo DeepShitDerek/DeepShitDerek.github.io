@@ -100,7 +100,7 @@ module.exports = {
         surface: "var(--r-surface)",
         control: "var(--r-control)",
       },
-      // Named layers (V2-030), lowest first. Values are the ones the code
+      // Named layers, lowest first. Values are the ones the code
       // already used, so naming them changed nothing on screen.
       zIndex: {
         raised: "10", // above its siblings: badges, hover actions
@@ -111,7 +111,7 @@ module.exports = {
         skip: "60", // the skip link, above an open overlay
         top: "100", // maintenance screen: covers everything
       },
-      // One motion scale (V2-030). Easing is `enter` / `exit` below.
+      // One motion scale. Easing is `enter` / `exit` below.
       transitionDuration: {
         instant: "var(--d-instant)",
         fast: "var(--d-fast)",

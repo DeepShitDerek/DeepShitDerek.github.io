@@ -84,11 +84,15 @@ export function HighlightWidget() {
           <motion.div
             key={data.id}
             initial={
-              reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, filter: "blur(4px)" }
+              reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: 10, filter: "blur(4px)" }
             }
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             exit={
-              reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10, filter: "blur(4px)" }
+              reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: -10, filter: "blur(4px)" }
             }
             transition={{ duration: 0.3, ease: EASE }}
           >

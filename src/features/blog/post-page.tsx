@@ -1,43 +1,25 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { skipToken } from "@reduxjs/toolkit/query";
 import { ArrowLeft, Check, Link2, Linkedin, Twitter } from "lucide-react";
-import { toast } from "sonner";
-import {
-  useGetBlogPostBySlugQuery,
-  useGetSiteIdentityQuery,
-  useIncrementPostViewMutation,
-} from "@/store/api/publicApi";
-import { isSupabaseConfigured } from "@/lib/config";
 import { safeImageUrl } from "@/lib/safe-url";
 import { sizedImageUrl } from "@/lib/image-size";
 import { Band } from "@/components/layout/band";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
-import { useDisplayTimeZone } from "@/hooks/use-hydrated";
 import { readTime } from "./post-meta";
-import { contentHash } from "./content-hash";
 import { loadPostContent } from "./post-content-loader";
 import { ReadingProgress } from "./reading-progress";
-import {
-  TableOfContents,
-  TableOfContentsInline,
-  useHeadings,
-} from "./table-of-contents";
-
-const VIEW_COUNT_DELAY_MS = 5000;
-const ARTICLE_ID = "post-article";
+import { ARTICLE_ID, usePostPage, type PrerenderedBody } from "./use-post-page";
+import { TableOfContents, TableOfContentsInline } from "./table-of-contents";
 
 // The markdown pipeline (raw → sanitize → prism/refractor → slug) is by far the
 // heaviest thing on this route, and nothing above the article body needs it.
 // Splitting it lets the title and cover paint on the light chunk.
 //
-// Rendered at build, not only in the browser (V2-025): a prerendered post's
+// Rendered at build, not only in the browser: a prerendered post's
 // body is in its HTML — the part of a blog search engines and link previews
 // actually read. The chunk is still split; first-load JS is unchanged.
 const PostContent = dynamic(
@@ -80,84 +62,30 @@ function PostNotFound() {
   );
 }
 
-/**
- * /blog/view/?slug= — posts published since the last build (see postHref).
- * Reading the query string opts this route out of prerendering, which is why
- * built posts get their own /blog/<slug>/ page instead.
- */
-export function PostPageFromQuery() {
-  const searchParams = useSearchParams();
-  return <PostPage slug={searchParams?.get("slug") ?? ""} />;
-}
+export type { PrerenderedBody } from "./use-post-page";
 
-/**
- * The body as rendered at build time, and a fingerprint of the markdown it
- * was rendered from (V2-043). While the fetched post's body matches, the page
- * shows that HTML and never downloads the markdown pipeline.
- */
-export interface PrerenderedBody {
-  contentHash: string;
-  body: ReactNode;
-}
-
-export function PostPage({ slug, prerendered }: { slug: string; prerendered?: PrerenderedBody }) {
+export function PostPage({
+  slug,
+  prerendered,
+}: {
+  slug: string;
+  prerendered?: PrerenderedBody;
+}) {
   const {
-    data: post,
+    post,
     isLoading,
     isError,
-  } = useGetBlogPostBySlugQuery(slug || skipToken);
-  const { data: identity } = useGetSiteIdentityQuery();
-  const [incrementView] = useIncrementPostViewMutation();
-  const [copied, setCopied] = useState(false);
-  // Prerendered: UTC until hydrated, so the build and the browser agree.
-  const timeZone = useDisplayTimeZone();
-
-  // Owned by the page, not the rail: the layout has to know whether a table of
-  // contents will render before it decides how wide the article is.
-  const { headings, activeId } = useHeadings(ARTICLE_ID);
-
-  // Warm the markdown chunk alongside the post query, when it will be needed:
-  // no build-time body (/blog/view), or the post has changed since the build.
-  const builtIsCurrent =
-    !!prerendered && !!post && contentHash(post.content ?? "") === prerendered.contentHash;
-  const needsPipeline = !prerendered || (!!post && !builtIsCurrent);
-  useEffect(() => {
-    if (needsPipeline) void loadPostContent();
-  }, [needsPipeline]);
-
-  // Static-export limitation: the document title is set client-side.
-  useEffect(() => {
-    if (post) document.title = post.title;
-  }, [post]);
-
-  // Keyed on the post's id, and remembered: counting a view invalidates the
-  // post, which comes back as a new object with views + 1. Depending on that
-  // object restarted the timer every time, so a reader who stayed a minute
-  // was counted about a dozen times.
-  const countedId = useRef<string | null>(null);
-  const postId = post?.id;
-  useEffect(() => {
-    if (
-      !postId ||
-      process.env.NODE_ENV !== "production" ||
-      !isSupabaseConfigured
-    )
-      return;
-    // Not a reader: an automated browser (the build's own checks).
-    if (navigator.webdriver) return;
-    if (countedId.current === postId) return;
-    const timer = setTimeout(() => {
-      countedId.current = postId;
-      incrementView(postId);
-    }, VIEW_COUNT_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [postId, incrementView]);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
+    identity,
+    headings,
+    activeId,
+    builtIsCurrent,
+    hasToc,
+    tags,
+    published,
+    copied,
+    share,
+    copyLink,
+  } = usePostPage(slug, prerendered);
 
   if (!slug || isError) return <PostNotFound />;
 
@@ -177,44 +105,13 @@ export function PostPage({ slug, prerendered }: { slug: string; prerendered?: Pr
     ? safeImageUrl(author.profile_picture_url)
     : null;
   const cover = safeImageUrl(post.cover_image_url);
-  const published = post.published_at
-    ? new Date(post.published_at).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        timeZone,
-      })
-    : "";
-  const hasToc = post.show_toc !== false && headings.length > 0;
-  const tags = (post.tags ?? []).filter((tag) => tag.trim());
-
-  const share = (network: "x" | "linkedin") => {
-    const url = encodeURIComponent(window.location.href);
-    const text = encodeURIComponent(post.title);
-    window.open(
-      network === "x"
-        ? `https://twitter.com/intent/tweet?url=${url}&text=${text}`
-        : `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  };
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-    } catch {
-      toast.error("Couldn't copy the link");
-    }
-  };
 
   return (
     <>
       <ReadingProgress />
       <Band weight="content">
         {/*
-          One left edge (P1-13). The post sat in the wide band (84rem) while
+          One left edge. The post sat in the wide band (84rem) while
           the header and every other page use the content width, its body was
           centred in its column, and the contents rail sat on the right: three
           different left edges on one page. Now the band is the content width
@@ -295,7 +192,10 @@ export function PostPage({ slug, prerendered }: { slug: string; prerendered?: Pr
               )}
 
               {hasToc && (
-                <TableOfContentsInline headings={headings} activeId={activeId} />
+                <TableOfContentsInline
+                  headings={headings}
+                  activeId={activeId}
+                />
               )}
             </header>
 

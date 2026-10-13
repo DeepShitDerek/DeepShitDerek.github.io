@@ -1,5 +1,5 @@
 /**
- * Where a case study lives (V2-042), mirroring `postHref`.
+ * Where a case study lives, mirroring `postHref`.
  *
  * Case studies published at build time have their own prerendered page;
  * anything newer is served by /work/view/?slug= until the next build.

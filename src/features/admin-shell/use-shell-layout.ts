@@ -28,7 +28,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export type ShellLayout = "launcher" | "sidebar";
 
-export const SHELL_LAYOUT_KEY = "admin_shell_layout";
+const SHELL_LAYOUT_KEY = "admin_shell_layout";
 
 export const SHELL_LAYOUTS: { id: ShellLayout; label: string; hint: string }[] =
   [

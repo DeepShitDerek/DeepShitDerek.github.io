@@ -19,8 +19,7 @@ export interface TaskFilters {
   /**
    * Completed tasks are shown by default, so the board's Done column is a
    * column and a card dragged into it does not vanish. The toolbar toggle
-   * hides them once the list has grown long (ADM-016: this comment used to
-   * claim the opposite of the default).
+   * hides them once the list has grown long.
    */
   showDone: boolean;
 }

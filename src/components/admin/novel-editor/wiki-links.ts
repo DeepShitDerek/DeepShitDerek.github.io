@@ -41,7 +41,7 @@ export interface FoundLink {
 }
 
 /** Every `[[link]]` in the document, outside code blocks. */
-export function findWikiLinks(doc: PMNode): FoundLink[] {
+function findWikiLinks(doc: PMNode): FoundLink[] {
   const found: FoundLink[] = [];
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;

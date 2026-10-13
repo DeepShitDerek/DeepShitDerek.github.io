@@ -18,7 +18,7 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 /**
- * A life-update category's icon (P2-9). These were emoji, which every
+ * A life-update category's icon. These were emoji, which every
  * platform draws differently and in full colour, so the one coloured mark in
  * a line of text was a picture the theme could not touch. Line icons take
  * the text colour like every other icon on the site. Decorative: the label

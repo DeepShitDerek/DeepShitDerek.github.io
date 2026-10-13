@@ -1,6 +1,11 @@
 import { format, subDays } from "date-fns";
 import { supabase } from "@/supabase/client";
-import type { AnalyticsData, Calendar, CalendarRow, DashboardData, EventException } from "@/types";
+import type {
+  Calendar,
+  CalendarRow,
+  DashboardData,
+  EventException,
+} from "@/types";
 import { todaysEvents } from "@/features/dashboard/todays-events";
 import { adminApi } from "./baseApi";
 import { NO_DB_ERROR } from "./query-helpers";
@@ -16,9 +21,7 @@ export const dashboardApi = adminApi.injectEndpoints({
         const sevenDaysAgoISO = format(subDays(now, 7), "yyyy-MM-dd");
 
         /*
-          Only what the page shows (ADM-014). Blog views, pinned notes, recent
-          posts, tasks due this week and the month's net were fetched on every
-          load and rendered by nothing.
+          Only what the page shows.
         */
         const promises = [
           supabase
@@ -32,23 +35,12 @@ export const dashboardApi = adminApi.injectEndpoints({
             .eq("due_date", todayISO)
             .order("created_at"),
           /*
-            One call where there were five.
+            `money_day_flows` gives earned and spent per day from the ledger, for
+            the last seven days, which is all the dashboard shows.
 
-            Three of those read v1's `transactions` — the month's totals and two
-            seven-day series — and did the same summing three times with three
-            different filters. `money_day_flows` answers all of it per day from the
-            ledger (V2-080) for the last seven days, which is all the dashboard
-            shows.
-
-            It is also the *same* function the calendar's `get_calendar_data`
-            calls, which is the point: the two used to disagree. The calendar
-            excluded transfers and the dashboard did not, so $2,000 moved between
-            two of your own accounts read as $2,000 earned and $2,000 spent here,
-            and as nothing there.
-
-            The other two — `recurring_transactions` and `financial_goals` — are
-            simply gone. Both were fetched, typed into `DashboardData`, and
-            rendered by nothing.
+            It is the same function the calendar's `get_calendar_data` calls, so
+            the two cannot disagree: $2,000 moved between two of your own
+            accounts is neither earned nor spent in either place.
           */
           supabase.rpc("money_day_flows", {
             p_from: sevenDaysAgoISO,
@@ -63,7 +55,7 @@ export const dashboardApi = adminApi.injectEndpoints({
             .is("archived_at", null),
           // Through the calendar's own pipeline, so repeating events,
           // moved or cancelled occurrences and hidden calendars come out
-          // exactly as the calendar shows them (ADM-011).
+          // exactly as the calendar shows them.
           (async () => {
             const [rowsRes, exceptionsRes, calendarsRes] = await Promise.all([
               supabase.rpc("get_calendar_data", {
@@ -73,17 +65,29 @@ export const dashboardApi = adminApi.injectEndpoints({
               supabase.from("event_exceptions").select("*"),
               supabase.from("calendars").select("id, is_visible"),
             ]);
-            const failed = rowsRes.error ?? exceptionsRes.error ?? calendarsRes.error;
+            const failed =
+              rowsRes.error ?? exceptionsRes.error ?? calendarsRes.error;
             if (failed) return { data: [], error: failed };
             return {
               data: todaysEvents({
                 rows: (rowsRes.data ?? []) as CalendarRow[],
                 exceptions: (exceptionsRes.data ?? []) as EventException[],
-                calendars: (calendarsRes.data ?? []) as Pick<Calendar, "id" | "is_visible">[],
+                calendars: (calendarsRes.data ?? []) as Pick<
+                  Calendar,
+                  "id" | "is_visible"
+                >[],
                 // Local midnights, as real instants: a bare date string would be
                 // read in UTC and put "today" at the wrong hours.
-                dayStart: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-                dayEnd: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+                dayStart: new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate(),
+                ),
+                dayEnd: new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate() + 1,
+                ),
               }),
             };
           })(),
@@ -99,7 +103,7 @@ export const dashboardApi = adminApi.injectEndpoints({
             // filter is on a date that has arrived, not on the absence of one.
             .lte("due_date", todayISO)
             .is("archived_at", null),
-          // Work sessions logged since local midnight (ADM-020). `start_time`
+          // Work sessions logged since local midnight. `start_time`
           // is written when the session is logged, i.e. when it ended.
           supabase
             .from("focus_logs")
@@ -107,7 +111,11 @@ export const dashboardApi = adminApi.injectEndpoints({
             .eq("mode", "work")
             .gte(
               "start_time",
-              new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString(),
+              new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+              ).toISOString(),
             ),
         ];
 
@@ -115,15 +123,9 @@ export const dashboardApi = adminApi.injectEndpoints({
         const errors = results.map((r) => r.error).filter(Boolean);
 
         /*
-          Degrade, do not blank.
-
-          This was `if (errors.length > 0) return { error }` — so one failing
-          read out of fifteen produced an empty page. That is exactly what
-          happened when two of these queries named columns that do not exist:
-          the whole workbench went dark over a count nobody would have missed.
-
-          A dashboard showing fourteen of fifteen things is useful. One showing
-          nothing is not. Only a total failure is reported as an error, because
+          Degrade, do not blank. A dashboard showing most of its parts is
+          useful; one that goes empty because a single count failed is not.
+          Only a total failure is reported as an error, because
           that means the connection or the session is gone, and pretending
           otherwise would show an empty page as though the day were clear.
         */
@@ -189,17 +191,16 @@ export const dashboardApi = adminApi.injectEndpoints({
           // ask for beyond the round trip.
           unreadMessages: unreadMessages ?? 0,
           reviewsDue: reviewsDue ?? 0,
-          focusMinutesToday: ((focusData as { duration_minutes: number }[] | null) ?? []).reduce(
-            (sum, row) => sum + (row.duration_minutes ?? 0),
-            0,
-          ),
+          focusMinutesToday: (
+            (focusData as { duration_minutes: number }[] | null) ?? []
+          ).reduce((sum, row) => sum + (row.duration_minutes ?? 0), 0),
         };
 
         return { data };
       },
       // Everything the dashboard shows. Task and event changes invalidate
       // "Calendar", habit logs "Dashboard", messages "Inbox"; without these the
-      // dashboard kept a stale copy for up to a minute (ADM-012).
+      // dashboard kept a stale copy for up to a minute.
       providesTags: [
         "Dashboard",
         "AdminPosts",
@@ -213,17 +214,7 @@ export const dashboardApi = adminApi.injectEndpoints({
         "PortfolioContent",
       ],
     }),
-    getAnalyticsData: builder.query<AnalyticsData, void>({
-      queryFn: async () => {
-        if (!supabase) return { error: NO_DB_ERROR };
-        const { data, error } = await supabase.rpc("get_analytics_overview");
-        if (error) return { error };
-        return { data };
-      },
-      providesTags: ["Analytics"],
-    }),
   }),
 });
 
-export const { useGetDashboardDataQuery, useGetAnalyticsDataQuery } =
-  dashboardApi;
+export const { useGetDashboardDataQuery } = dashboardApi;

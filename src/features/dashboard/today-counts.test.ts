@@ -26,8 +26,24 @@ describe("todayCounts", () => {
           { id: "b", title: "b", status: "todo" } as Task,
         ],
         habits: [
-          { id: "h", title: "h", schedule: "daily", target_value: 1, habit_logs: [{ id: "l", habit_id: "h", completed_date: today, value: 1 }] },
-          { id: "g", title: "g", schedule: "daily", target_value: 8, habit_logs: [{ id: "m", habit_id: "g", completed_date: today, value: 3 }] },
+          {
+            id: "h",
+            title: "h",
+            schedule: "daily",
+            target_value: 1,
+            habit_logs: [
+              { id: "l", habit_id: "h", completed_date: today, value: 1 },
+            ],
+          },
+          {
+            id: "g",
+            title: "g",
+            schedule: "daily",
+            target_value: 8,
+            habit_logs: [
+              { id: "m", habit_id: "g", completed_date: today, value: 3 },
+            ],
+          },
         ] as unknown as Habit[],
       },
       today,

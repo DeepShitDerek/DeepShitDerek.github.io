@@ -14,7 +14,7 @@ import type {
 } from "@/types";
 
 /**
- * Build-time data for the public pages (ADR-004, V2-025).
+ * Build-time data for the public pages.
  *
  * Server components fetch it during `next build` and pass it down; it is
  * written into the RTK Query cache *before* the components that read it

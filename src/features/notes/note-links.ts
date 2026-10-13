@@ -24,7 +24,7 @@ import type { Note } from "@/types";
  */
 const WIKILINK = /\\?\[\\?\[([^\]|\\]+?)(?:\\?\|([^\]\\]*))?\\?\]\\?\]/g;
 
-export interface ParsedLink {
+interface ParsedLink {
   /** The note title being referenced. */
   target: string;
   /** What to render, when the link supplies an alias. */
@@ -37,7 +37,7 @@ export interface ParsedLink {
  * Fenced code blocks are skipped: `[[` inside a snippet is code, not a link,
  * and turning it into one would silently rewrite what the note says.
  */
-export function extractLinks(content: string | null | undefined): ParsedLink[] {
+function extractLinks(content: string | null | undefined): ParsedLink[] {
   if (!content) return [];
 
   const withoutCode = content
@@ -125,51 +125,6 @@ export function buildLinkGraph(notes: Note[]): LinkGraph {
   }
 
   return { outgoing, backlinks, unresolved };
-}
-
-/**
- * Turn wikilinks into markdown links the renderer already understands.
- *
- * Resolved links point at the note; unresolved ones are left as plain text
- * rather than rendered as broken links — a link that goes nowhere invites you
- * to fix it, and there is nothing to fix until the note exists.
- */
-export function linkifyContent(
-  content: string | null | undefined,
-  notes: Note[],
-  hrefFor: (note: Note) => string,
-): string {
-  if (!content) return "";
-  const byTitle = indexByTitle(notes);
-
-  const replaceIn = (text: string) =>
-    text.replace(WIKILINK, (_whole, rawTarget: string, alias?: string) => {
-      const target = rawTarget.trim();
-      const label = (alias ?? target).trim() || target;
-      const found = byTitle.get(normalizeTitle(target));
-      if (!found) return label;
-      return `[${label}](${hrefFor(found)})`;
-    });
-
-  // Same reasoning as extractLinks: code is code. Split on fences so the
-  // replacement never reaches inside one.
-  return content
-    .split(/(```[\s\S]*?```)/g)
-    .map((chunk) => (chunk.startsWith("```") ? chunk : replaceIn(chunk)))
-    .join("");
-}
-
-/** Titles referenced by any note but not yet written — worth offering to create. */
-export function missingNotes(notes: Note[]): string[] {
-  const { unresolved } = buildLinkGraph(notes);
-  const seen = new Map<string, string>();
-  unresolved.forEach((targets) => {
-    for (const target of targets) {
-      const key = normalizeTitle(target);
-      if (!seen.has(key)) seen.set(key, target);
-    }
-  });
-  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
 }
 
 /**

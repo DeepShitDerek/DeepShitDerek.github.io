@@ -40,7 +40,7 @@ interface BoardEditorProps {
 const AUTOSAVE_IDLE_MS = 2500;
 
 /**
- * Full-screen board editor (P-editor-chrome, 03-workspace-ui.md §2.21).
+ * Full-screen board editor.
  *
  * One header that belongs to us: back · title · save status · (pen). The
  * board's buttons used to sit inside Excalidraw's own top-right slot, which

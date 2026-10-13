@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { skipToken } from "@reduxjs/toolkit/query";
-import { ArrowUpRight, CloudOff, FolderGit2, GitFork, Star } from "lucide-react";
 import {
-  useGetGitHubReposQuery,
-  useGetSiteIdentityQuery,
-} from "@/store/api/publicApi";
+  ArrowUpRight,
+  CloudOff,
+  FolderGit2,
+  GitFork,
+  Star,
+} from "lucide-react";
+import { useRepoList } from "./use-repo-list";
 import type { GitHubRepo } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -84,34 +85,9 @@ function RepoCard({ repo }: { repo: GitHubRepo }) {
 
 /** Live GitHub repositories grid driven by profile_data.github_projects_config. */
 export function RepoGrid() {
-  const { data: identity, isLoading: isIdentityLoading } =
-    useGetSiteIdentityQuery();
-  const config = identity?.profile_data.github_projects_config;
+  const { state, repos, shown, more, username, perPage } = useRepoList();
 
-  const {
-    data: repos,
-    isLoading,
-    isError,
-  } = useGetGitHubReposQuery(
-    config?.show && config.username
-      ? {
-          username: config.username,
-          sort_by: config.sort_by,
-          projects_per_page: config.projects_per_page,
-          page: 1,
-          exclude_forks: config.exclude_forks,
-          exclude_archived: config.exclude_archived,
-          exclude_profile_repo: config.exclude_profile_repo,
-          min_stars: config.min_stars,
-        }
-      : skipToken,
-  );
-
-  const perPage = config?.projects_per_page ?? 6;
-  const [visibleCount, setVisibleCount] = useState<number | null>(null);
-  const shown = visibleCount ?? perPage;
-
-  if (isLoading || isIdentityLoading || !identity) {
+  if (state === "loading") {
     return (
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy>
         {Array.from({ length: Math.min(perPage, 6) }).map((_, i) => (
@@ -121,9 +97,9 @@ export function RepoGrid() {
     );
   }
 
-  if (!config?.show || !config.username) return null;
+  if (state === "hidden") return null;
 
-  if (isError || !repos?.length) {
+  if (state === "error") {
     return (
       <div className="flex items-center gap-4 rounded-surface bg-card p-5 shadow-e1">
         <span
@@ -150,11 +126,7 @@ export function RepoGrid() {
       </Stagger>
       <div className="mt-8 flex flex-wrap items-center gap-3">
         {shown < repos.length && (
-          <Button
-            variant="outline"
-            className="rounded-full"
-            onClick={() => setVisibleCount(shown + perPage)}
-          >
+          <Button variant="outline" className="rounded-full" onClick={more}>
             Load more
             <span className="ml-1.5 text-muted-foreground">
               {repos.length - shown}
@@ -162,7 +134,7 @@ export function RepoGrid() {
           </Button>
         )}
         <a
-          href={`https://github.com/${encodeURIComponent(config.username)}?tab=repositories`}
+          href={`https://github.com/${encodeURIComponent(username)}?tab=repositories`}
           target="_blank"
           rel="noopener noreferrer"
           className="group inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-ring"

@@ -53,7 +53,9 @@ function ProjectStrip({ panel }: { panel: StatusPanelData }) {
   const body = (
     <>
       <span className="min-w-0">
-        <span className="block text-xs text-muted-foreground">Latest project</span>
+        <span className="block text-xs text-muted-foreground">
+          Latest project
+        </span>
         <span className="mt-0.5 block truncate font-semibold transition-colors group-hover:text-primary">
           {panel.latestProject.name}
         </span>
@@ -115,7 +117,9 @@ function MinimalPanel({ panel }: { panel: StatusPanelData }) {
                   >
                     {index + 1}
                   </span>
-                  <span className="min-w-0 [overflow-wrap:anywhere]">{item}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    {item}
+                  </span>
                 </li>
               ))}
             </ol>
@@ -187,7 +191,11 @@ function SpotlightPanel({ panel }: { panel: StatusPanelData }) {
       )}
 
       {items.length > 0 && (
-        <div className={cn(project ? "mt-8 border-t border-background/15 pt-6" : "mt-6")}>
+        <div
+          className={cn(
+            project ? "mt-8 border-t border-background/15 pt-6" : "mt-6",
+          )}
+        >
           <p className="text-xs font-medium text-background">
             {panel.currently_exploring.title}
           </p>

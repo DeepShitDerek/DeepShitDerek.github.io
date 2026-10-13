@@ -278,7 +278,8 @@ export function TimeGrid({
         Math.hypot(event.clientX - current.x, event.clientY - current.y) >
           DRAG_THRESHOLD_PX;
       if (!moved) return;
-      if (!current.moved) columnsRef.current?.setPointerCapture(event.pointerId);
+      if (!current.moved)
+        columnsRef.current?.setPointerCapture(event.pointerId);
       const startMin = snapMinutes(slot.min - current.grabOffset);
       setDrag({
         ...current,

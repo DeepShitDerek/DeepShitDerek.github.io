@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import { formatMoney, money, type FormatOptions } from "../domain/money";
 
 /**
- * An amount for people (V2-080). Tabular figures so columns line up;
+ * An amount for people. Tabular figures so columns line up;
  * colour only where direction is the point (`tone`), and never colour
  * alone — the sign is always printed.
  */

@@ -28,7 +28,7 @@ import {
 import { AppLauncher } from "./app-launcher";
 import { LearningPill } from "./learning-pill";
 import { SHELL_LAYOUTS, type ShellLayout } from "./use-shell-layout";
-import { activeNavItem, NAV_ITEMS } from "./nav-config";
+import { activeNavItem } from "./nav-config";
 import { requestCreate } from "./create-intent";
 
 /**
@@ -98,7 +98,7 @@ export function AdminTopbar({
 
       {/* The current module, as a label. Not a heading: the page's own
           PageHeader is its one h1, and two made every page ambiguous to a
-          screen reader (ADM-005). */}
+          screen reader. */}
       <div className="flex min-w-0 items-center gap-2">
         {Icon && <Icon className="size-4 shrink-0 text-primary" aria-hidden />}
         <p className="truncate text-sm font-semibold">
@@ -126,16 +126,24 @@ export function AdminTopbar({
               Quick add
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => requestCreate("task", router.push)}>
+            <DropdownMenuItem
+              onClick={() => requestCreate("task", router.push)}
+            >
               <ListTodo className="mr-2 size-4" aria-hidden /> New task
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => requestCreate("note", router.push)}>
+            <DropdownMenuItem
+              onClick={() => requestCreate("note", router.push)}
+            >
               <StickyNote className="mr-2 size-4" aria-hidden /> New note
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => requestCreate("transaction", router.push)}>
+            <DropdownMenuItem
+              onClick={() => requestCreate("transaction", router.push)}
+            >
               <Banknote className="mr-2 size-4" aria-hidden /> New transaction
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => requestCreate("post", router.push)}>
+            <DropdownMenuItem
+              onClick={() => requestCreate("post", router.push)}
+            >
               <BookText className="mr-2 size-4" aria-hidden /> New blog post
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -233,4 +241,3 @@ export function AdminTopbar({
 }
 
 /** Exposed for tests / potential title use. */
-export { NAV_ITEMS };

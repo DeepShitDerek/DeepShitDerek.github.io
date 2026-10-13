@@ -46,6 +46,7 @@ import {
   findGroup,
   type PreviewPage,
   type SettingsGroup,
+  groupUnderStyle,
 } from "./settings-groups";
 import {
   buildGroupPayload,
@@ -58,6 +59,9 @@ import { HeroSection } from "./hero-section";
 import { SocialLinksSection } from "./social-links-section";
 import { ThemeSection } from "./theme-section";
 import { TypographySection } from "./typography-section";
+import { SiteStyleSection } from "./site-style-section";
+import { StyleGovernsNotice } from "./style-governs-notice";
+import { resolveSiteStyle } from "@/lib/site-style";
 import { LayoutSection } from "./layout-section";
 import { StatusPanelSection } from "./status-panel-section";
 import { GitHubSection } from "./github-section";
@@ -94,6 +98,7 @@ const SECTION_BY_GROUP: Record<
   social: SocialLinksSection,
   theme: ThemeSection,
   typography: TypographySection,
+  "site-style": SiteStyleSection,
   layout: LayoutSection,
   status: StatusPanelSection,
   github: GitHubSection,
@@ -316,7 +321,7 @@ export default function SettingsPage() {
     />
   );
 
-  // Without this a failed read left the skeleton up for good (V2-051).
+  // Without this a failed read left the skeleton up for good.
   if (loadError && !settingsData) {
     return (
       <ManagerWrapper>
@@ -334,9 +339,13 @@ export default function SettingsPage() {
     );
 
   const Section = SECTION_BY_GROUP[group.id];
-  const split = splitPreview && !!group.preview;
+  // In an immersive site style nothing reads Theme and Typography: they
+  // stay editable, say so, and lose their site preview.
+  const siteStyle = resolveSiteStyle(values.profile_data?.site_style);
+  const { preview: groupPreview, governed } = groupUnderStyle(group, siteStyle);
+  const split = splitPreview && !!groupPreview;
 
-  const preview = group.preview ? (
+  const preview = groupPreview ? (
     <SettingsPreviewLazy
       values={values as never}
       page={previewPage}
@@ -348,7 +357,7 @@ export default function SettingsPage() {
   return (
     <ManagerWrapper>
       {header(
-        group.preview ? (
+        groupPreview ? (
           <>
             {/* At xl the preview splits the screen with the form, so a public
                 layout is judged at a real width, not in a 24rem strip. */}
@@ -433,11 +442,16 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <div className="mt-6">{Section && <Section form={form} />}</div>
+              <div className="mt-6">
+                {governed && (
+                  <StyleGovernsNotice style={siteStyle} setting={group.label} />
+                )}
+                {Section && <Section form={form} />}
+              </div>
 
               {/*
                 The save bar belongs to the form, not the window
-                (03-workspace-ui.md §2.14). Sticky to the bottom of this
+. Sticky to the bottom of this
                 column, it rides along while the form is longer than the
                 screen and comes to rest after the last field, so it can
                 never cover it; and it sits on the sticky layer, under

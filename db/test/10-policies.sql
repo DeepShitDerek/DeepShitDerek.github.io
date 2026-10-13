@@ -113,19 +113,19 @@ INSERT INTO blog_posts (user_id, title, slug, content, published, internal_notes
 BEGIN;
 SELECT t.act_as('anon');
 SELECT t.refuses('SELECT internal_notes FROM blog_posts',
-  'anon cannot read blog_posts.internal_notes (SEC-001)', 'permission denied');
+  'anon cannot read blog_posts.internal_notes', 'permission denied');
 SELECT t.refuses('SELECT internal_notes FROM portfolio_items',
-  'anon cannot read portfolio_items.internal_notes (SEC-001)', 'permission denied');
+  'anon cannot read portfolio_items.internal_notes', 'permission denied');
 SELECT t.refuses('SELECT * FROM blog_posts',
   'anon SELECT * is refused rather than silently leaking', 'permission denied');
 SELECT t.check(t.count_of($q$SELECT id, title, slug, content, word_count FROM blog_posts WHERE slug LIKE 't-%'$q$) = 1,
   'anon sees the published post only, with every public column');
 SELECT t.check(t.count_of($q$SELECT id, title FROM portfolio_items WHERE title IN ('public item','hidden item')$q$) = 1,
-  'anon sees items of visible sections only (SEC-002)');
+  'anon sees items of visible sections only');
 SELECT t.check(t.count_of($q$SELECT s.id FROM portfolio_sections s WHERE page_path = '/t'$q$) = 1,
   'anon sees visible sections only');
 SELECT t.check(t.count_of($q$SELECT slug, case_study FROM portfolio_items WHERE has_case_study$q$) = 1,
-  'anon reads case studies of visible sections only (V2-042)');
+  'anon reads case studies of visible sections only');
 SELECT t.check(t.count_of('SELECT * FROM integration_settings') = 0, 'anon cannot read integration secrets');
 SELECT t.check(t.count_of('SELECT * FROM analytics_secret') <= 0, 'anon cannot read the analytics secret');
 SELECT t.refuses($q$INSERT INTO tasks (title) VALUES ('x')$q$, 'anon cannot write workspace tables');
@@ -149,7 +149,7 @@ SELECT t.refuses($q$INSERT INTO contact_submissions (name, email, subject, messa
 SELECT t.refuses($q$INSERT INTO contact_submissions (name, email, subject, message) VALUES ('V','x@example.com','Hello there','A message long enough.')$q$,
   'contact length CHECK is enforced by the database', 'contact_submissions_length_check');
 SELECT t.check(t.affected($q$INSERT INTO contact_submissions (name, email, subject, message, topic) VALUES ('Recruiter','topic@example.com','A role for you','We are hiring an AI engineer.','role')$q$) = 1,
-  'a visitor can say what the message is about (V2-040b)');
+  'a visitor can say what the message is about');
 SELECT t.refuses($q$INSERT INTO contact_submissions (name, email, subject, message, topic) VALUES ('Visitor','topic2@example.com','Hello there','A message long enough.','spam')$q$,
   'an unknown topic is refused by the database', 'contact_submissions_topic_check');
 SELECT t.check(t.affected($q$INSERT INTO contact_submissions (name, email, subject, message) VALUES ('Old form','topic3@example.com','Hello there','Sent by the form before topics.')$q$) = 1,
@@ -185,7 +185,7 @@ SELECT t.check(t.count_of($q$SELECT id FROM portfolio_items WHERE title = 'hidde
   'the verified owner still sees items of hidden sections');
 COMMIT;
 
--- ── Maps (V2-070) ───────────────────────────────────────────────────────────
+-- ── Maps ───────────────────────────────────────────────────────────
 
 BEGIN;
 SELECT t.act_as('owner');
@@ -217,7 +217,7 @@ SELECT t.check(t.count_of('SELECT id FROM thinking_maps') <= 0,
   'maps: visitors see no maps');
 COMMIT;
 
--- ── Lockdown level 2 (V2-016) ───────────────────────────────────────────────
+-- ── Lockdown level 2 ───────────────────────────────────────────────
 
 BEGIN;
 SELECT t.act_as('owner');
@@ -264,7 +264,7 @@ SELECT t.check(t.affected($q$INSERT INTO tasks (title) VALUES ('after lockdown')
   'writes work again after lowering the level');
 COMMIT;
 
--- ── Visits: daily ceiling (V2-012) ──────────────────────────────────────────
+-- ── Visits: daily ceiling ──────────────────────────────────────────
 
 -- 20,000 visits spread over the last 23 hours, never more than a handful in
 -- any minute, half of them bots: only the daily ceiling can drop the next one.
@@ -284,7 +284,7 @@ SELECT t.act_as('anon');
 INSERT INTO site_visits (path) VALUES ('/after-ceiling');
 COMMIT;
 SELECT t.check((SELECT count(*) FROM site_visits WHERE path = '/after-ceiling') = 0,
-  'visits past the daily ceiling are dropped, bots counted (SEC-004)');
+  'visits past the daily ceiling are dropped, bots counted');
 DELETE FROM site_visits;
 
 BEGIN;
@@ -294,7 +294,7 @@ COMMIT;
 SELECT t.check((SELECT count(*) FROM site_visits WHERE path = '/ok') = 1,
   'a normal visit is recorded');
 
--- ── Case-study slugs (V2-042) ────────────────────────────────────────────────
+-- ── Case-study slugs ────────────────────────────────────────────────
 
 SELECT t.refuses($q$UPDATE portfolio_items SET slug = 'Bad Slug' WHERE title = 'public item'$q$,
   'case-study slug must be lower-case kebab', 'portfolio_items_slug_check');

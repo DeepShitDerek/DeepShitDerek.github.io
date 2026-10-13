@@ -13,7 +13,7 @@
  * match has to be tested first.
  */
 
-export type DeviceKind = "desktop" | "mobile" | "tablet";
+type DeviceKind = "desktop" | "mobile" | "tablet";
 
 export interface AgentSummary {
   browser: string;
@@ -50,20 +50,6 @@ const OPERATING_SYSTEMS: [RegExp, string][] = [
   [/\bLinux\b|\bX11\b/, "Linux"],
 ];
 
-/**
- * Crawlers, previewers and monitors.
- *
- * Flagged rather than rejected: knowing that 60% of your traffic is Googlebot
- * is itself worth knowing, and a filter that silently discards is a filter you
- * cannot check. The analytics views exclude bots by default and can show them.
- */
-const BOT_PATTERN =
-  /bot\b|crawler|spider|crawl|slurp|facebookexternalhit|embedly|quora link preview|showyoubot|outbrain|pinterest|feedfetcher|headlesschrome|lighthouse|pagespeed|gtmetrix|pingdom|uptimerobot|semrush|ahrefs|mj12|dotbot|petalbot|bytespider|applebot|discordbot|slackbot|telegrambot|whatsapp|twitterbot|linkedinbot|preview|monitor|axios|curl|wget|python-requests|node-fetch|go-http-client|okhttp/i;
-
-export function isBotAgent(userAgent: string): boolean {
-  return BOT_PATTERN.test(userAgent);
-}
-
 function firstMatch(
   userAgent: string,
   table: [RegExp, string][],
@@ -82,7 +68,7 @@ function firstMatch(
  * user-agent verbatim — the string alone cannot distinguish an iPad from a
  * MacBook, and a touch-capable "Mac" is the only signal there is.
  */
-export function deviceKind(userAgent: string, maxTouchPoints = 0): DeviceKind {
+function deviceKind(userAgent: string, maxTouchPoints = 0): DeviceKind {
   if (/\biPad\b/.test(userAgent)) return "tablet";
   if (/\bAndroid\b/.test(userAgent) && !/\bMobile\b/.test(userAgent)) {
     // Android tablets omit the "Mobile" token; phones include it.

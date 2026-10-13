@@ -10,6 +10,7 @@ import {
   fetchSiteIdentity,
   orUndefined,
 } from "@/lib/public-data";
+import { resolveSiteStyle } from "@/lib/site-style";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
@@ -32,17 +33,21 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   // Site-wide data, read once at build and rendered into every page's HTML
-  // (ADR-004). The browser revalidates it after hydration.
+  //. The browser revalidates it after hydration.
   const [siteIdentity, navLinks] = await Promise.all([
     orUndefined(fetchSiteIdentity()),
     orUndefined(fetchNavLinks()),
   ]);
 
   // No `scroll-smooth` class on <html>: globals.css applies smooth scrolling
-  // only without prefers-reduced-motion (V2-060), and the class overrode that
+  // only without prefers-reduced-motion, and the class overrode that
   // for everyone.
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      data-style={resolveSiteStyle(siteIdentity?.profile_data?.site_style)}
+      suppressHydrationWarning
+    >
       <head>
         {/* Development only: the dev server drops the font @import from
             globals.css, which production keeps (lib/google-fonts.ts). */}

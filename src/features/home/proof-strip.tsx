@@ -8,7 +8,7 @@ const PROOF_COLUMNS: Record<number, string> = {
 
 /**
  * Results, read as a ruled table directly under the promise, inside the first
- * screen (P0-1). Only what the owner entered appears: there is no default row
+ * screen. Only what the owner entered appears: there is no default row
  * of flattering numbers.
  *
  * A description list, so each figure is announced with its label. The value

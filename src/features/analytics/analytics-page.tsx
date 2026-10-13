@@ -62,7 +62,7 @@ import { TrafficChart } from "./traffic-chart";
 /**
  * Who came to the site, and from where.
  *
- * The data behind this has been collectible since migration 008 and readable by
+ * The data behind this was collected for a long time and readable by
  * nothing — the same shape as `contact_submissions` before the inbox existed.
  *
  * Everything is aggregated by `get_visitor_analytics`; this page never sees an
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
       actions={
         <>
           {/*
-            The range, on the right of the header (03-workspace-ui.md §2.16),
+            The range, on the right of the header,
             in the shared toggle group rather than a fifth hand-made
             segmented style.
           */}
@@ -253,7 +253,7 @@ export default function AnalyticsPage() {
   }
 
   /**
-   * The real error, and a way to retry (ADM-023). Every failure — a dropped
+   * The real error, and a way to retry. Every failure — a dropped
    * connection, an expired session — used to read "not set up yet" and point
    * at a migration file that no longer exists; setup is db/schema.sql.
    */
@@ -416,8 +416,7 @@ export default function AnalyticsPage() {
           />
 
           {/*
-            Below lg, one card with a tab per breakdown (03-workspace-ui.md
-            §2.16): eight full lists stacked made the page the longest in the
+            Below lg, one card with a tab per breakdown: eight full lists stacked made the page the longest in the
             workspace on a phone. From lg up, all of them in a grid.
           */}
           <section

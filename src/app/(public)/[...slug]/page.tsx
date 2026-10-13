@@ -70,7 +70,9 @@ export async function generateMetadata(props: {
   };
 }
 
-export default async function Page(props: { params: Promise<{ slug: string[] }> }) {
+export default async function Page(props: {
+  params: Promise<{ slug: string[] }>;
+}) {
   const params = await props.params;
   const pagePath = `/${params.slug.join("/")}`;
   const [title, data] = await Promise.all([

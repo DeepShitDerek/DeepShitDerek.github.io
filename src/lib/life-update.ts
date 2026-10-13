@@ -145,8 +145,6 @@ export function byNewest(a: LifeUpdate, b: LifeUpdate): number {
   return time(b) - time(a);
 }
 
-export { addTags } from "@/lib/tag-input";
-
 /** Title, body and tags, lowercased, for a plain substring search. */
 export function matchesSearch(update: LifeUpdate, term: string): boolean {
   const needle = term.trim().toLowerCase();

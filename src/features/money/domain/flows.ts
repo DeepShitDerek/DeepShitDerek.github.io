@@ -3,7 +3,7 @@ import type { Transaction } from "./ledger";
 
 /**
  * What came in and what went out over a period, in the base currency
- * (V2-080). The same rules as `money_day_flows` in SQL:
+ *. The same rules as `money_day_flows` in SQL:
  *
  * - income is `income` transactions;
  * - spending is expenses, less refunds, plus the fees on transfers;
@@ -29,7 +29,10 @@ export interface PeriodFlows {
 }
 
 export function periodFlows(
-  transactions: readonly Pick<Transaction, "date" | "kind" | "status" | "postings">[],
+  transactions: readonly Pick<
+    Transaction,
+    "date" | "kind" | "status" | "postings"
+  >[],
   from: IsoDate,
   to: IsoDate,
 ): PeriodFlows {
@@ -51,11 +54,19 @@ export function periodFlows(
       }
       if (txn.kind === "income") {
         income += posting.baseAmountMinor;
-        incomeByCategory.set(posting.categoryId, (incomeByCategory.get(posting.categoryId) ?? 0) + posting.baseAmountMinor);
+        incomeByCategory.set(
+          posting.categoryId,
+          (incomeByCategory.get(posting.categoryId) ?? 0) +
+            posting.baseAmountMinor,
+        );
       } else {
         // expense (negative), refund (positive), fee (negative)
         spending -= posting.baseAmountMinor;
-        spendingByCategory.set(posting.categoryId, (spendingByCategory.get(posting.categoryId) ?? 0) - posting.baseAmountMinor);
+        spendingByCategory.set(
+          posting.categoryId,
+          (spendingByCategory.get(posting.categoryId) ?? 0) -
+            posting.baseAmountMinor,
+        );
       }
     }
   }

@@ -55,7 +55,7 @@ export interface TaskCardProps {
   /** Set by the board so a drop on a card reorders within its column. */
   onDragOver?: (event: React.DragEvent<HTMLElement>) => void;
   onDrop?: (event: React.DragEvent<HTMLElement>) => void;
-  /** Reorder within the column without dragging (WCAG 2.5.7, V2-060); absent at the ends. */
+  /** Reorder within the column without dragging (WCAG 2.5.7); absent at the ends. */
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   className?: string;
@@ -153,8 +153,14 @@ export function TaskCard({
                 <Play className="mr-2 size-4" aria-hidden /> Start focus timer
               </DropdownMenuItem>
               {(onMoveUp || onMoveDown) && <DropdownMenuSeparator />}
-              {onMoveUp && <DropdownMenuItem onSelect={onMoveUp}>Move up</DropdownMenuItem>}
-              {onMoveDown && <DropdownMenuItem onSelect={onMoveDown}>Move down</DropdownMenuItem>}
+              {onMoveUp && (
+                <DropdownMenuItem onSelect={onMoveUp}>Move up</DropdownMenuItem>
+              )}
+              {onMoveDown && (
+                <DropdownMenuItem onSelect={onMoveDown}>
+                  Move down
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               {TASK_STATUSES.filter((s) => s !== task.status).map((status) => (
                 <DropdownMenuItem

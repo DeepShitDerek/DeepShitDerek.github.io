@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { config as appConfig } from "@/lib/config";
 
 /**
- * Open Graph + Twitter tags for one public page (V2-045).
+ * Open Graph + Twitter tags for one public page.
  *
  * Every page needs its own: Next replaces a parent's `openGraph` object
  * wholesale rather than merging it, so a site-wide default image set in the

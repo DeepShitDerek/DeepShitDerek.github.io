@@ -15,7 +15,13 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const { useSetTaskStatus } = await import("./use-task-status");
 
-const weekly = { id: "t1", title: "Water plants", status: "todo", due_date: "2026-09-25", recurrence: "weekly" } as Task;
+const weekly = {
+  id: "t1",
+  title: "Water plants",
+  status: "todo",
+  due_date: "2026-09-25",
+  recurrence: "weekly",
+} as Task;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,7 +29,7 @@ beforeEach(() => {
   addTask.mockReturnValue(ok(null));
 });
 
-describe("completing a task from the dashboard (ADM-013)", () => {
+describe("completing a task from the dashboard", () => {
   it("schedules the next repeat, reading the task list it was not given", async () => {
     loadTasks.mockReturnValue(ok([weekly]));
     const { result } = renderHook(() => useSetTaskStatus());
@@ -31,11 +37,21 @@ describe("completing a task from the dashboard (ADM-013)", () => {
       expect(await result.current(weekly, "done")).toBe(true);
     });
     expect(updateTask).toHaveBeenCalledWith({ id: "t1", status: "done" });
-    expect(addTask).toHaveBeenCalledWith(expect.objectContaining({ due_date: "2026-10-02", recurrence_parent_id: "t1" }));
+    expect(addTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        due_date: "2026-10-02",
+        recurrence_parent_id: "t1",
+      }),
+    );
   });
 
   it("does not schedule it twice", async () => {
-    const already = { ...weekly, id: "t2", due_date: "2026-10-02", recurrence_parent_id: "t1" } as Task;
+    const already = {
+      ...weekly,
+      id: "t2",
+      due_date: "2026-10-02",
+      recurrence_parent_id: "t1",
+    } as Task;
     const { result } = renderHook(() => useSetTaskStatus());
     await act(async () => {
       await result.current(weekly, "done", [weekly, already]);
@@ -45,7 +61,9 @@ describe("completing a task from the dashboard (ADM-013)", () => {
   });
 
   it("reports a failed save instead of throwing", async () => {
-    updateTask.mockReturnValue({ unwrap: () => Promise.reject(new Error("offline")) });
+    updateTask.mockReturnValue({
+      unwrap: () => Promise.reject(new Error("offline")),
+    });
     const { result } = renderHook(() => useSetTaskStatus());
     await act(async () => {
       expect(await result.current(weekly, "done")).toBe(false);

@@ -27,7 +27,7 @@ const OVERLAY_TOKENS: Record<string, CalendarColorToken> = {
   transaction_summary: "chart-3",
 };
 
-export function resolveEntryColor(
+function resolveEntryColor(
   entry: CalendarEntry,
   calendarsById: Map<string, Calendar>,
 ): CalendarColorToken {

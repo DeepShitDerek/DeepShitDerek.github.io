@@ -174,7 +174,7 @@ export function SectionDetail({
 
   const savedRef = useRef(section?.content ?? "");
   const sectionIdRef = useRef(section?.id);
-  // The latest text, for saves that run outside a render (ADM-022).
+  // The latest text, for saves that run outside a render.
   const contentRef = useRef(content);
   contentRef.current = content;
   // Saves run one after another, so an older response can never land last.
@@ -284,8 +284,7 @@ export function SectionDetail({
   return (
     <div className="rounded-surface border bg-card">
       {/*
-        The section's header, in the order you scan it (03-workspace-ui.md
-        §2.11): where it is and what it is, its name, then whether it is on
+        The section's header, in the order you scan it: where it is and what it is, its name, then whether it is on
         the site — a switch that says so in words — the live page, and the
         rest behind ⋯. Five icon buttons with tooltips were the only way in.
       */}

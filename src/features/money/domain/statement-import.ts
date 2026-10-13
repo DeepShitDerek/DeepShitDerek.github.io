@@ -5,7 +5,7 @@ import { MoneyError, parseAmount } from "./money";
 import { applyRules, normaliseText } from "./rules";
 
 /**
- * Turning a bank's CSV export into ledger transactions (V2-080).
+ * Turning a bank's CSV export into ledger transactions.
  *
  * Banks disagree on everything: RBC splits the description over two
  * columns and has one amount column per currency (CAD$, USD$), CIBC and TD
@@ -42,8 +42,19 @@ export interface ColumnMapping {
 }
 
 const MONTHS: Record<string, number> = {
-  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
-  jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  sept: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
 };
 
 function year(text: string): number {
@@ -66,7 +77,10 @@ function safeDate(y: number, m: number, d: number): IsoDate | null {
  * themselves ("05-Feb-2026", "Feb 5, 2026"), as do four-digit leading years
  * and compact 20260205.
  */
-export function parseStatementDate(raw: string, order: DateOrder): IsoDate | null {
+export function parseStatementDate(
+  raw: string,
+  order: DateOrder,
+): IsoDate | null {
   const text = raw.trim().replace(/,/g, " ").replace(/\s+/g, " ");
   if (!text) return null;
 
@@ -76,14 +90,21 @@ export function parseStatementDate(raw: string, order: DateOrder): IsoDate | nul
   // A time after the date ("2026-02-05 14:03:00") is not part of the day.
   const dateOnly = text.split(/[ T](?=\d{1,2}:\d{2})/)[0];
 
-  const named = /^(\d{1,2})[\s\-./]?([A-Za-z]{3,9})[\s\-./]?(\d{2,4})$/.exec(dateOnly);
+  const named = /^(\d{1,2})[\s\-./]?([A-Za-z]{3,9})[\s\-./]?(\d{2,4})$/.exec(
+    dateOnly,
+  );
   if (named) {
-    const month = MONTHS[named[2].slice(0, 4).toLowerCase()] ?? MONTHS[named[2].slice(0, 3).toLowerCase()];
+    const month =
+      MONTHS[named[2].slice(0, 4).toLowerCase()] ??
+      MONTHS[named[2].slice(0, 3).toLowerCase()];
     return month ? safeDate(year(named[3]), month, +named[1]) : null;
   }
-  const namedFirst = /^([A-Za-z]{3,9})[\s\-./]?(\d{1,2})[\s\-./]+(\d{2,4})$/.exec(dateOnly);
+  const namedFirst =
+    /^([A-Za-z]{3,9})[\s\-./]?(\d{1,2})[\s\-./]+(\d{2,4})$/.exec(dateOnly);
   if (namedFirst) {
-    const month = MONTHS[namedFirst[1].slice(0, 4).toLowerCase()] ?? MONTHS[namedFirst[1].slice(0, 3).toLowerCase()];
+    const month =
+      MONTHS[namedFirst[1].slice(0, 4).toLowerCase()] ??
+      MONTHS[namedFirst[1].slice(0, 3).toLowerCase()];
     return month ? safeDate(year(namedFirst[3]), month, +namedFirst[2]) : null;
   }
 
@@ -122,19 +143,38 @@ export function detectDateOrder(
     // Year-first or month-named dates parse under every order: not ambiguous.
     return { order: "ymd", ambiguous: false };
   }
-  const preferred: DateOrder = country === "CA" || country === "US" ? "mdy" : "dmy";
+  const preferred: DateOrder =
+    country === "CA" || country === "US" ? "mdy" : "dmy";
   if (fits.length === 1) return { order: fits[0], ambiguous: false };
-  return { order: fits.includes(preferred) ? preferred : fits[0], ambiguous: true };
+  return {
+    order: fits.includes(preferred) ? preferred : fits[0],
+    ambiguous: true,
+  };
 }
 
 // In order: a "Dr/Cr" header has to be claimed as the direction before the
 // debit and credit words can take it.
 const HEADER_WORDS: { key: keyof ColumnMapping; pattern: RegExp }[] = [
-  { key: "direction", pattern: /dr\s*\/\s*cr|cr\s*\/\s*dr|debit\s*\/\s*credit|^type$/i },
-  { key: "date", pattern: /(transaction|txn|trans\.?|posted|posting|booking)?\s*date|^date/i },
-  { key: "description", pattern: /desc|narration|details|particulars|merchant|payee|memo|remark/i },
-  { key: "debit", pattern: /debit|withdrawal|money out|paid out|\bdr\b|spent/i },
-  { key: "credit", pattern: /credit|deposit|money in|paid in|\bcr\b|received/i },
+  {
+    key: "direction",
+    pattern: /dr\s*\/\s*cr|cr\s*\/\s*dr|debit\s*\/\s*credit|^type$/i,
+  },
+  {
+    key: "date",
+    pattern: /(transaction|txn|trans\.?|posted|posting|booking)?\s*date|^date/i,
+  },
+  {
+    key: "description",
+    pattern: /desc|narration|details|particulars|merchant|payee|memo|remark/i,
+  },
+  {
+    key: "debit",
+    pattern: /debit|withdrawal|money out|paid out|\bdr\b|spent/i,
+  },
+  {
+    key: "credit",
+    pattern: /credit|deposit|money in|paid in|\bcr\b|received/i,
+  },
   { key: "amount", pattern: /amount|amt|cad\$|^value$|^inr|^cad$/i },
 ];
 
@@ -199,7 +239,10 @@ export function guessMapping(
     for (const { key, pattern } of HEADER_WORDS) {
       // "Value date" is when interest counts, not when it happened.
       const index = first.findIndex(
-        (cell, i) => !taken.has(i) && pattern.test(cell) && !(key === "date" && /value/i.test(cell)),
+        (cell, i) =>
+          !taken.has(i) &&
+          pattern.test(cell) &&
+          !(key === "date" && /value/i.test(cell)),
       );
       if (index === -1) continue;
       if (key === "description" && mapping.description !== -1) continue;
@@ -207,7 +250,9 @@ export function guessMapping(
       taken.add(index);
       (mapping[key] as number) = index;
       if (key === "description") {
-        const extra = first.findIndex((cell, i) => i !== index && !taken.has(i) && pattern.test(cell));
+        const extra = first.findIndex(
+          (cell, i) => i !== index && !taken.has(i) && pattern.test(cell),
+        );
         if (extra !== -1) {
           mapping.descriptionExtra = extra;
           taken.add(extra);
@@ -219,10 +264,24 @@ export function guessMapping(
     }
     // RBC: "CAD$" and "USD$" — the account's own currency column wins.
     const currency = options.currency?.toUpperCase();
-    const own = currency ? first.findIndex((cell) => cell.replace(/[^A-Za-z]/g, "").toUpperCase() === currency) : -1;
-    if (own !== -1 && mapping.debit === null && mapping.credit === null && own !== mapping.date) mapping.amount = own;
-    if (mapping.debit !== null && mapping.credit !== null) mapping.amount = null;
-    else if (mapping.amount === null && (mapping.debit !== null || mapping.credit !== null)) {
+    const own = currency
+      ? first.findIndex(
+          (cell) => cell.replace(/[^A-Za-z]/g, "").toUpperCase() === currency,
+        )
+      : -1;
+    if (
+      own !== -1 &&
+      mapping.debit === null &&
+      mapping.credit === null &&
+      own !== mapping.date
+    )
+      mapping.amount = own;
+    if (mapping.debit !== null && mapping.credit !== null)
+      mapping.amount = null;
+    else if (
+      mapping.amount === null &&
+      (mapping.debit !== null || mapping.credit !== null)
+    ) {
       mapping.amount = mapping.debit ?? mapping.credit;
       mapping.debit = null;
       mapping.credit = null;
@@ -231,22 +290,50 @@ export function guessMapping(
 
   // Fill anything the header did not settle from the cells themselves.
   if (mapping.date === -1) {
-    mapping.date = [...Array(width).keys()].find((i) => detectDateOrder(column(i), country) !== null) ?? -1;
+    mapping.date =
+      [...Array(width).keys()].find(
+        (i) => detectDateOrder(column(i), country) !== null,
+      ) ?? -1;
   }
   if (mapping.date === -1) return null;
   const numeric = [...Array(width).keys()].filter(
-    (i) => i !== mapping.date && column(i).some((cell) => isAmount(cell)) && column(i).every((cell) => !cell.trim() || isAmount(cell)),
+    (i) =>
+      i !== mapping.date &&
+      column(i).some((cell) => isAmount(cell)) &&
+      column(i).every((cell) => !cell.trim() || isAmount(cell)),
   );
-  if (mapping.amount === null && mapping.debit === null && mapping.credit === null) {
-    const sparse = numeric.filter((i) => column(i).some((cell) => !cell.trim()));
-    const blank = (i: number) => i >= 0 && i < width && i !== mapping.date && column(i).every((cell) => !cell.trim());
-    const unsigned = (i: number) => column(i).every((cell) => !cell.trim() || (signedMinor(cell) ?? -1) >= 0);
+  if (
+    mapping.amount === null &&
+    mapping.debit === null &&
+    mapping.credit === null
+  ) {
+    const sparse = numeric.filter((i) =>
+      column(i).some((cell) => !cell.trim()),
+    );
+    const blank = (i: number) =>
+      i >= 0 &&
+      i < width &&
+      i !== mapping.date &&
+      column(i).every((cell) => !cell.trim());
+    const unsigned = (i: number) =>
+      column(i).every((cell) => !cell.trim() || (signedMinor(cell) ?? -1) >= 0);
     if (sparse.length >= 2) {
       [mapping.debit, mapping.credit] = [sparse[0], sparse[1]];
-    } else if (numeric.length > 0 && !hasHeader && unsigned(numeric[0]) && blank(numeric[0] + 1)) {
+    } else if (
+      numeric.length > 0 &&
+      !hasHeader &&
+      unsigned(numeric[0]) &&
+      blank(numeric[0] + 1)
+    ) {
       // CIBC with only money out in this file: the money-in column is empty.
       [mapping.debit, mapping.credit] = [numeric[0], numeric[0] + 1];
-    } else if (numeric.length > 0 && !hasHeader && unsigned(numeric[0]) && blank(numeric[0] - 1) && numeric[0] - 1 !== mapping.description) {
+    } else if (
+      numeric.length > 0 &&
+      !hasHeader &&
+      unsigned(numeric[0]) &&
+      blank(numeric[0] - 1) &&
+      numeric[0] - 1 !== mapping.description
+    ) {
       // …or only money in: the money-out column before it is empty.
       [mapping.debit, mapping.credit] = [numeric[0] - 1, numeric[0]];
     } else if (numeric.length > 0) {
@@ -256,19 +343,32 @@ export function guessMapping(
     }
   }
   if (mapping.description === -1) {
-    const used = new Set([mapping.date, mapping.amount, mapping.debit, mapping.credit, mapping.direction]);
+    const used = new Set([
+      mapping.date,
+      mapping.amount,
+      mapping.debit,
+      mapping.credit,
+      mapping.direction,
+    ]);
     const text = [...Array(width).keys()]
       .filter((i) => !used.has(i) && !numeric.includes(i))
-      .map((i) => ({ i, length: column(i).reduce((total, cell) => total + cell.length, 0) }))
+      .map((i) => ({
+        i,
+        length: column(i).reduce((total, cell) => total + cell.length, 0),
+      }))
       .sort((a, b) => b.length - a.length);
     if (text.length === 0) return null;
     mapping.description = text[0].i;
   }
 
-  mapping.dateOrder = detectDateOrder(column(mapping.date), country)?.order ?? "dmy";
+  mapping.dateOrder =
+    detectDateOrder(column(mapping.date), country)?.order ?? "dmy";
   if (options.card && mapping.amount !== null && mapping.direction === null) {
-    const amounts = column(mapping.amount).map(signedMinor).filter((n): n is number => n !== null && n !== 0);
-    mapping.invertSign = amounts.filter((n) => n > 0).length > amounts.length / 2;
+    const amounts = column(mapping.amount)
+      .map(signedMinor)
+      .filter((n): n is number => n !== null && n !== 0);
+    mapping.invertSign =
+      amounts.filter((n) => n > 0).length > amounts.length / 2;
   }
   return mapping;
 }
@@ -315,28 +415,47 @@ export function readStatement(
   for (let r = start; r < rows.length; r += 1) {
     const cells = rows[r];
     const line = r + 1;
-    const date = parseStatementDate(cells[mapping.date] ?? "", mapping.dateOrder);
+    const date = parseStatementDate(
+      cells[mapping.date] ?? "",
+      mapping.dateOrder,
+    );
     if (!date) {
-      problems.push({ line, message: `"${cells[mapping.date] ?? ""}" is not a date` });
+      problems.push({
+        line,
+        message: `"${cells[mapping.date] ?? ""}" is not a date`,
+      });
       continue;
     }
 
     let amount: number;
     try {
       if (mapping.amount !== null) {
-        amount = parseAmount(cells[mapping.amount] ?? "", options.currency).minor;
+        amount = parseAmount(
+          cells[mapping.amount] ?? "",
+          options.currency,
+        ).minor;
       } else {
-        const out = cells[mapping.debit ?? -1]?.trim() ? parseAmount(cells[mapping.debit!], options.currency).minor : 0;
-        const inn = cells[mapping.credit ?? -1]?.trim() ? parseAmount(cells[mapping.credit!], options.currency).minor : 0;
+        const out = cells[mapping.debit ?? -1]?.trim()
+          ? parseAmount(cells[mapping.debit!], options.currency).minor
+          : 0;
+        const inn = cells[mapping.credit ?? -1]?.trim()
+          ? parseAmount(cells[mapping.credit!], options.currency).minor
+          : 0;
         amount = Math.abs(inn) - Math.abs(out);
       }
       if (mapping.direction !== null) {
         const marker = (cells[mapping.direction] ?? "").trim().toLowerCase();
-        if (/^(dr|debit|d|withdrawal)$/.test(marker)) amount = -Math.abs(amount);
-        else if (/^(cr|credit|c|deposit)$/.test(marker)) amount = Math.abs(amount);
+        if (/^(dr|debit|d|withdrawal)$/.test(marker))
+          amount = -Math.abs(amount);
+        else if (/^(cr|credit|c|deposit)$/.test(marker))
+          amount = Math.abs(amount);
       }
     } catch (error) {
-      problems.push({ line, message: error instanceof MoneyError ? error.message : "Unreadable amount" });
+      problems.push({
+        line,
+        message:
+          error instanceof MoneyError ? error.message : "Unreadable amount",
+      });
       continue;
     }
     if (mapping.invertSign) amount = -amount;
@@ -345,7 +464,10 @@ export function readStatement(
       continue;
     }
 
-    const description = [cells[mapping.description], mapping.descriptionExtra !== null ? cells[mapping.descriptionExtra] : ""]
+    const description = [
+      cells[mapping.description],
+      mapping.descriptionExtra !== null ? cells[mapping.descriptionExtra] : "",
+    ]
       .map((part) => (part ?? "").trim())
       .filter(Boolean)
       .join(" ")

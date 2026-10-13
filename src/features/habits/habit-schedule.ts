@@ -11,7 +11,7 @@ import type { Habit } from "@/types";
  */
 
 /** ISO weekday, 1 = Monday … 7 = Sunday. */
-export function isoWeekday(iso: string): number {
+function isoWeekday(iso: string): number {
   const [y, m, d] = iso.split("-").map(Number);
   const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0 = Sunday
   return day === 0 ? 7 : day;

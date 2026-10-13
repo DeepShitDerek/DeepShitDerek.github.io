@@ -16,7 +16,7 @@ import type { Calendar } from "@/types";
 /** Radix reserves the empty string for "nothing selected". */
 export const NONE = "none";
 
-export const FREQUENCIES: { value: string; label: string }[] = [
+const FREQUENCIES: { value: string; label: string }[] = [
   { value: NONE, label: "Does not repeat" },
   { value: "FREQ=DAILY", label: "Daily" },
   { value: "FREQ=WEEKLY", label: "Weekly" },

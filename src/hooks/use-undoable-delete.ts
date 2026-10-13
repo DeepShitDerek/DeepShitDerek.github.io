@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 /** How long the Undo stays offered. Sonner pauses it while hovered or focused. */
-export const UNDO_MS = 6000;
+const UNDO_MS = 6000;
 
 /**
- * Delete with Undo instead of "Are you sure?" (P1-10, S07).
+ * Delete with Undo instead of "Are you sure?".
  *
  * The item leaves the list at once and a toast offers Undo. The real delete
  * runs only when the toast closes on its own or is dismissed, so Undo is a

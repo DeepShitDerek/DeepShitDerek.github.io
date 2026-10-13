@@ -3,7 +3,7 @@ import { type RateTable } from "./fx";
 import { convert, type Money, money } from "./money";
 
 /**
- * The ledger (V2-080): accounts, transactions, postings, and every balance
+ * The ledger: accounts, transactions, postings, and every balance
  * derived from them. Mirrors the `money_*` tables and — for validation —
  * `money_check_transaction` in db/schema.sql rule for rule, so a form can
  * say what is wrong before the database refuses it. `ledger.test.ts` runs
@@ -51,17 +51,27 @@ export const CANADIAN_REGISTRATIONS: readonly Registration[] = [
   "rrif",
   "lira",
 ];
-export const INDIAN_REGISTRATIONS: readonly Registration[] = ["nre", "nro", "fcnr", "ppf", "epf"];
+export const INDIAN_REGISTRATIONS: readonly Registration[] = [
+  "nre",
+  "nro",
+  "fcnr",
+  "ppf",
+  "epf",
+];
 
-export const LIABILITY_KINDS: readonly AccountKind[] = [
+const LIABILITY_KINDS: readonly AccountKind[] = [
   "credit_card",
   "line_of_credit",
   "loan",
   "mortgage",
 ];
-export const CREDIT_KINDS: readonly AccountKind[] = ["credit_card", "line_of_credit"];
+export const CREDIT_KINDS: readonly AccountKind[] = [
+  "credit_card",
+  "line_of_credit",
+];
 
-export const isLiability = (kind: AccountKind): boolean => LIABILITY_KINDS.includes(kind);
+export const isLiability = (kind: AccountKind): boolean =>
+  LIABILITY_KINDS.includes(kind);
 
 export interface Account {
   id: string;
@@ -82,7 +92,13 @@ export interface Account {
   archivedAt: string | null;
 }
 
-export const TRANSACTION_KINDS = ["expense", "income", "refund", "transfer", "adjustment"] as const;
+export const TRANSACTION_KINDS = [
+  "expense",
+  "income",
+  "refund",
+  "transfer",
+  "adjustment",
+] as const;
 export type TransactionKind = (typeof TRANSACTION_KINDS)[number];
 export type TransactionStatus = "pending" | "cleared" | "reconciled";
 
@@ -116,17 +132,32 @@ export interface Transaction {
 export function validateAccount(
   account: Pick<
     Account,
-    "name" | "kind" | "registration" | "country" | "currency" | "creditLimitMinor" | "statementDay" | "paymentDueDay"
+    | "name"
+    | "kind"
+    | "registration"
+    | "country"
+    | "currency"
+    | "creditLimitMinor"
+    | "statementDay"
+    | "paymentDueDay"
   >,
 ): string[] {
   const problems: string[] = [];
   const name = account.name.trim();
-  if (name.length < 1 || name.length > 120) problems.push("Give the account a name (up to 120 characters).");
+  if (name.length < 1 || name.length > 120)
+    problems.push("Give the account a name (up to 120 characters).");
   if (!/^[A-Z]{3}$/.test(account.currency)) problems.push("Choose a currency.");
   if (!/^[A-Z]{2}$/.test(account.country)) problems.push("Choose a country.");
   const credit = CREDIT_KINDS.includes(account.kind);
-  if (!credit && (account.creditLimitMinor != null || account.statementDay != null || account.paymentDueDay != null)) {
-    problems.push("Only cards and lines of credit have a limit, statement day or due day.");
+  if (
+    !credit &&
+    (account.creditLimitMinor != null ||
+      account.statementDay != null ||
+      account.paymentDueDay != null)
+  ) {
+    problems.push(
+      "Only cards and lines of credit have a limit, statement day or due day.",
+    );
   }
   if (account.creditLimitMinor != null && !(account.creditLimitMinor > 0)) {
     problems.push("A credit limit has to be more than zero.");
@@ -138,14 +169,26 @@ export function validateAccount(
     }
   }
   if (account.registration !== "none") {
-    if (CANADIAN_REGISTRATIONS.includes(account.registration) && account.country !== "CA") {
-      problems.push(`A ${account.registration.toUpperCase()} is a Canadian account.`);
+    if (
+      CANADIAN_REGISTRATIONS.includes(account.registration) &&
+      account.country !== "CA"
+    ) {
+      problems.push(
+        `A ${account.registration.toUpperCase()} is a Canadian account.`,
+      );
     }
-    if (INDIAN_REGISTRATIONS.includes(account.registration) && account.country !== "IN") {
-      problems.push(`An ${account.registration.toUpperCase()} account is Indian.`);
+    if (
+      INDIAN_REGISTRATIONS.includes(account.registration) &&
+      account.country !== "IN"
+    ) {
+      problems.push(
+        `An ${account.registration.toUpperCase()} account is Indian.`,
+      );
     }
     if (!["chequing", "savings", "investment", "cash"].includes(account.kind)) {
-      problems.push("Only bank, savings, cash or investment accounts can be registered.");
+      problems.push(
+        "Only bank, savings, cash or investment accounts can be registered.",
+      );
     }
   }
   return problems;
@@ -156,7 +199,10 @@ export function validateAccount(
  * `money_check_transaction`, worded for a form. Empty means it will save.
  */
 export function validateTransaction(
-  txn: Pick<Transaction, "date" | "kind" | "description" | "postings" | "marketRate">,
+  txn: Pick<
+    Transaction,
+    "date" | "kind" | "description" | "postings" | "marketRate"
+  >,
   accounts: ReadonlyMap<string, Pick<Account, "openingDate" | "currency">>,
 ): string[] {
   const problems: string[] = [];
@@ -165,8 +211,10 @@ export function validateTransaction(
   if (description.length < 1 || description.length > 200) {
     problems.push("Describe the transaction (up to 200 characters).");
   }
-  if (postings.length === 0) return [...problems, "A transaction needs at least one amount."];
-  if (postings.length > 50) problems.push("At most 50 lines in one transaction.");
+  if (postings.length === 0)
+    return [...problems, "A transaction needs at least one amount."];
+  if (postings.length > 50)
+    problems.push("At most 50 lines in one transaction.");
 
   for (const posting of postings) {
     const account = accounts.get(posting.accountId);
@@ -174,12 +222,17 @@ export function validateTransaction(
       problems.push("Choose an account for every line.");
       break;
     }
-    if (!Number.isSafeInteger(posting.amountMinor) || posting.amountMinor === 0) {
+    if (
+      !Number.isSafeInteger(posting.amountMinor) ||
+      posting.amountMinor === 0
+    ) {
       problems.push("Every line needs an amount other than zero.");
       break;
     }
     if (txn.date < account.openingDate) {
-      problems.push(`An account can't have transactions before it was opened (${account.openingDate}).`);
+      problems.push(
+        `An account can't have transactions before it was opened (${account.openingDate}).`,
+      );
       break;
     }
     if ((posting.fxRate == null) !== (posting.baseAmountMinor == null)) {
@@ -199,15 +252,18 @@ export function validateTransaction(
 
   switch (kind) {
     case "expense":
-      if (accountIds.size !== 1) problems.push("An expense comes out of one account.");
+      if (accountIds.size !== 1)
+        problems.push("An expense comes out of one account.");
       if (net >= 0) problems.push("An expense has to take money out.");
       break;
     case "income":
-      if (accountIds.size !== 1) problems.push("Income arrives in one account.");
+      if (accountIds.size !== 1)
+        problems.push("Income arrives in one account.");
       if (net <= 0) problems.push("Income has to bring money in.");
       break;
     case "refund":
-      if (accountIds.size !== 1) problems.push("A refund arrives in one account.");
+      if (accountIds.size !== 1)
+        problems.push("A refund arrives in one account.");
       if (net <= 0) problems.push("A refund has to bring money in.");
       break;
     case "adjustment":
@@ -221,15 +277,25 @@ export function validateTransaction(
         problems.push("A transfer moves money between two different accounts.");
         break;
       }
-      if (!legs.some((p) => p.amountMinor > 0) || !legs.some((p) => p.amountMinor < 0)) {
-        problems.push("A transfer needs money leaving one account and arriving in another.");
+      if (
+        !legs.some((p) => p.amountMinor > 0) ||
+        !legs.some((p) => p.amountMinor < 0)
+      ) {
+        problems.push(
+          "A transfer needs money leaving one account and arriving in another.",
+        );
       }
-      const currencies = new Set(legs.map((p) => accounts.get(p.accountId)!.currency));
+      const currencies = new Set(
+        legs.map((p) => accounts.get(p.accountId)!.currency),
+      );
       const legNet = legs.reduce((total, p) => total + p.amountMinor, 0);
       if (currencies.size === 1 && legNet !== 0) {
-        problems.push("A transfer in one currency has to balance: what leaves must arrive.");
+        problems.push(
+          "A transfer in one currency has to balance: what leaves must arrive.",
+        );
       }
-      if (fees.some((p) => p.amountMinor > 0)) problems.push("A transfer fee takes money out.");
+      if (fees.some((p) => p.amountMinor > 0))
+        problems.push("A transfer fee takes money out.");
       break;
     }
   }
@@ -241,10 +307,9 @@ export function validateTransaction(
  * then anything spendable in it, then anything open. Never simply the first
  * alphabetically — that put a grocery run on an Indian savings account.
  */
-export function everydayAccount<A extends Pick<Account, "kind" | "currency" | "isLiquid" | "archivedAt">>(
-  accounts: readonly A[],
-  base: string,
-): A | undefined {
+export function everydayAccount<
+  A extends Pick<Account, "kind" | "currency" | "isLiquid" | "archivedAt">,
+>(accounts: readonly A[], base: string): A | undefined {
   const open = accounts.filter((a) => !a.archivedAt);
   return (
     open.find((a) => a.kind === "chequing" && a.currency === base) ??
@@ -316,7 +381,11 @@ export function register<T extends Pick<Transaction, "date" | "postings">>(
       touches: transaction.postings.some((p) => p.accountId === account.id),
     }))
     .filter((line) => line.touches)
-    .sort((a, b) => a.transaction.date.localeCompare(b.transaction.date) || a.index - b.index);
+    .sort(
+      (a, b) =>
+        a.transaction.date.localeCompare(b.transaction.date) ||
+        a.index - b.index,
+    );
 
   let running = account.openingBalanceMinor;
   return touching.map(({ transaction, changeMinor }) => {
@@ -342,7 +411,10 @@ export interface Valuation {
  * rate of the day asked about — that is what it is worth then.
  */
 export function valuation(
-  accounts: readonly Pick<Account, "id" | "kind" | "country" | "currency" | "inNetWorth" | "archivedAt">[],
+  accounts: readonly Pick<
+    Account,
+    "id" | "kind" | "country" | "currency" | "inNetWorth" | "archivedAt"
+  >[],
   balanceByAccount: ReadonlyMap<string, Balance>,
   base: string,
   on: IsoDate,
@@ -359,20 +431,32 @@ export function valuation(
     if (!balance || balance.balanceMinor === 0) continue;
     const quote = rates.quote(account.currency, base, on);
     if (!quote) {
-      unpriced.set(account.currency, (unpriced.get(account.currency) ?? 0) + balance.balanceMinor);
+      unpriced.set(
+        account.currency,
+        (unpriced.get(account.currency) ?? 0) + balance.balanceMinor,
+      );
       continue;
     }
-    const inBase = convert(money(balance.balanceMinor, account.currency), quote.rate, base).minor;
+    const inBase = convert(
+      money(balance.balanceMinor, account.currency),
+      quote.rate,
+      base,
+    ).minor;
     if (inBase >= 0) assets += inBase;
     else liabilities += inBase;
-    byCountry.set(account.country, (byCountry.get(account.country) ?? 0) + inBase);
+    byCountry.set(
+      account.country,
+      (byCountry.get(account.country) ?? 0) + inBase,
+    );
   }
 
   return {
     total: money(assets + liabilities, base),
     assets: money(assets, base),
     liabilities: money(liabilities, base),
-    byCountry: new Map([...byCountry].map(([country, minor]) => [country, money(minor, base)])),
+    byCountry: new Map(
+      [...byCountry].map(([country, minor]) => [country, money(minor, base)]),
+    ),
     unpriced: [...unpriced].map(([currency, minor]) => money(minor, currency)),
   };
 }
@@ -392,7 +476,10 @@ export interface Utilisation {
  * scores. Cards without a limit are left out rather than divided by zero.
  */
 export function creditUtilisation(
-  accounts: readonly Pick<Account, "id" | "kind" | "creditLimitMinor" | "currency" | "archivedAt">[],
+  accounts: readonly Pick<
+    Account,
+    "id" | "kind" | "creditLimitMinor" | "currency" | "archivedAt"
+  >[],
   balanceByAccount: ReadonlyMap<string, Balance>,
 ): { cards: Utilisation[]; overallRatio: number | null } {
   const cards: Utilisation[] = [];
@@ -410,7 +497,9 @@ export function creditUtilisation(
   }
   // Overall is only meaningful in one currency; mixed cards are reported per card.
   const currencies = new Set(
-    cards.map((card) => accounts.find((a) => a.id === card.accountId)!.currency),
+    cards.map(
+      (card) => accounts.find((a) => a.id === card.accountId)!.currency,
+    ),
   );
   const limit = cards.reduce((total, card) => total + card.limitMinor, 0);
   const used = cards.reduce((total, card) => total + card.usedMinor, 0);
@@ -418,11 +507,4 @@ export function creditUtilisation(
     cards,
     overallRatio: currencies.size === 1 && limit > 0 ? used / limit : null,
   };
-}
-
-/** The account's balance on the posting's side of a transaction. */
-export function netForAccount(txn: Pick<Transaction, "postings">, accountId: string): number {
-  return txn.postings
-    .filter((p) => p.accountId === accountId)
-    .reduce((total, p) => total + p.amountMinor, 0);
 }

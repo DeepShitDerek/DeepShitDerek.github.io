@@ -781,7 +781,7 @@ export function ItemEditorSheet({
             )}
 
             {/*
-              ── Case study page (V2-042) ──
+              ── Case study page ──
 
               Any item can have one; the case-study layout and the home page's
               Selected work link to it. There is no draft state for items, so

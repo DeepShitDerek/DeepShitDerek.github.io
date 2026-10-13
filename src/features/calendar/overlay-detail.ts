@@ -34,7 +34,7 @@ const num = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
 /** Sentence-case a database enum for display: `in_progress` → `In progress`. */
-export function humanise(value: string): string {
+function humanise(value: string): string {
   const spaced = value.replace(/[_-]+/g, " ").trim();
   if (!spaced) return value;
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
@@ -92,7 +92,7 @@ export function detailRows(entry: CalendarEntry): DetailRow[] {
 }
 
 /** `90` → `1h 30m`. Minutes alone stop being readable somewhere around 200. */
-export function formatMinutes(minutes: number): string {
+function formatMinutes(minutes: number): string {
   const whole = Math.round(minutes);
   if (whole < 60) return `${whole}m`;
 

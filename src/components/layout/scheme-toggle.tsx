@@ -5,7 +5,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { cn } from "@/lib/cn";
 
 /**
- * A visitor's light/dark switch (owner decision: "light/dark toggle", not the
+ * A visitor's light/dark switch (a light/dark toggle, not the
  * full preset list). It swaps the owner's theme for its partner in the other
  * scheme, or the core Field Notes pair when it has none, and remembers the
  * choice in this browser only.
@@ -16,7 +16,10 @@ import { cn } from "@/lib/cn";
  */
 export function SchemeToggle({ className }: { className?: string }) {
   const { scheme, setScheme } = useColorScheme();
-  const box = cn("size-10 shrink-0 [@media(pointer:coarse)]:size-11", className);
+  const box = cn(
+    "size-10 shrink-0 [@media(pointer:coarse)]:size-11",
+    className,
+  );
 
   if (!scheme) return <span aria-hidden className={box} />;
 

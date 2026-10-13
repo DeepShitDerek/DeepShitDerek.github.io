@@ -11,7 +11,7 @@ import type { Graph, GraphEdge, GraphNode, Point } from "./types";
  * quietly wire itself back into the map it came from.
  */
 
-export const CLIP_KIND = "foliokit/maps-clip";
+const CLIP_KIND = "foliokit/maps-clip";
 
 export interface Clip {
   kind: typeof CLIP_KIND;

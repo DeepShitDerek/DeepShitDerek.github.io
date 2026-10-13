@@ -16,7 +16,7 @@ import type { Account, Posting, Transaction } from "./ledger";
 import { money } from "./money";
 
 /**
- * Recurring schedules (V2-080): which days something is due, what is still
+ * Recurring schedules: which days something is due, what is still
  * waiting to be recorded, and the transaction a due occurrence becomes.
  *
  * Month-based schedules are anchored to the start date's day, so "the 31st"
@@ -25,7 +25,15 @@ import { money } from "./money";
  * day", whatever the month.
  */
 
-export const FREQUENCIES = ["once", "weekly", "biweekly", "semimonthly", "monthly", "quarterly", "yearly"] as const;
+export const FREQUENCIES = [
+  "once",
+  "weekly",
+  "biweekly",
+  "semimonthly",
+  "monthly",
+  "quarterly",
+  "yearly",
+] as const;
 export type Frequency = (typeof FREQUENCIES)[number];
 export type ScheduleKind = "expense" | "income" | "transfer";
 
@@ -59,7 +67,10 @@ function clampDay(year: number, month: number, day: number): IsoDate {
 
 /** Every due date from `from` to `to` inclusive, oldest first. */
 export function occurrences(
-  schedule: Pick<Schedule, "frequency" | "startDate" | "endDate" | "dayOne" | "dayTwo">,
+  schedule: Pick<
+    Schedule,
+    "frequency" | "startDate" | "endDate" | "dayOne" | "dayTwo"
+  >,
   from: IsoDate,
   to: IsoDate,
 ): IsoDate[] {
@@ -69,7 +80,8 @@ export function occurrences(
   if (first > last) return [];
   const out: IsoDate[] = [];
   const push = (date: IsoDate) => {
-    if (date >= first && date <= last && out.length < MAX_OCCURRENCES) out.push(date);
+    if (date >= first && date <= last && out.length < MAX_OCCURRENCES)
+      out.push(date);
   };
 
   switch (schedule.frequency) {
@@ -81,7 +93,11 @@ export function occurrences(
       const step = schedule.frequency === "weekly" ? 7 : 14;
       // Jump straight to the first occurrence at or after `first`.
       const skip = Math.max(0, Math.ceil(daysBetween(start, first) / step));
-      for (let k = skip, date = addDays(start, skip * step); date <= last && out.length < MAX_OCCURRENCES; k += 1, date = addDays(start, k * step)) {
+      for (
+        let k = skip, date = addDays(start, skip * step);
+        date <= last && out.length < MAX_OCCURRENCES;
+        k += 1, date = addDays(start, k * step)
+      ) {
         push(date);
       }
       break;
@@ -89,9 +105,16 @@ export function occurrences(
     case "monthly":
     case "quarterly":
     case "yearly": {
-      const step = schedule.frequency === "monthly" ? 1 : schedule.frequency === "quarterly" ? 3 : 12;
+      const step =
+        schedule.frequency === "monthly"
+          ? 1
+          : schedule.frequency === "quarterly"
+            ? 3
+            : 12;
       const anchor = dayOf(start);
-      const monthsIn = (yearOf(first) - yearOf(start)) * 12 + (monthOf(first) - monthOf(start));
+      const monthsIn =
+        (yearOf(first) - yearOf(start)) * 12 +
+        (monthOf(first) - monthOf(start));
       const skip = Math.max(0, Math.floor(monthsIn / step) - 1);
       for (let k = skip; out.length < MAX_OCCURRENCES; k += 1) {
         const date = addMonths(start, k * step, anchor);
@@ -101,7 +124,9 @@ export function occurrences(
       break;
     }
     case "semimonthly": {
-      const days = [schedule.dayOne ?? 1, schedule.dayTwo ?? 15].sort((a, b) => a - b);
+      const days = [schedule.dayOne ?? 1, schedule.dayTwo ?? 15].sort(
+        (a, b) => a - b,
+      );
       let year = yearOf(first);
       let month = monthOf(first);
       while (out.length < MAX_OCCURRENCES) {
@@ -120,12 +145,19 @@ export function occurrences(
   return out;
 }
 
-export function nextOccurrence(schedule: Schedule, after: IsoDate): IsoDate | null {
-  return occurrences(schedule, addDays(after, 1), addDays(after, 400))[0] ?? null;
+export function nextOccurrence(
+  schedule: Schedule,
+  after: IsoDate,
+): IsoDate | null {
+  return (
+    occurrences(schedule, addDays(after, 1), addDays(after, 400))[0] ?? null
+  );
 }
 
 /** Roughly how much this schedule moves per month, for plans and forecasts. */
-export function monthlyEquivalent(schedule: Pick<Schedule, "frequency" | "amountMinor">): number {
+export function monthlyEquivalent(
+  schedule: Pick<Schedule, "frequency" | "amountMinor">,
+): number {
   const perYear: Record<Frequency, number> = {
     once: 0,
     weekly: 52,
@@ -138,7 +170,7 @@ export function monthlyEquivalent(schedule: Pick<Schedule, "frequency" | "amount
   return Math.round((schedule.amountMinor * perYear[schedule.frequency]) / 12);
 }
 
-export type DueStatus = "overdue" | "today" | "upcoming";
+type DueStatus = "overdue" | "today" | "upcoming";
 
 export interface DueItem {
   schedule: Schedule;
@@ -157,30 +189,56 @@ export function dueQueue(
   transactions: readonly Pick<Transaction, "scheduleId" | "occurrenceDate">[],
   skips: ReadonlySet<string>,
   today: IsoDate,
-  { lookBackDays = 45, lookAheadDays = 14, openingDate }: { lookBackDays?: number; lookAheadDays?: number; openingDate?: (accountId: string) => IsoDate | undefined } = {},
+  {
+    lookBackDays = 45,
+    lookAheadDays = 14,
+    openingDate,
+  }: {
+    lookBackDays?: number;
+    lookAheadDays?: number;
+    openingDate?: (accountId: string) => IsoDate | undefined;
+  } = {},
 ): DueItem[] {
   const recorded = new Set(
-    transactions.filter((t) => t.scheduleId && t.occurrenceDate).map((t) => `${t.scheduleId}|${t.occurrenceDate}`),
+    transactions
+      .filter((t) => t.scheduleId && t.occurrenceDate)
+      .map((t) => `${t.scheduleId}|${t.occurrenceDate}`),
   );
   const items: DueItem[] = [];
   for (const schedule of schedules) {
     if (schedule.archivedAt) continue;
     const opened = openingDate?.(schedule.accountId);
-    const from = opened ? maxDate(opened, addDays(today, -lookBackDays)) : addDays(today, -lookBackDays);
-    for (const dueDate of occurrences(schedule, from, addDays(today, lookAheadDays))) {
+    const from = opened
+      ? maxDate(opened, addDays(today, -lookBackDays))
+      : addDays(today, -lookBackDays);
+    for (const dueDate of occurrences(
+      schedule,
+      from,
+      addDays(today, lookAheadDays),
+    )) {
       const key = `${schedule.id}|${dueDate}`;
       if (recorded.has(key) || skips.has(key)) continue;
       items.push({
         schedule,
         dueDate,
-        status: dueDate < today ? "overdue" : dueDate === today ? "today" : "upcoming",
+        status:
+          dueDate < today
+            ? "overdue"
+            : dueDate === today
+              ? "today"
+              : "upcoming",
       });
     }
   }
-  return items.sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.schedule.name.localeCompare(b.schedule.name));
+  return items.sort(
+    (a, b) =>
+      a.dueDate.localeCompare(b.dueDate) ||
+      a.schedule.name.localeCompare(b.schedule.name),
+  );
 }
 
-export const skipKey = (scheduleId: string, dueDate: IsoDate) => `${scheduleId}|${dueDate}`;
+export const skipKey = (scheduleId: string, dueDate: IsoDate) =>
+  `${scheduleId}|${dueDate}`;
 
 export interface OccurrenceDraft {
   date: IsoDate;
@@ -208,19 +266,45 @@ export function draftFromOccurrence(
   if (!from) return null;
   const priced = (amount: number, currency: string) => {
     const price = priceInBase(money(amount, currency), base, date, rates);
-    return { fxRate: price?.fxRate ?? null, baseAmountMinor: price?.baseAmountMinor ?? null };
+    return {
+      fxRate: price?.fxRate ?? null,
+      baseAmountMinor: price?.baseAmountMinor ?? null,
+    };
   };
   const postings: Posting[] = [];
   if (schedule.kind === "transfer") {
-    const to = schedule.toAccountId ? accounts.get(schedule.toAccountId) : undefined;
+    const to = schedule.toAccountId
+      ? accounts.get(schedule.toAccountId)
+      : undefined;
     if (!to) return null;
-    const arriving = from.currency === to.currency ? schedule.amountMinor : schedule.toAmountMinor;
+    const arriving =
+      from.currency === to.currency
+        ? schedule.amountMinor
+        : schedule.toAmountMinor;
     if (!arriving) return null;
-    postings.push({ accountId: schedule.accountId, categoryId: null, amountMinor: -schedule.amountMinor, ...priced(-schedule.amountMinor, from.currency) });
-    postings.push({ accountId: schedule.toAccountId!, categoryId: null, amountMinor: arriving, ...priced(arriving, to.currency) });
+    postings.push({
+      accountId: schedule.accountId,
+      categoryId: null,
+      amountMinor: -schedule.amountMinor,
+      ...priced(-schedule.amountMinor, from.currency),
+    });
+    postings.push({
+      accountId: schedule.toAccountId!,
+      categoryId: null,
+      amountMinor: arriving,
+      ...priced(arriving, to.currency),
+    });
   } else {
-    const signed = schedule.kind === "expense" ? -schedule.amountMinor : schedule.amountMinor;
-    postings.push({ accountId: schedule.accountId, categoryId: schedule.categoryId, amountMinor: signed, ...priced(signed, from.currency) });
+    const signed =
+      schedule.kind === "expense"
+        ? -schedule.amountMinor
+        : schedule.amountMinor;
+    postings.push({
+      accountId: schedule.accountId,
+      categoryId: schedule.categoryId,
+      amountMinor: signed,
+      ...priced(signed, from.currency),
+    });
   }
   return {
     date,

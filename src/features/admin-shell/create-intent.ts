@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * "New task", "New note"… from Quick add and the palette (ADM-003).
+ * "New task", "New note"… from Quick add and the palette.
  *
  * Those commands used to navigate only, leaving you on the module with no
  * form open ("New blog post" sent a `?create=true` nothing read). Now the
@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
  */
 export type CreateTarget = "task" | "note" | "transaction" | "post";
 
-export const CREATE_PATHS: Record<CreateTarget, string> = {
+const CREATE_PATHS: Record<CreateTarget, string> = {
   task: "/admin/tasks",
   note: "/admin/notes",
   transaction: "/admin/finance",
@@ -37,7 +37,10 @@ export function requestCreate(
 }
 
 /** True once for a live request for `target`; it is then used up. */
-export function takeCreateIntent(target: CreateTarget, now = Date.now()): boolean {
+export function takeCreateIntent(
+  target: CreateTarget,
+  now = Date.now(),
+): boolean {
   if (!pending) return false;
   if (now - pending.at > LAPSE_MS) {
     pending = null;
@@ -52,7 +55,11 @@ export function takeCreateIntent(target: CreateTarget, now = Date.now()): boolea
  * Calls `onCreate` when a request for `target` arrives. `ready` holds the
  * request until the module can act on it (its data has loaded).
  */
-export function useCreateIntent(target: CreateTarget, onCreate: () => void, ready = true): void {
+export function useCreateIntent(
+  target: CreateTarget,
+  onCreate: () => void,
+  ready = true,
+): void {
   const callback = useRef(onCreate);
   useEffect(() => {
     callback.current = onCreate;

@@ -25,7 +25,7 @@ function daysInMonth(year: number, monthIndex: number): number {
  * Monthly repeats clamp to the end of the target month, so the 31st of January
  * advances to the 28th of February rather than rolling into March.
  */
-export function advanceDate(
+function advanceDate(
   isoDate: string,
   recurrence: TaskRecurrence,
   interval = 1,
@@ -97,13 +97,20 @@ export function nextOccurrence(task: Task): Partial<Task> | null {
 
 /**
  * Whether the series already has the task `nextOccurrence` would create
- * (ADM-015). Un-completing a repeating task and completing it again used to
+ *. Un-completing a repeating task and completing it again used to
  * add a second "next" task each time.
  */
-export function hasNextOccurrence(tasks: readonly Task[], completed: Task, next: Partial<Task>): boolean {
+export function hasNextOccurrence(
+  tasks: readonly Task[],
+  completed: Task,
+  next: Partial<Task>,
+): boolean {
   const series = next.recurrence_parent_id ?? completed.id;
   return tasks.some(
-    (t) => t.id !== completed.id && (t.recurrence_parent_id ?? t.id) === series && t.due_date === next.due_date,
+    (t) =>
+      t.id !== completed.id &&
+      (t.recurrence_parent_id ?? t.id) === series &&
+      t.due_date === next.due_date,
   );
 }
 

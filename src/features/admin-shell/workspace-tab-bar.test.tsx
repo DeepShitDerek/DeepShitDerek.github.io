@@ -19,12 +19,16 @@ describe("workspace tab bar", () => {
     render(<WorkspaceTabBar />);
     const nav = screen.getByRole("navigation", { name: "Workspace" });
     expect(nav.querySelector('[aria-current="page"]')).toBeNull();
-    expect(screen.getByRole("button", { name: "More" }).className).toContain("text-primary");
+    expect(screen.getByRole("button", { name: "More" }).className).toContain(
+      "text-primary",
+    );
   });
 
   it("names the current tab for assistive tech", () => {
     pathname = "/admin/notes/";
     render(<WorkspaceTabBar />);
-    expect(screen.getByRole("link", { name: "Notes" }).getAttribute("aria-current")).toBe("page");
+    expect(
+      screen.getByRole("link", { name: "Notes" }).getAttribute("aria-current"),
+    ).toBe("page");
   });
 });

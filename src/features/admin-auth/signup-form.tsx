@@ -16,7 +16,10 @@ import {
   AuthPending,
   PasswordInput,
 } from "./auth-card";
-import { assessPassword, PASSWORD_MIN_LENGTH } from "@/features/security/password-strength";
+import {
+  assessPassword,
+  PASSWORD_MIN_LENGTH,
+} from "@/features/security/password-strength";
 
 /**
  * The first screen of a new install: create the one account the site will
@@ -32,7 +35,7 @@ export function SignupForm() {
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // The rule Security applies when the password is changed (V2-052). Sign-up
+  // The rule Security applies when the password is changed. Sign-up
   // accepted Supabase's 6-character floor for the one account that controls
   // the whole site.
   const assessment = useMemo(() => assessPassword(password), [password]);
@@ -55,7 +58,10 @@ export function SignupForm() {
       return;
     }
     if (!assessment.acceptable) {
-      setError(assessment.suggestions[0] ?? `Use at least ${PASSWORD_MIN_LENGTH} characters`);
+      setError(
+        assessment.suggestions[0] ??
+          `Use at least ${PASSWORD_MIN_LENGTH} characters`,
+      );
       return;
     }
     setIsSubmitting(true);
@@ -90,19 +96,29 @@ export function SignupForm() {
 
   if (success) {
     return (
-      <AuthPanel step={1} title="Check your email" description="One click to confirm it's yours.">
+      <AuthPanel
+        step={1}
+        title="Check your email"
+        description="One click to confirm it's yours."
+      >
         <div className="flex items-start gap-4 rounded-surface bg-card p-5 shadow-e1">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <MailCheck className="size-5" aria-hidden />
           </span>
           <p className="text-sm text-muted-foreground">
             We sent a confirmation link to{" "}
-            <strong className="break-all font-medium text-foreground">{email}</strong>.
-            Open it, then come back and sign in — you&apos;ll set up two-factor
-            next.
+            <strong className="break-all font-medium text-foreground">
+              {email}
+            </strong>
+            . Open it, then come back and sign in — you&apos;ll set up
+            two-factor next.
           </p>
         </div>
-        <Button size="lg" className="mt-6 w-full" onClick={() => router.push("/admin/login")}>
+        <Button
+          size="lg"
+          className="mt-6 w-full"
+          onClick={() => router.push("/admin/login")}
+        >
           Go to sign in
         </Button>
       </AuthPanel>
@@ -140,7 +156,11 @@ export function SignupForm() {
             onChange={setPassword}
             describedBy="signup-password-hint"
           />
-          <p id="signup-password-hint" className="text-xs text-muted-foreground" aria-live="polite">
+          <p
+            id="signup-password-hint"
+            className="text-xs text-muted-foreground"
+            aria-live="polite"
+          >
             {password && !assessment.acceptable
               ? assessment.suggestions[0]
               : password
@@ -151,7 +171,12 @@ export function SignupForm() {
 
         {error && <AuthError message={error} />}
 
-        <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isSubmitting}
+          className="w-full"
+        >
           {isSubmitting ? "Creating your account…" : "Create account"}
         </Button>
 

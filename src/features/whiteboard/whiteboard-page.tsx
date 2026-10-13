@@ -41,7 +41,7 @@ function previewSrc(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-export function BoardThumbnail({ board }: { board: Whiteboard }) {
+function BoardThumbnail({ board }: { board: Whiteboard }) {
   return board.preview ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img
@@ -58,7 +58,7 @@ export function BoardThumbnail({ board }: { board: Whiteboard }) {
 
 export default function WhiteboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  // The open board lives in the URL, "new" for one not yet saved (ADM-004).
+  // The open board lives in the URL, "new" for one not yet saved.
   const [boardParam, setBoardParam] = useUrlParam("board", "replace");
   const editingId = boardParam === "new" ? null : boardParam;
 
@@ -71,7 +71,7 @@ export default function WhiteboardPage() {
   const [saveWhiteboard] = useSaveWhiteboardMutation();
   const [deleteWhiteboard] = useDeleteWhiteboardMutation();
 
-  // Delete offers Undo instead of asking first (P1-10).
+  // Delete offers Undo instead of asking first.
   const { pending: deleting, remove: removeBoard } =
     useUndoableDelete<Whiteboard>(async (board) => {
       try {

@@ -29,7 +29,7 @@ export interface UploadProgress {
   total: number;
 }
 
-export type UploadStage = "queued" | "uploading" | "saving" | "done" | "failed";
+type UploadStage = "queued" | "uploading" | "saving" | "done" | "failed";
 
 export interface UploadTask {
   id: string;
@@ -66,7 +66,7 @@ export function describeProgress(task: UploadTask): string {
   return `${formatBytes(task.loaded)} of ${formatBytes(task.size)}`;
 }
 
-export function formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${Math.round(bytes)} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

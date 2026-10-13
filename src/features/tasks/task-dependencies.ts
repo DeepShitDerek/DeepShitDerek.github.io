@@ -74,7 +74,7 @@ export function indexTasks(tasks: Task[]): Map<string, Task> {
  * authority. This exists so the UI can grey the option out and explain why,
  * rather than offering a choice that always fails.
  */
-export function wouldCreateCycle(
+function wouldCreateCycle(
   taskId: string,
   dependsOnId: string,
   index: DependencyIndex,

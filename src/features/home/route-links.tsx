@@ -13,7 +13,11 @@ import { PRODUCT } from "@/lib/product";
  */
 export function RouteLinks() {
   const routes = [
-    { question: "Hiring for an AI role?", label: "See the work", href: "/work/" },
+    {
+      question: "Hiring for an AI role?",
+      label: "See the work",
+      href: "/work/",
+    },
     {
       question: "Have a project in mind?",
       label: "Tell me about it",

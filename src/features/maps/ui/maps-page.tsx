@@ -38,7 +38,7 @@ import type { SaveOutcome, SaveRequest } from "../state/autosave";
 import { MapEditor } from "./map-editor";
 
 /**
- * /admin/maps — the list of maps, and the editor for one (V2-070).
+ * /admin/maps — the list of maps, and the editor for one.
  *
  * The open map lives in the URL (`?map=<id>`), so a reload reopens it and
  * Back closes it. The editor covers the viewport like the whiteboard's.
@@ -62,7 +62,7 @@ export default function MapsPage() {
   const [deleteMap] = useDeleteMapMutation();
   const [updateMeta] = useUpdateMapMetaMutation();
 
-  // Delete offers Undo instead of asking first (P1-10); nothing is removed
+  // Delete offers Undo instead of asking first; nothing is removed
   // until the toast closes.
   const { pending: deleting, remove: removeMap } =
     useUndoableDelete<ThinkingMapSummary>(async (map) => {

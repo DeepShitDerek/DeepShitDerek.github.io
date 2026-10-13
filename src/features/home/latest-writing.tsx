@@ -11,7 +11,7 @@ import { SectionLink } from "./section-link";
 const SHOWN = 3;
 
 /**
- * The three newest posts as dated rows (V2-041). Writing shows how someone
+ * The three newest posts as dated rows. Writing shows how someone
  * thinks, which a list of past roles can't, and a date on every row is the
  * cheapest proof that the site is alive.
  *
@@ -39,7 +39,9 @@ export function LatestWriting({
         id="latest-writing-heading"
         eyebrow="Writing"
         title="Latest notes"
-        actions={<SectionLink href="/blog/">All writing ({all.length})</SectionLink>}
+        actions={
+          <SectionLink href="/blog/">All writing ({all.length})</SectionLink>
+        }
       />
       <ul className="mt-8 border-b border-border">
         {latest.map((post) => (

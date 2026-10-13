@@ -33,7 +33,7 @@ export function stepValue(habit: Pick<Habit, "step" | "target_value">): number {
 }
 
 /** How much was recorded on a date. Absent log means nothing was done. */
-export function valueOn(logs: Map<string, HabitLog>, iso: string): number {
+function valueOn(logs: Map<string, HabitLog>, iso: string): number {
   const log = logs.get(iso);
   if (!log) return 0;
   // Rows written before the `value` column existed default to 1, but a null
@@ -58,14 +58,18 @@ export function isSatisfiedOn(
 }
 
 /**
- * The value a tap in the history grid sets for a day (ADM-019).
+ * The value a tap in the history grid sets for a day.
  *
  * A done day clears; anything short of done — including a partial day, 3 of
  * 8 glasses — becomes done. It used to clear whenever any log existed, so
  * tapping a partial day played the "completed" confetti and then deleted the
  * partial count. A quit habit's log is a slip: a tap records one, or clears it.
  */
-export function toggledValue(habit: Habit, logs: Map<string, HabitLog>, iso: string): number {
+export function toggledValue(
+  habit: Habit,
+  logs: Map<string, HabitLog>,
+  iso: string,
+): number {
   if ((habit.kind ?? "build") === "quit") return valueOn(logs, iso) > 0 ? 0 : 1;
   return isSatisfiedOn(habit, logs, iso) ? 0 : targetValue(habit);
 }
@@ -216,16 +220,4 @@ export function weeklyProgress(
 /** Habits due today that are not yet satisfied. */
 export function dueToday(habits: Habit[], today = todayIso()): Habit[] {
   return habits.filter((habit) => isDueOn(habit, today));
-}
-
-/**
- * Every scheduled habit for today is satisfied — and there was at least one.
- *
- * The old badge fired on an empty list, congratulating the owner for having no
- * habits at all.
- */
-export function isPerfectDay(habits: Habit[], today = todayIso()): boolean {
-  const due = dueToday(habits, today);
-  if (due.length === 0) return false;
-  return due.every((habit) => isSatisfiedOn(habit, indexLogs(habit), today));
 }

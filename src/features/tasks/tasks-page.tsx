@@ -100,7 +100,7 @@ export default function TasksPage() {
     refetch,
   } = useGetTasksQuery();
   const { data: projects = [] } = useGetTaskProjectsQuery();
-  // Archived projects leave the rail and the pickers (ADM-017); their tasks
+  // Archived projects leave the rail and the pickers; their tasks
   // keep the project, and the board still labels them by it.
   const activeProjects = useMemo(
     () => projects.filter((p) => !p.is_archived),
@@ -118,7 +118,7 @@ export default function TasksPage() {
   const [addDependency] = useAddTaskDependencyMutation();
   const [deleteDependency] = useDeleteTaskDependencyMutation();
 
-  // Deleting offers Undo rather than asking first (P1-10); the task leaves
+  // Deleting offers Undo rather than asking first; the task leaves
   // every view at once and is deleted when the Undo window closes.
   const { pending: deleting, remove: removeTask } = useUndoableDelete<Task>(
     async (task) => {
@@ -201,7 +201,7 @@ export default function TasksPage() {
   };
 
   /**
-   * A task opens straight into its form (03-workspace-ui.md §2.2). It opened
+   * A task opens straight into its form. It opened
    * read-only first, so changing a due date took an Edit click before the
    * field; the form shows everything the read view did.
    */
@@ -213,7 +213,7 @@ export default function TasksPage() {
   };
 
   // The open task lives in the URL, so a reload or a link reopens it
-  // (ADM-004). Replace, not push: Back must not close a sheet mid-edit.
+  //. Replace, not push: Back must not close a sheet mid-edit.
   const [taskParam, setTaskParam] = useUrlParam("task", "replace");
   const linked = taskParam ? byId.get(taskParam) : undefined;
   useEffect(() => {
@@ -320,7 +320,7 @@ export default function TasksPage() {
   };
 
   // The optimistic change rolls back on failure; say so rather than let the
-  // tick silently reappear (ADM-017).
+  // tick silently reappear.
   const handleToggleSubtask = async (subtask: SubTask) => {
     try {
       await updateSubTask({

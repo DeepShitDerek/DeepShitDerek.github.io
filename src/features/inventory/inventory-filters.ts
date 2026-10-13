@@ -53,7 +53,7 @@ export function daysUntilExpiry(
 }
 
 /** How soon counts as "expiring". Matches the warning band in `warranty.ts`. */
-export const EXPIRING_WINDOW_DAYS = 30;
+const EXPIRING_WINDOW_DAYS = 30;
 
 export function warrantyBucket(
   item: Pick<InventoryItem, "warranty_expiry">,
@@ -162,15 +162,15 @@ export function sortItems(
  * sixth of the truth; the totals have to honour it or the number is wrong in
  * the other direction.
  */
-export function lineValue(item: InventoryItem): number {
+function lineValue(item: InventoryItem): number {
   return currentValue(item) * Math.max(1, item.quantity ?? 1);
 }
 
-export function linePaid(item: InventoryItem): number {
+function linePaid(item: InventoryItem): number {
   return purchasePrice(item) * Math.max(1, item.quantity ?? 1);
 }
 
-export interface CurrencyTotals {
+interface CurrencyTotals {
   currency: string;
   paid: number;
   worth: number;
@@ -184,7 +184,7 @@ export interface InventoryTotals {
   /** Physical things, counting quantity. */
   units: number;
   /**
-   * Money per currency, base currency first, then by worth (ADM-024). Rupees
+   * Money per currency, base currency first, then by worth. Rupees
    * and dollars used to be added together as though they were one currency.
    * They are kept apart rather than converted: an inventory's worth is a
    * rough figure, and a conversion at today's rate would be a precise-looking
@@ -193,11 +193,19 @@ export interface InventoryTotals {
   byCurrency: CurrencyTotals[];
 }
 
-export function totals(items: InventoryItem[], baseCurrency: string): InventoryTotals {
+export function totals(
+  items: InventoryItem[],
+  baseCurrency: string,
+): InventoryTotals {
   const groups = new Map<string, CurrencyTotals>();
   for (const item of items) {
     const currency = itemCurrency(item, baseCurrency);
-    const group = groups.get(currency) ?? { currency, paid: 0, worth: 0, depreciation: 0 };
+    const group = groups.get(currency) ?? {
+      currency,
+      paid: 0,
+      worth: 0,
+      depreciation: 0,
+    };
     group.paid += linePaid(item);
     group.worth += lineValue(item);
     groups.set(currency, group);
@@ -205,7 +213,11 @@ export function totals(items: InventoryItem[], baseCurrency: string): InventoryT
   const byCurrency = [...groups.values()]
     .map((g) => ({ ...g, depreciation: Math.max(0, g.paid - g.worth) }))
     .sort((a, b) =>
-      a.currency === baseCurrency ? -1 : b.currency === baseCurrency ? 1 : b.worth - a.worth,
+      a.currency === baseCurrency
+        ? -1
+        : b.currency === baseCurrency
+          ? 1
+          : b.worth - a.worth,
     );
   return {
     items: items.length,

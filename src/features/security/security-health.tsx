@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 import { lockdownMeta } from "./lockdown";
 
 /** Where the last backup's date is kept: this browser only, and said so. */
-export const LAST_BACKUP_KEY = "foliokit:last-backup";
+const LAST_BACKUP_KEY = "foliokit:last-backup";
 
 /** A backup older than this is worth a nudge. */
 const STALE_BACKUP_DAYS = 30;
@@ -182,7 +182,7 @@ export function healthRows({
 }
 
 /**
- * The summary at the top (03-workspace-ui.md §2.15): every section had the
+ * The summary at the top: every section had the
  * same weight, and the single-factor warning sat inside the 2FA card where
  * it was easy to scroll past.
  */

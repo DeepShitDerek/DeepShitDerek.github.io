@@ -51,7 +51,7 @@ const BOTTOM_EPSILON = 2;
  *
  * `tops` are viewport-relative (`getBoundingClientRect().top`).
  */
-export function activeHeadingFromTops(
+function activeHeadingFromTops(
   tops: { id: string; top: number }[],
   offset: number,
   atBottom: boolean,
@@ -225,7 +225,7 @@ function scrollToHeading(id: string) {
  * rail does not scroll — it moves the *page* instead, yanking the reader away
  * from the paragraph they were on.
  */
-export function scrollTopForEntry(view: {
+function scrollTopForEntry(view: {
   scrollTop: number;
   clientHeight: number;
   entryTop: number;
@@ -346,7 +346,11 @@ export function TableOfContents({
           ref={railRef}
           className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
         >
-          <TocList headings={headings} activeId={activeId} scrollRef={railRef} />
+          <TocList
+            headings={headings}
+            activeId={activeId}
+            scrollRef={railRef}
+          />
         </div>
       </div>
     </nav>
@@ -355,7 +359,7 @@ export function TableOfContents({
 
 /**
  * The same contents on a phone, as a closed disclosure at the head of the
- * post (P2-16). It was a floating "On this page" button pinned over the
+ * post. It was a floating "On this page" button pinned over the
  * bottom-right of the text, covering a line of every screen; here it costs
  * one row and opens in place. Choosing an entry closes it.
  */

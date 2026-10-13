@@ -12,7 +12,7 @@
  * Newsreader (Field Notes' heading face) is requested by weight only. With
  * its italic and optical-size axes it was the heaviest file here, and the
  * default typography paid for it: Lighthouse FCP and LCP were 0.4–0.5 s
- * better without them (redesign, 2026-10-01). Headings are not set in
+ * better without them. Headings are not set in
  * italic, and prose uses the body face.
  *
  * styles/typography.test.ts keeps the two URLs identical and checks every

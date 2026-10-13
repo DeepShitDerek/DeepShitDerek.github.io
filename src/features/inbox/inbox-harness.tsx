@@ -40,7 +40,9 @@ inboxApi.injectEndpoints({
   overrideExisting: true,
   endpoints: (builder) => ({
     getContactSubmissions: builder.query<ContactSubmission[], void>({
-      queryFn: async () => ({ data: [...rows.values()].map((r) => ({ ...r })) }),
+      queryFn: async () => ({
+        data: [...rows.values()].map((r) => ({ ...r })),
+      }),
       providesTags: ["Inbox"],
     }),
     updateContactSubmission: builder.mutation<

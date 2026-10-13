@@ -1,7 +1,7 @@
 import type { FocusState } from "@/store/slices/focusSlice";
 
 /**
- * The running focus session, kept for a reload (ADM-020).
+ * The running focus session, kept for a reload.
  *
  * sessionStorage rather than localStorage: it is per tab, so two open tabs
  * cannot both finish, and both log, the same session.
@@ -25,7 +25,9 @@ export function loadFocus(): FocusState | null {
     const valid =
       state?.isActive === true &&
       typeof state.duration === "number" &&
-      (state.isPaused ? typeof state.pausedRemaining === "number" : typeof state.endsAt === "number");
+      (state.isPaused
+        ? typeof state.pausedRemaining === "number"
+        : typeof state.endsAt === "number");
     return valid ? state : null;
   } catch {
     return null;

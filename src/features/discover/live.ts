@@ -43,7 +43,7 @@ export async function fetchTrending(): Promise<TrendingLink[] | null> {
   return parseTrending(body);
 }
 
-export function parseTrending(body: unknown): TrendingLink[] {
+function parseTrending(body: unknown): TrendingLink[] {
   if (!Array.isArray(body)) return [];
 
   return (
@@ -131,7 +131,7 @@ export async function fetchPostings(): Promise<Posting[] | null> {
   );
 }
 
-export function parsePostings(body: unknown): Posting[] {
+function parsePostings(body: unknown): Posting[] {
   const rows = (body as { data?: unknown[] } | null)?.data;
   if (!Array.isArray(rows)) return [];
 

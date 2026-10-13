@@ -1,12 +1,23 @@
 "use client";
 
-import { Columns3, GanttChartSquare, ListTodo, Rows3, SlidersHorizontal, Table2 } from "lucide-react";
+import {
+  Columns3,
+  GanttChartSquare,
+  ListTodo,
+  Rows3,
+  SlidersHorizontal,
+  Table2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RemovableChip } from "@/components/ui/filter-chip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -57,7 +68,7 @@ export interface TaskToolbarProps {
 const SECTION = "mb-1.5 text-xs font-medium text-muted-foreground";
 
 /**
- * One row (03-workspace-ui.md §2.2, P-toolbar): search, **Filters** (what to
+ * One row: search, **Filters** (what to
  * show) and **Display** (how to show it).
  *
  * Group and Sort were two fixed-width selects that wrapped below `xl`, beside
@@ -92,7 +103,9 @@ export function TaskToolbar({
       label: `#${filters.tag}`,
       clear: () => onFiltersChange((f) => ({ ...f, tag: "all" })),
     },
-  ].filter((chip): chip is { key: string; label: string; clear: () => void } => Boolean(chip));
+  ].filter((chip): chip is { key: string; label: string; clear: () => void } =>
+    Boolean(chip),
+  );
 
   const grouped = view === "list" || view === "table";
 
@@ -102,7 +115,9 @@ export function TaskToolbar({
         <Input
           type="search"
           value={filters.search}
-          onChange={(e) => onFiltersChange((f) => ({ ...f, search: e.target.value }))}
+          onChange={(e) =>
+            onFiltersChange((f) => ({ ...f, search: e.target.value }))
+          }
           placeholder="Search tasks…"
           aria-label="Search tasks"
           className="min-w-0 flex-1"
@@ -127,7 +142,12 @@ export function TaskToolbar({
                 <Checkbox
                   id="filter-overdue"
                   checked={filters.overdueOnly}
-                  onCheckedChange={() => onFiltersChange((f) => ({ ...f, overdueOnly: !f.overdueOnly }))}
+                  onCheckedChange={() =>
+                    onFiltersChange((f) => ({
+                      ...f,
+                      overdueOnly: !f.overdueOnly,
+                    }))
+                  }
                 />
                 <Label htmlFor="filter-overdue" className="text-sm font-normal">
                   Overdue
@@ -137,7 +157,12 @@ export function TaskToolbar({
                 <Checkbox
                   id="filter-blocked"
                   checked={filters.blockedOnly}
-                  onCheckedChange={() => onFiltersChange((f) => ({ ...f, blockedOnly: !f.blockedOnly }))}
+                  onCheckedChange={() =>
+                    onFiltersChange((f) => ({
+                      ...f,
+                      blockedOnly: !f.blockedOnly,
+                    }))
+                  }
                 />
                 <Label htmlFor="filter-blocked" className="text-sm font-normal">
                   Blocked
@@ -154,7 +179,12 @@ export function TaskToolbar({
                       key={tag}
                       type="button"
                       aria-pressed={filters.tag === tag}
-                      onClick={() => onFiltersChange((f) => ({ ...f, tag: f.tag === tag ? "all" : tag }))}
+                      onClick={() =>
+                        onFiltersChange((f) => ({
+                          ...f,
+                          tag: f.tag === tag ? "all" : tag,
+                        }))
+                      }
                       className={cn(
                         "min-h-6 rounded-full px-2.5 py-0.5 text-sm transition-colors focus-ring",
                         filters.tag === tag
@@ -173,7 +203,11 @@ export function TaskToolbar({
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="shrink-0 gap-2" aria-label="Display options">
+            <Button
+              variant="outline"
+              className="shrink-0 gap-2"
+              aria-label="Display options"
+            >
               <Rows3 className="size-4" aria-hidden />
               <span className="max-sm:sr-only">Display</span>
             </Button>
@@ -181,8 +215,13 @@ export function TaskToolbar({
           <PopoverContent align="end" className="w-64 space-y-3">
             {grouped && (
               <div className="space-y-1">
-                <Label htmlFor="task-group" className={SECTION}>Group by</Label>
-                <Select value={groupBy} onValueChange={(v) => onGroupByChange(v as TaskGroupBy)}>
+                <Label htmlFor="task-group" className={SECTION}>
+                  Group by
+                </Label>
+                <Select
+                  value={groupBy}
+                  onValueChange={(v) => onGroupByChange(v as TaskGroupBy)}
+                >
                   <SelectTrigger id="task-group">
                     <SelectValue />
                   </SelectTrigger>
@@ -197,8 +236,13 @@ export function TaskToolbar({
               </div>
             )}
             <div className="space-y-1">
-              <Label htmlFor="task-sort" className={SECTION}>Sort by</Label>
-              <Select value={sortBy} onValueChange={(v) => onSortByChange(v as TaskSortBy)}>
+              <Label htmlFor="task-sort" className={SECTION}>
+                Sort by
+              </Label>
+              <Select
+                value={sortBy}
+                onValueChange={(v) => onSortByChange(v as TaskSortBy)}
+              >
                 <SelectTrigger id="task-sort">
                   <SelectValue />
                 </SelectTrigger>
@@ -215,9 +259,14 @@ export function TaskToolbar({
               <Checkbox
                 id="display-show-done"
                 checked={filters.showDone}
-                onCheckedChange={() => onFiltersChange((f) => ({ ...f, showDone: !f.showDone }))}
+                onCheckedChange={() =>
+                  onFiltersChange((f) => ({ ...f, showDone: !f.showDone }))
+                }
               />
-              <Label htmlFor="display-show-done" className="text-sm font-normal">
+              <Label
+                htmlFor="display-show-done"
+                className="text-sm font-normal"
+              >
                 Show completed tasks
               </Label>
             </div>
@@ -228,14 +277,23 @@ export function TaskToolbar({
       {chips.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {chips.map((chip) => (
-            <RemovableChip key={chip.key} label={chip.label} onRemove={chip.clear} />
+            <RemovableChip
+              key={chip.key}
+              label={chip.label}
+              onRemove={chip.clear}
+            />
           ))}
           {chips.length > 1 && (
             <button
               type="button"
               className="rounded-control text-sm text-primary underline-offset-2 hover:underline focus-ring"
               onClick={() =>
-                onFiltersChange((f) => ({ ...f, overdueOnly: false, blockedOnly: false, tag: "all" }))
+                onFiltersChange((f) => ({
+                  ...f,
+                  overdueOnly: false,
+                  blockedOnly: false,
+                  tag: "all",
+                }))
               }
             >
               Clear filters

@@ -3,12 +3,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Post-build guard for ADR-004 / V2-025: the public pages' static HTML must
+ * Post-build guard: the public pages' static HTML must
  * contain their content, not just a shell that JavaScript fills in later.
  *
  * Checks every prerendered public page for a non-empty <h1>, and every
  * prerendered post for its own <title> and og:title, and every shared page for
- * a built og:image (V2-045). Run after `next build`.
+ * a built og:image. Run after `next build`.
  * Fails loudly if a change reintroduces client-only rendering — for example a
  * useSearchParams() that opts a whole page out of prerendering.
  */
@@ -46,14 +46,20 @@ for (const page of PAGES) {
 }
 
 for (const page of GONE) {
-  if (existsSync(path.join(out, page, "index.html"))) failures.push(`${page}/index.html: removed page is back`);
+  if (existsSync(path.join(out, page, "index.html")))
+    failures.push(`${page}/index.html: removed page is back`);
   else console.log(`✓ /${page} is gone (its sections live on /work)`);
 }
 
 const blogDir = path.join(out, "blog");
 const posts = existsSync(blogDir)
   ? readdirSync(blogDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && !["view", "_"].includes(d.name) && !d.name.startsWith("__next"))
+      .filter(
+        (d) =>
+          d.isDirectory() &&
+          !["view", "_"].includes(d.name) &&
+          !d.name.startsWith("__next"),
+      )
       .map((d) => d.name)
   : [];
 
@@ -72,14 +78,19 @@ for (const slug of posts) {
 }
 
 /*
-  Link previews (V2-045): every page names an og:image, and one on this site
+  Link previews: every page names an og:image, and one on this site
   must be a built 1200×630 PNG — a preview pointing at a missing file shows
   as a blank card in every feed it is shared to.
 */
 const workDir = path.join(out, "work");
 const studies = existsSync(workDir)
   ? readdirSync(workDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && !["view", "_"].includes(d.name) && !d.name.startsWith("__next"))
+      .filter(
+        (d) =>
+          d.isDirectory() &&
+          !["view", "_"].includes(d.name) &&
+          !d.name.startsWith("__next"),
+      )
       .map((d) => path.join("work", d.name))
   : [];
 const shared = [
@@ -97,7 +108,9 @@ for (const page of shared) {
     failures.push(`${file}: no og:image`);
     continue;
   }
-  const local = /\/og\/.+\.png$/.exec(new URL(image, "https://x").pathname)?.[0];
+  const local = /\/og\/.+\.png$/.exec(
+    new URL(image, "https://x").pathname,
+  )?.[0];
   if (!local) continue; // an owner-chosen cover hosted elsewhere
   const png = path.join(out, local);
   if (!existsSync(png)) {
@@ -107,7 +120,8 @@ for (const page of shared) {
   // PNG IHDR: width and height are big-endian at bytes 16 and 20.
   const header = readFileSync(png).subarray(0, 24);
   const size = `${header.readUInt32BE(16)}×${header.readUInt32BE(20)}`;
-  if (size !== "1200×630") failures.push(`${local}: ${size}, expected 1200×630`);
+  if (size !== "1200×630")
+    failures.push(`${local}: ${size}, expected 1200×630`);
 }
 console.log(`✓ ${shared.length} link previews checked`);
 

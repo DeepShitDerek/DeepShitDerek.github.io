@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Check,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { TaskProject } from "@/types";
 import {
@@ -147,13 +155,15 @@ function ProjectRow({
         </Button>
 
         {/* Archive before delete: a finished project keeps its history
-            (ADM-017). The column existed; nothing could set it. */}
+. The column existed; nothing could set it. */}
         <Button
           variant="ghost"
           size="icon"
           className="size-8 shrink-0"
           aria-label={
-            project.is_archived ? `Restore ${project.name}` : `Archive ${project.name}`
+            project.is_archived
+              ? `Restore ${project.name}`
+              : `Archive ${project.name}`
           }
           onClick={onArchive}
         >
@@ -368,8 +378,14 @@ export function TaskProjectsSheet({
           <>
             <ul className="space-y-2">{active.map(row)}</ul>
             {archived.length > 0 && (
-              <section aria-labelledby="archived-projects" className="space-y-2">
-                <h3 id="archived-projects" className="text-xs font-medium text-muted-foreground">
+              <section
+                aria-labelledby="archived-projects"
+                className="space-y-2"
+              >
+                <h3
+                  id="archived-projects"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Archived
                 </h3>
                 <ul className="space-y-2 opacity-80">{archived.map(row)}</ul>

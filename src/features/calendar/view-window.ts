@@ -32,7 +32,7 @@ export interface ViewWindow {
 }
 
 /** How far forward the agenda looks. */
-export const AGENDA_DAYS = 30;
+const AGENDA_DAYS = 30;
 
 export function viewWindow({
   view,

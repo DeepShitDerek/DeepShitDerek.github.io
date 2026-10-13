@@ -71,7 +71,7 @@ export function isOngoingWord(value?: string | null): boolean {
  * `YYYY-MM-DD`, `MM/YYYY`, and `Mon YYYY` / `Month YYYY` in either order.
  * Everything else — "Summer 2022", "the pandemic" — is null on purpose.
  */
-export function parseTimelinePoint(value?: string | null): number | null {
+function parseTimelinePoint(value?: string | null): number | null {
   const raw = (value ?? "").trim();
   if (!raw || isOngoingWord(raw)) return null;
 
@@ -101,7 +101,7 @@ export function parseTimelinePoint(value?: string | null): number | null {
   return null;
 }
 
-export interface TimelineSpan {
+interface TimelineSpan {
   start: number;
   /** `now` for an ongoing item, so an open branch overlaps everything current. */
   end: number;
@@ -116,7 +116,7 @@ export interface TimelineRow<T> {
   span: TimelineSpan | null;
 }
 
-export interface MergeEdge {
+interface MergeEdge {
   /** Row index of the branch that ends. */
   fromRow: number;
   fromLane: number;
@@ -125,7 +125,7 @@ export interface MergeEdge {
   toLane: number;
 }
 
-export interface LaneSpan {
+interface LaneSpan {
   lane: number;
   /** Topmost (newest) row index the lane reaches. */
   firstRow: number;
@@ -161,10 +161,10 @@ export interface DatedFields {
  * the ordinary case, not an error. An earlier draft required the target to be
  * above the branch and dropped exactly that arrangement; the test caught it.
  *
- * Cycles are the database's job (migration 017), not this function's: the
+ * Cycles are the database's job, not this function's: the
  * client can only prevent the loops it thinks of.
  */
-export function resolveMerges<T extends DatedFields>(
+function resolveMerges<T extends DatedFields>(
   rows: TimelineRow<T>[],
 ): MergeEdge[] {
   const indexById = new Map<string, number>();

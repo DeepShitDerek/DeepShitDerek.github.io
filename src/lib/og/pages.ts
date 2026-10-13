@@ -4,7 +4,7 @@ import portfolioConfig from "../../../portfolio.config";
 import type { OgCard } from "./card";
 
 /**
- * One preview card per top-level public page (V2-045). The keys are the
+ * One preview card per top-level public page. The keys are the
  * image paths: /og/page/<key>/image.png.
  */
 export const OG_PAGES = {

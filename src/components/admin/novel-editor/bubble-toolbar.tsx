@@ -21,12 +21,48 @@ import { linkFromInput } from "./link-url";
 import { activeBlock, type BlockCommand } from "./slash-commands";
 
 const MARKS = [
-  { mark: "bold", label: "Bold", keys: "Ctrl+B", icon: Bold, toggle: (e: Editor) => e.chain().focus().toggleBold().run() },
-  { mark: "italic", label: "Italic", keys: "Ctrl+I", icon: Italic, toggle: (e: Editor) => e.chain().focus().toggleItalic().run() },
-  { mark: "underline", label: "Underline", keys: "Ctrl+U", icon: Underline, toggle: (e: Editor) => e.chain().focus().toggleUnderline().run() },
-  { mark: "strike", label: "Strikethrough", keys: "Ctrl+Shift+S", icon: Strikethrough, toggle: (e: Editor) => e.chain().focus().toggleStrike().run() },
-  { mark: "code", label: "Inline code", keys: "Ctrl+E", icon: Code, toggle: (e: Editor) => e.chain().focus().toggleCode().run() },
-  { mark: "highlight", label: "Highlight", keys: "Ctrl+Shift+H", icon: Highlighter, toggle: (e: Editor) => e.chain().focus().toggleHighlight().run() },
+  {
+    mark: "bold",
+    label: "Bold",
+    keys: "Ctrl+B",
+    icon: Bold,
+    toggle: (e: Editor) => e.chain().focus().toggleBold().run(),
+  },
+  {
+    mark: "italic",
+    label: "Italic",
+    keys: "Ctrl+I",
+    icon: Italic,
+    toggle: (e: Editor) => e.chain().focus().toggleItalic().run(),
+  },
+  {
+    mark: "underline",
+    label: "Underline",
+    keys: "Ctrl+U",
+    icon: Underline,
+    toggle: (e: Editor) => e.chain().focus().toggleUnderline().run(),
+  },
+  {
+    mark: "strike",
+    label: "Strikethrough",
+    keys: "Ctrl+Shift+S",
+    icon: Strikethrough,
+    toggle: (e: Editor) => e.chain().focus().toggleStrike().run(),
+  },
+  {
+    mark: "code",
+    label: "Inline code",
+    keys: "Ctrl+E",
+    icon: Code,
+    toggle: (e: Editor) => e.chain().focus().toggleCode().run(),
+  },
+  {
+    mark: "highlight",
+    label: "Highlight",
+    keys: "Ctrl+Shift+H",
+    icon: Highlighter,
+    toggle: (e: Editor) => e.chain().focus().toggleHighlight().run(),
+  },
 ] as const;
 
 /**
@@ -134,7 +170,12 @@ export function BubbleToolbar({
               <ToolButton
                 label="Remove link"
                 onClick={() => {
-                  editor.chain().focus().extendMarkRange("link").unsetLink().run();
+                  editor
+                    .chain()
+                    .focus()
+                    .extendMarkRange("link")
+                    .unsetLink()
+                    .run();
                   setPanel(null);
                 }}
               >
@@ -154,7 +195,10 @@ export function BubbleToolbar({
                 className="flex h-8 items-center gap-1 whitespace-nowrap rounded-control px-2 text-sm font-medium transition-colors hover:bg-secondary focus-ring"
               >
                 {current.title}
-                <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
+                <ChevronDown
+                  className="size-3.5 text-muted-foreground"
+                  aria-hidden
+                />
               </button>
               <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
               {MARKS.map((m, i) => {
@@ -204,9 +248,14 @@ export function BubbleToolbar({
                       }}
                       className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm transition-colors hover:bg-secondary focus-ring"
                     >
-                      <Icon className="size-4 text-muted-foreground" aria-hidden />
+                      <Icon
+                        className="size-4 text-muted-foreground"
+                        aria-hidden
+                      />
                       <span className="flex-1">{b.title}</span>
-                      {b.id === current.id && <Check className="size-3.5" aria-hidden />}
+                      {b.id === current.id && (
+                        <Check className="size-3.5" aria-hidden />
+                      )}
                     </button>
                   );
                 })}

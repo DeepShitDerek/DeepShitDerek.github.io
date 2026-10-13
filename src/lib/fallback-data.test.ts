@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isPublicConfigPost, MOCK_BLOG_POSTS } from "./fallback-data";
 
-describe("static-mode blog posts (V2-043)", () => {
+describe("static-mode blog posts", () => {
   it("keeps drafts off the site", () => {
     expect(isPublicConfigPost({ slug: "a" })).toBe(true);
     expect(isPublicConfigPost({ slug: "a", draft: false })).toBe(true);

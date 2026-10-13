@@ -53,7 +53,7 @@ import { DaySpine } from "./day-spine";
 import { SetupChecklist } from "./setup-checklist-card";
 
 /**
- * Home: what today asks of you, and what is next (03-workspace-ui.md §2.1).
+ * Home: what today asks of you, and what is next.
  *
  * The Today list is the page. Tasks due today, tasks overdue and today's
  * habits are one list, each ticked or logged where it is. Before, today's
@@ -81,7 +81,7 @@ export default function DashboardPage() {
   const startHour = calendarSettings?.day_start_hour ?? 7;
   const endHour = calendarSettings?.day_end_hour ?? 22;
 
-  // "In 10 min" and the now line move while the page stays open (ADM-014).
+  // "In 10 min" and the now line move while the page stays open.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -630,7 +630,7 @@ function MomentumCard({
 
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 
-/** Shaped like the page, so it does not jump when the day arrives (P-states). */
+/** Shaped like the page, so it does not jump when the day arrives. */
 function DashboardSkeleton({ now }: { now: Date }) {
   return (
     <div className="space-y-5 pb-10" aria-busy aria-label="Loading your day">

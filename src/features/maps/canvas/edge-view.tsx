@@ -13,7 +13,7 @@ import {
 import { RELATIONSHIP_LABEL, type GraphEdge } from "../domain/types";
 import { COLOR_HSL } from "../ui/visuals";
 
-export type MapEdgeData = { edge: GraphEdge };
+type MapEdgeData = { edge: GraphEdge };
 export type MapFlowEdge = Edge<MapEdgeData, "map">;
 
 /**

@@ -4,11 +4,16 @@ import { daysUntilExpiry, warrantyBucket } from "./inventory-filters";
 import { getWarrantyStatus } from "./warranty";
 
 /**
- * An item's warranty, the same in the grid and the table (P-badge,
- * P-status): icon, words and colour together. Expiring soon counts the days
+ * An item's warranty, the same in the grid and the table: icon, words and colour together. Expiring soon counts the days
  * left, because "expiring soon" reads the same at 29 days and at one.
  */
-export function WarrantyBadge({ item, today }: { item: InventoryItem; today: string }) {
+export function WarrantyBadge({
+  item,
+  today,
+}: {
+  item: InventoryItem;
+  today: string;
+}) {
   const status = getWarrantyStatus(item.warranty_expiry);
   const days = daysUntilExpiry(item, today);
   const label =

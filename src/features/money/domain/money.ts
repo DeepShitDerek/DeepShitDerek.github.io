@@ -1,5 +1,5 @@
 /**
- * Money as whole minor units (V2-080).
+ * Money as whole minor units.
  *
  * The one rule: **a float may compute a ratio, never hold an amount.** Every
  * `Money` is an integer count of a currency's smallest unit — cents, paise —
@@ -36,7 +36,7 @@ export function exponentOf(currency: string): number {
   return EXPONENTS[currency] ?? 2;
 }
 
-export function assertCurrency(currency: string): string {
+function assertCurrency(currency: string): string {
   if (!/^[A-Z]{3}$/.test(currency)) {
     throw new MoneyError(`Not a currency code: "${currency}"`);
   }
@@ -54,8 +54,6 @@ export function money(minor: number, currency: string): Money {
   // `+ 0` turns −0 into 0, so a zero never prints as "−$0.00".
   return { minor: minor + 0, currency: assertCurrency(currency) };
 }
-
-export const zero = (currency: string): Money => money(0, currency);
 
 /**
  * Round a real number of minor units to a whole one, halves away from zero
@@ -154,7 +152,9 @@ export function parseAmount(input: string | number, currency: string): Money {
   const kept = fraction.slice(0, exponent).padEnd(exponent, "0");
   let minor = Number(`${whole}${kept}`);
   if (!Number.isSafeInteger(minor)) {
-    throw new MoneyError(`Amount is too large to represent exactly: "${input}"`);
+    throw new MoneyError(
+      `Amount is too large to represent exactly: "${input}"`,
+    );
   }
   if (fraction.length > exponent && Number(fraction[exponent]) >= 5) minor += 1;
   return money(negative ? -minor : minor, currency);
@@ -198,15 +198,6 @@ export function add(a: Money, b: Money): Money {
 export function subtract(a: Money, b: Money): Money {
   sameCurrency(a, b);
   return money(a.minor - b.minor, a.currency);
-}
-
-export const negate = (a: Money): Money => money(-a.minor, a.currency);
-export const abs = (a: Money): Money => money(Math.abs(a.minor), a.currency);
-export const isZero = (a: Money): boolean => a.minor === 0;
-
-export function compare(a: Money, b: Money): -1 | 0 | 1 {
-  sameCurrency(a, b);
-  return a.minor === b.minor ? 0 : a.minor < b.minor ? -1 : 1;
 }
 
 export function sum(amounts: readonly Money[], currency: string): Money {
@@ -274,10 +265,7 @@ export function convert(amount: Money, rate: number, to: string): Money {
   assertCurrency(to);
   if (amount.currency === to) return amount;
   const shift = exponentOf(to) - exponentOf(amount.currency);
-  return money(
-    roundHalfAwayFromZero(amount.minor * rate * 10 ** shift),
-    to,
-  );
+  return money(roundHalfAwayFromZero(amount.minor * rate * 10 ** shift), to);
 }
 
 /**
@@ -304,7 +292,10 @@ export interface FormatOptions {
  * thousands. Uses the same exponent as the arithmetic, never Intl's opinion
  * of how many decimals a currency has.
  */
-export function formatMoney(amount: Money, options: FormatOptions = {}): string {
+export function formatMoney(
+  amount: Money,
+  options: FormatOptions = {},
+): string {
   const exponent = exponentOf(amount.currency);
   const locale = amount.currency === "INR" ? "en-IN" : "en-CA";
   const major = toMajor(amount);

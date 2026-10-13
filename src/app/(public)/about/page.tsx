@@ -5,6 +5,7 @@ import { siteContent } from "@/lib/site-content";
 import { AboutPage } from "@/features/about/about-page";
 import { pagePreload } from "@/lib/public-preload-server";
 import { PublicPreload } from "@/store/public-preload";
+import { StyleSwitch } from "@/features/immersive/style-switch";
 
 export const metadata: Metadata = {
   title: siteContent.pages.about.title,
@@ -21,7 +22,7 @@ export default async function Page() {
   const data = await pagePreload({ sections: ["/about"] });
   return (
     <PublicPreload data={data}>
-      <AboutPage />
+      <StyleSwitch layout="about" classic={<AboutPage />} />
     </PublicPreload>
   );
 }

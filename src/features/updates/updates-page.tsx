@@ -1,15 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
-import {
-  useGetPublishedLifeUpdatesQuery,
-  useGetSiteIdentityQuery,
-} from "@/store/api/publicApi";
-import { LIFE_UPDATE_CATEGORY_OPTIONS } from "@/lib/constants";
-import { matchesSearch, monthLabel } from "@/lib/life-update";
+import { monthLabel } from "@/lib/life-update";
 import { useDisplayTimeZone } from "@/hooks/use-hydrated";
-import type { LifeUpdateCategory } from "@/types";
 import { Band } from "@/components/layout/band";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
@@ -17,6 +10,7 @@ import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DynamicPageContent } from "@/features/sections/dynamic-page-content";
 import { FeedEnd } from "./feed-end";
+import { useUpdatesFeed } from "./use-updates-feed";
 import { JournalFeed, PinnedUpdates, WallFeed } from "./update-feeds";
 import { CategoryIcon } from "./category-icon";
 
@@ -30,56 +24,27 @@ import { CategoryIcon } from "./category-icon";
  * Tags are links into the feed rather than decoration.
  */
 export function UpdatesPage() {
-  const { data: updates, isLoading } = useGetPublishedLifeUpdatesQuery();
-  const { data: identity } = useGetSiteIdentityQuery();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [category, setCategory] = useState<LifeUpdateCategory | "all">("all");
-  const [tag, setTag] = useState<string | null>(null);
+  const {
+    all,
+    isLoading,
+    layout,
+    pinned,
+    feed,
+    filtering,
+    category,
+    setCategory,
+    tag,
+    setTag,
+    toggleTag,
+    searchTerm,
+    setSearchTerm,
+    clearFilters,
+    categoryCounts,
+    presentCategories,
+    oldest,
+  } = useUpdatesFeed();
   const timeZone = useDisplayTimeZone();
 
-  const layout = identity?.profile_data.updates_layout ?? "scrapbook";
-  const all = useMemo(() => updates ?? [], [updates]);
-  const filtering = category !== "all" || !!searchTerm.trim() || !!tag;
-
-  const pinned = useMemo(() => all.filter((u) => u.is_pinned), [all]);
-
-  const categoryCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const update of all) {
-      counts.set(update.category, (counts.get(update.category) ?? 0) + 1);
-    }
-    return counts;
-  }, [all]);
-
-  const presentCategories = LIFE_UPDATE_CATEGORY_OPTIONS.filter((option) =>
-    categoryCounts.has(option.value),
-  );
-
-  /**
-   * Unfiltered, the feed leaves out what is already pinned above it. Filtered,
-   * it is a result list and includes every match — a search that silently
-   * skipped pinned updates would look broken.
-   */
-  const feed = useMemo(() => {
-    if (!filtering) return all.filter((u) => !u.is_pinned);
-    return all.filter(
-      (u) =>
-        (category === "all" || u.category === category) &&
-        (!tag || (u.tags ?? []).includes(tag)) &&
-        matchesSearch(u, searchTerm),
-    );
-  }, [all, filtering, category, tag, searchTerm]);
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setCategory("all");
-    setTag(null);
-  };
-
-  const toggleTag = (next: string) =>
-    setTag((current) => (current === next ? null : next));
-
-  const oldest = all[all.length - 1]?.created_at;
   const Feed = layout === "timeline" ? JournalFeed : WallFeed;
 
   return (

@@ -19,7 +19,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /** `inventory_items.archived_reason`'s CHECK list. */
-export const ARCHIVE_REASONS = ["sold", "gifted", "lost", "discarded", "returned"] as const;
+const ARCHIVE_REASONS = [
+  "sold",
+  "gifted",
+  "lost",
+  "discarded",
+  "returned",
+] as const;
 export type ArchiveReason = (typeof ARCHIVE_REASONS)[number];
 const REASON_LABELS: Record<ArchiveReason, string> = {
   sold: "Sold",
@@ -70,7 +76,7 @@ export function ItemActions({
             <ArchiveRestore className="mr-2 size-4" /> Restore
           </DropdownMenuItem>
         ) : (
-          // Why it went is recorded (ADM-024): the column existed, and
+          // Why it went is recorded: the column existed, and
           // nothing ever wrote it.
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
@@ -78,11 +84,16 @@ export function ItemActions({
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               {ARCHIVE_REASONS.map((reason) => (
-                <DropdownMenuItem key={reason} onClick={() => onArchive(reason)}>
+                <DropdownMenuItem
+                  key={reason}
+                  onClick={() => onArchive(reason)}
+                >
                   {REASON_LABELS[reason]}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuItem onClick={() => onArchive()}>No reason</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onArchive()}>
+                No reason
+              </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         )}

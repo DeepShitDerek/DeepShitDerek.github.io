@@ -1,4 +1,4 @@
--- TEST ONLY. The money ledger's invariants (V2-080), checked against the real
+-- TEST ONLY. The money ledger's invariants, checked against the real
 -- schema in a throwaway container by scripts/test-db.mjs.
 --
 -- Runs after 10-policies.sql and reuses its harness (schema `t`) and its

@@ -68,7 +68,7 @@ import { PostSettingsPanel } from "./post-settings-panel";
 import { useBlogImageUpload } from "./use-blog-image-upload";
 
 /** A draft saves itself this long after typing stops. */
-export const DRAFT_AUTOSAVE_DELAY = 1500;
+const DRAFT_AUTOSAVE_DELAY = 1500;
 
 const SETTINGS_FIELDS = ["slug", "tags", "cover_image_url", "internal_notes"];
 
@@ -157,7 +157,7 @@ export default function BlogEditor({
   const published = !!current?.published;
   const dirty = !sameDraft(draft, savedDraft.current);
 
-  // Unsaved edits kept from the last time this post was open (ADM-001).
+  // Unsaved edits kept from the last time this post was open.
   const [recovery, setRecovery] = useState<Recovery | null>(() =>
     readRecovery(post),
   );
@@ -267,7 +267,7 @@ export default function BlogEditor({
 
   /**
    * Leaving through the sidebar, launcher or palette unmounts the editor
-   * without asking (ADM-001). Keep what is unsaved in this browser, and save a
+   * without asking. Keep what is unsaved in this browser, and save a
    * titled draft on the way out, as notes do. A published post is never saved
    * here: that would change the live post, so its edits wait to be restored.
    */

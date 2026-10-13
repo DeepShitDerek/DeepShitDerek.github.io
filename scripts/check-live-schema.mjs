@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 /**
  * Does the live database have what this build asks for?
  *
- * The public site names its columns (V2-010) instead of `select=*`, so a column
+ * The public site names its columns instead of `select=*`, so a column
  * the code expects but the database lacks is no longer ignored — the whole
  * query fails and every visitor sees the section's error state. That happens
  * when code is deployed before `db/schema.sql` has been re-run on the
@@ -52,18 +52,27 @@ function publicSelects() {
     // SELECT policy), but the column list is still resolved, so a missing
     // column fails the probe while existing rows stay invisible.
     ["contact_submissions", "name,email,subject,message,topic"],
-    // Admin: the Maps editor (V2-070). Same idea — rows stay hidden.
+    // Admin: the Maps editor. Same idea — rows stay hidden.
     [
       "thinking_maps",
       "id,name,doc,schema_version,revision,node_count,edge_count,is_pinned",
     ],
-    // Admin: the money module (V2-080) — one probe per table the screens
+    // Admin: the money module — one probe per table the screens
     // load on open, so a deploy before schema.sql is re-run stops here
     // instead of at an error screen.
     ["money_settings", "base_currency,home_currency,resident_since"],
-    ["money_account", "id,kind,registration,currency,opening_balance_minor,is_liquid"],
-    ["money_transaction", "id,date,kind,status,market_rate,schedule_id,occurrence_date"],
-    ["money_posting", "account_id,category_id,amount_minor,fx_rate,base_amount_minor"],
+    [
+      "money_account",
+      "id,kind,registration,currency,opening_balance_minor,is_liquid",
+    ],
+    [
+      "money_transaction",
+      "id,date,kind,status,market_rate,schedule_id,occurrence_date",
+    ],
+    [
+      "money_posting",
+      "account_id,category_id,amount_minor,fx_rate,base_amount_minor",
+    ],
     ["money_schedule", "id,kind,frequency,amount_minor,to_amount_minor"],
     ["money_goal", "id,target_minor,currency"],
     ["money_loan", "id,account_id,compounding,payment_frequency,term_months"],
@@ -75,8 +84,7 @@ function publicSelects() {
     ["money_price", "security_id,date,price"],
     ["money_trade", "id,kind,quantity,amount_minor,fee_minor,transaction_id"],
     ["money_room", "id,registration,year,room_minor"],
-    // Admin columns the admin review fixes rely on (ADM-013, 017, 020,
-    // 024, 027): inventory currency and archive reason, project archive,
+    // Workspace columns added after the first schema: inventory currency and archive reason, project archive,
     // task completion, focus logs, and the titles the palette searches.
     ["inventory_items", "id,currency,archived_reason,transaction_id"],
     ["task_projects", "id,is_archived"],
@@ -136,7 +144,11 @@ for (const [fn, args] of ADMIN_FUNCTIONS) {
   try {
     const response = await fetch(`${url}/rest/v1/rpc/${fn}`, {
       method: "POST",
-      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(args),
     });
     status = response.status;

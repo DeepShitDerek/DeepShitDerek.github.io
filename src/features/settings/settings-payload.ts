@@ -41,7 +41,7 @@ export function getAtPath(source: unknown, path: FieldPath): unknown {
  * it in place would edit the public site's cached identity as a side effect of
  * building a payload.
  */
-export function setAtPath<T>(target: T, path: FieldPath, value: unknown): T {
+function setAtPath<T>(target: T, path: FieldPath, value: unknown): T {
   const [head, ...rest] = path.split(".");
   const base: Unknown = isPlainObject(target) ? { ...target } : {};
 
@@ -55,7 +55,7 @@ export function setAtPath<T>(target: T, path: FieldPath, value: unknown): T {
 }
 
 /** Structural equality, order-insensitive for object keys. */
-export function deepEqual(a: unknown, b: unknown): boolean {
+function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (Array.isArray(a) || Array.isArray(b)) {
     if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
@@ -120,7 +120,7 @@ export function groupIsDirty(
  * `profile_data.title` does not swallow issues raised against
  * `profile_data.title_something_else`.
  */
-export function pathBelongsTo(
+function pathBelongsTo(
   issuePath: readonly (string | number)[],
   groupPath: FieldPath,
 ): boolean {

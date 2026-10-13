@@ -1,12 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { postHref } from "./post-href";
+import { usePostList } from "./use-post-list";
 import { useDisplayTimeZone } from "@/hooks/use-hydrated";
 import { Eye, Search, X } from "lucide-react";
-import { useGetPublishedBlogPostsQuery } from "@/store/api/publicApi";
 import type { BlogPost } from "@/types";
 import { formatPostDate, readTime } from "./post-meta";
 import { siteContent } from "@/lib/site-content";
@@ -17,36 +17,15 @@ import { Button } from "@/components/ui/button";
 import { FilterBar, FilterChip } from "@/components/ui/filter-chip";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export { readTime } from "./post-meta";
 const formatDate = formatPostDate;
 
-/** The tags worth offering as filters, with how many posts carry each: most used first, at most `limit`. */
-export function topTags(
-  posts: BlogPost[],
-  limit = 8,
-): { tag: string; count: number }[] {
-  const counts = new Map<string, number>();
-  for (const post of posts) {
-    const unique = Array.from(
-      new Set((post.tags ?? []).map((t) => t.trim()).filter(Boolean)),
-    );
-    for (const tag of unique) {
-      counts.set(tag, (counts.get(tag) ?? 0) + 1);
-    }
-  }
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, limit)
-    .map(([tag, count]) => ({ tag, count }));
-}
-
 /**
- * One post as a ruled row (P2-15): date and read time in the margin, then the
+ * One post as a ruled row: date and read time in the margin, then the
  * title, the excerpt and the topics. The whole row is the link.
  *
  * Rows replaced a lead card and a grid of cover cards. Posts here mostly have
  * no cover, and the grid painted the title's first letter in a tinted box
- * instead, the placeholder the redesign removes everywhere (X1); a date on
+ * instead, a placeholder; a date on
  * every row is also the quickest proof the writing is current.
  */
 function PostRow({ post, href }: { post: BlogPost; href: string }) {
@@ -117,37 +96,18 @@ export function BlogListPage({
   builtSlugs?: readonly string[];
 } = {}) {
   const {
-    data: posts,
     isLoading,
     isError,
     refetch,
-  } = useGetPublishedBlogPostsQuery();
-  const [searchTerm, setSearchTerm] = useState("");
-  // A post's tag links land here as ?tag=, so the chip arrives pressed
-  // (set by InitialTagFromUrl once the page has hydrated).
-  const [tag, setTag] = useState<string | null>(null);
-
-  const tags = useMemo(() => topTags(posts ?? []), [posts]);
-
-  const filtered = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    return (posts ?? []).filter((post) => {
-      if (tag && !(post.tags ?? []).includes(tag)) return false;
-      if (!term) return true;
-      return [post.title, post.excerpt, ...(post.tags ?? [])]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(term);
-    });
-  }, [posts, searchTerm, tag]);
-
-  const filtering = Boolean(searchTerm.trim() || tag);
-
-  const clear = () => {
-    setSearchTerm("");
-    setTag(null);
-  };
+    searchTerm,
+    setSearchTerm,
+    tag,
+    setTag,
+    tags,
+    filtered,
+    filtering,
+    clear,
+  } = usePostList();
 
   return (
     <Band weight="content">
@@ -211,11 +171,7 @@ export function BlogListPage({
           <p className="mt-1 text-sm text-muted-foreground">
             Nothing is lost — it&apos;s the connection, not the writing.
           </p>
-          <Button
-            variant="outline"
-            className="mt-6"
-            onClick={() => refetch()}
-          >
+          <Button variant="outline" className="mt-6" onClick={() => refetch()}>
             Try again
           </Button>
         </div>
@@ -230,11 +186,7 @@ export function BlogListPage({
               : "The first post is on its way."}
           </p>
           {filtering && (
-            <Button
-              variant="outline"
-              className="mt-6 gap-2"
-              onClick={clear}
-            >
+            <Button variant="outline" className="mt-6 gap-2" onClick={clear}>
               <X className="size-4" aria-hidden />
               Clear filters
             </Button>

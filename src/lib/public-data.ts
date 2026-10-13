@@ -26,7 +26,7 @@ import type {
  *
  * Two callers: `publicApi` in the browser, and the public pages' server
  * components during `next build`, which render the same data into the static
- * HTML (ADR-004). Keeping one copy is the point — if the build and the browser
+ * HTML. Keeping one copy is the point — if the build and the browser
  * read different columns or filters, the first paint and the live page
  * disagree and React warns about a hydration mismatch.
  *
@@ -53,10 +53,7 @@ const notFound = (details = ""): { error: PublicError } => ({
 export async function fetchSiteIdentity(): Promise<PublicResult<SiteContent>> {
   if (!rest) return { data: normalizeSiteContent(MOCK_SITE_IDENTITY) };
 
-  const { data, error } = await rest
-    .from("site_identity")
-    .select("*")
-    .single();
+  const { data, error } = await rest.from("site_identity").select("*").single();
   if (error) return { error };
   // profile_data is unconstrained JSONB; normalising here means the
   // public renderers can rely on the shape SiteContent promises.
@@ -198,7 +195,7 @@ export async function fetchCaseStudyBySlug(
 /**
  * For build-time callers: the data, or `undefined` when the fetch failed.
  * A failed fetch at build must not fail the build — the page then ships
- * without a preload and the browser fetches as it did before V2-025.
+ * without a preload and the browser fetches as a client-only page does.
  */
 export async function orUndefined<T>(
   result: Promise<PublicResult<T>>,

@@ -1,7 +1,11 @@
-import type { AccountKind, Registration, TransactionKind } from "../domain/ledger";
+import type {
+  AccountKind,
+  Registration,
+  TransactionKind,
+} from "../domain/ledger";
 import type { Bucket } from "../domain/model";
 
-/** Words for the codes the ledger stores (V2-080). */
+/** Words for the codes the ledger stores. */
 
 export const ACCOUNT_KIND_LABEL: Record<AccountKind, string> = {
   chequing: "Chequing",
@@ -18,7 +22,10 @@ export const ACCOUNT_KIND_LABEL: Record<AccountKind, string> = {
 
 /** How accounts are grouped on the accounts screen. */
 export const ACCOUNT_GROUPS: { label: string; kinds: AccountKind[] }[] = [
-  { label: "Everyday banking", kinds: ["chequing", "savings", "cash", "wallet"] },
+  {
+    label: "Everyday banking",
+    kinds: ["chequing", "savings", "cash", "wallet"],
+  },
   { label: "Credit", kinds: ["credit_card", "line_of_credit"] },
   { label: "Investments", kinds: ["investment"] },
   { label: "Loans & mortgages", kinds: ["loan", "mortgage"] },
@@ -51,7 +58,7 @@ export const REGISTRATION_HINT: Partial<Record<Registration, string>> = {
   epf: "Indian Employees' Provident Fund.",
 };
 
-export const COUNTRY_LABEL: Record<string, string> = {
+const COUNTRY_LABEL: Record<string, string> = {
   CA: "Canada",
   IN: "India",
   US: "United States",
@@ -59,7 +66,8 @@ export const COUNTRY_LABEL: Record<string, string> = {
   AE: "UAE",
 };
 
-export const countryLabel = (code: string): string => COUNTRY_LABEL[code] ?? code;
+export const countryLabel = (code: string): string =>
+  COUNTRY_LABEL[code] ?? code;
 
 export const TRANSACTION_KIND_LABEL: Record<TransactionKind, string> = {
   expense: "Expense",
@@ -94,10 +102,45 @@ export const PROVINCES: { code: string; name: string }[] = [
 
 /** The currencies `money_currency` is seeded with, most likely first. */
 export const ALL_CURRENCIES = [
-  "CAD", "INR", "USD", "EUR", "GBP", "AED", "AUD", "SGD", "NZD", "SAR", "QAR",
-  "KWD", "BHD", "OMR", "HKD", "JPY", "KRW", "CNY", "CHF", "SEK", "NOK", "DKK",
-  "PLN", "TRY", "PKR", "BDT", "LKR", "NPR", "PHP", "MYR", "THB", "IDR", "VND",
-  "MXN", "BRL", "ZAR", "NGN", "KES", "EGP",
+  "CAD",
+  "INR",
+  "USD",
+  "EUR",
+  "GBP",
+  "AED",
+  "AUD",
+  "SGD",
+  "NZD",
+  "SAR",
+  "QAR",
+  "KWD",
+  "BHD",
+  "OMR",
+  "HKD",
+  "JPY",
+  "KRW",
+  "CNY",
+  "CHF",
+  "SEK",
+  "NOK",
+  "DKK",
+  "PLN",
+  "TRY",
+  "PKR",
+  "BDT",
+  "LKR",
+  "NPR",
+  "PHP",
+  "MYR",
+  "THB",
+  "IDR",
+  "VND",
+  "MXN",
+  "BRL",
+  "ZAR",
+  "NGN",
+  "KES",
+  "EGP",
 ];
 
 /** "Feb 3", or "Feb 3, 2025" outside the current year. */

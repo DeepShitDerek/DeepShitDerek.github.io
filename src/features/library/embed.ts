@@ -16,7 +16,7 @@
  * somewhere unexpected.
  */
 
-export type EmbedProvider = "youtube" | "vimeo" | "spotify" | "apple-podcasts";
+type EmbedProvider = "youtube" | "vimeo" | "spotify" | "apple-podcasts";
 
 export interface Embed {
   provider: EmbedProvider;

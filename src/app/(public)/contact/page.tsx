@@ -5,6 +5,7 @@ import { siteContent } from "@/lib/site-content";
 import { ContactPage } from "@/features/contact/contact-page";
 import { pagePreload } from "@/lib/public-preload-server";
 import { PublicPreload } from "@/store/public-preload";
+import { StyleSwitch } from "@/features/immersive/style-switch";
 
 export const metadata: Metadata = {
   title: siteContent.pages.contact.title,
@@ -21,7 +22,7 @@ export default async function Page() {
   const data = await pagePreload({ sections: ["/contact"] });
   return (
     <PublicPreload data={data}>
-      <ContactPage />
+      <StyleSwitch layout="contact" classic={<ContactPage />} />
     </PublicPreload>
   );
 }

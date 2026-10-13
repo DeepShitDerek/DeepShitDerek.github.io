@@ -33,13 +33,16 @@ import { NOTE_COLORS } from "@/lib/constants";
 import { noteSchema } from "@/lib/schemas";
 import { getErrorMessage } from "@/lib/utils";
 import { cn } from "@/lib/cn";
-import { SaveStatus, type SaveState as StatusState } from "@/components/admin/shared";
+import {
+  SaveStatus,
+  type SaveState as StatusState,
+} from "@/components/admin/shared";
 import { NoteConnections } from "./note-connections";
 import { indexByTitle, normalizeTitle } from "./note-links";
 import { noteLabel } from "./note-title";
 
 /** Long enough to stay out of the way while typing, short enough to trust. */
-export const AUTOSAVE_DELAY = 800;
+const AUTOSAVE_DELAY = 800;
 
 type SaveState = "saved" | "pending" | "saving" | "error";
 
@@ -50,8 +53,10 @@ interface Draft {
   color: string | null;
 }
 
-export function isDraftEmpty(draft: Draft): boolean {
-  return !draft.title.trim() && !draft.content.trim() && draft.tags.length === 0;
+function isDraftEmpty(draft: Draft): boolean {
+  return (
+    !draft.title.trim() && !draft.content.trim() && draft.tags.length === 0
+  );
 }
 
 /**
@@ -230,7 +235,10 @@ export function NoteDocument({
         : savedThisVisit
           ? { state: "saved" }
           : note.updated_at
-            ? { state: "idle", text: `Edited ${formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}` }
+            ? {
+                state: "idle",
+                text: `Edited ${formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}`,
+              }
             : null;
 
   const edited = savedThisVisit
@@ -243,7 +251,10 @@ export function NoteDocument({
     <div
       className="min-w-0"
       onKeyDown={(event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          event.key.toLowerCase() === "s"
+        ) {
           event.preventDefault();
           void persist();
         }
@@ -267,7 +278,13 @@ export function NoteDocument({
         </span>
 
         <div className="ml-auto flex min-w-0 items-center gap-1">
-          {status && <SaveStatus state={status.state} text={status.text} className="mr-1" />}
+          {status && (
+            <SaveStatus
+              state={status.state}
+              text={status.text}
+              className="mr-1"
+            />
+          )}
           {saveState === "error" && error && (
             <p role="alert" className="mr-1 truncate text-xs text-destructive">
               Not saved: {error}{" "}
@@ -376,7 +393,7 @@ export function NoteDocument({
           aria-hidden
           data-testid="note-cover"
           // A rule in the note's colour, not a gradient cover: the colour
-          // marks the note, the page stays text (north star: no gradients).
+          // marks the note, the page stays text.
           className="mt-2 h-1 rounded-full"
           // Per-note user data, not a theme token, so it cannot be a class.
           // Mixed toward the theme's ground so it sits in any preset.

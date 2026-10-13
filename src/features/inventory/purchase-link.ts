@@ -2,7 +2,7 @@ import type { Account, Transaction } from "@/features/money/domain/ledger";
 import { toMajor } from "@/features/money/domain/money";
 
 /**
- * Ledger expenses an inventory item can be linked to (ADM-024): the
+ * Ledger expenses an inventory item can be linked to: the
  * `transaction_id` column ("the ledger transaction that bought it") had no UI.
  */
 export interface PurchaseOption {
@@ -21,7 +21,9 @@ export function purchaseOptions(
   const options: PurchaseOption[] = [];
   for (const t of transactions) {
     if (t.kind !== "expense") continue;
-    const outflows = t.postings.filter((p) => p.amountMinor < 0 && accountById.has(p.accountId));
+    const outflows = t.postings.filter(
+      (p) => p.amountMinor < 0 && accountById.has(p.accountId),
+    );
     if (outflows.length === 0) continue;
     const currency = accountById.get(outflows[0].accountId)!.currency;
     // A purchase paid from two accounts in different currencies has no single
@@ -37,5 +39,7 @@ export function purchaseOptions(
       currency,
     });
   }
-  return options.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return options.sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+  );
 }

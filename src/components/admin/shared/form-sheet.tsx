@@ -40,14 +40,18 @@ interface FormSheetProps {
 }
 
 /**
- * Dismissing a sheet with unsaved input asks first (ADM-002).
+ * Dismissing a sheet with unsaved input asks first.
  *
  * Esc, a click outside or a swipe on the drawer used to close every form
  * sheet — tasks, events, habits, money — and drop what was typed. Closing
  * from the form itself (Save, Cancel) goes through the parent's own state, not
  * through here, so it is never asked about.
  */
-function useDismissGuard(open: boolean, onOpenChange: (open: boolean) => void, dirty?: boolean) {
+function useDismissGuard(
+  open: boolean,
+  onOpenChange: (open: boolean) => void,
+  dirty?: boolean,
+) {
   const confirm = useConfirm();
   const [touched, setTouched] = useState(false);
   const asking = useRef(false);
@@ -96,12 +100,20 @@ export default function FormSheet({
   dirty,
 }: FormSheetProps) {
   const isMobile = useIsMobile();
-  const { handleOpenChange, markTouched } = useDismissGuard(open, onOpenChange, dirty);
+  const { handleOpenChange, markTouched } = useDismissGuard(
+    open,
+    onOpenChange,
+    dirty,
+  );
 
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={handleOpenChange}>
-        <DrawerContent className="max-h-[90vh]" onInput={markTouched} onChange={markTouched}>
+        <DrawerContent
+          className="max-h-[90vh]"
+          onInput={markTouched}
+          onChange={markTouched}
+        >
           <DrawerHeader className="text-left">
             <DrawerTitle>{title}</DrawerTitle>
             {description && (

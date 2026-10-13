@@ -9,7 +9,7 @@ import type { PublicPreloadData } from "@/store/public-preload";
 import type { PortfolioSection } from "@/types";
 
 /**
- * Build-time data for one public page (ADR-004). Called from the pages'
+ * Build-time data for one public page. Called from the pages'
  * server components during `next build`; the result goes to <PublicPreload>.
  * Anything that fails to load is simply left out, and that part of the page
  * falls back to fetching in the browser.
@@ -23,13 +23,17 @@ export async function pagePreload({
   posts?: boolean;
   lifeUpdates?: boolean;
 }): Promise<PublicPreloadData> {
-  const [sectionResults, postList, updates, caseStudySlugs] = await Promise.all([
-    Promise.all(sections.map((path) => orUndefined(fetchSectionsByPath(path)))),
-    posts ? orUndefined(fetchPublishedPosts()) : undefined,
-    lifeUpdates ? orUndefined(fetchPublishedLifeUpdates()) : undefined,
-    // Any page showing sections may link to a case study (V2-042).
-    sections.length > 0 ? orUndefined(fetchCaseStudySlugs()) : undefined,
-  ]);
+  const [sectionResults, postList, updates, caseStudySlugs] = await Promise.all(
+    [
+      Promise.all(
+        sections.map((path) => orUndefined(fetchSectionsByPath(path))),
+      ),
+      posts ? orUndefined(fetchPublishedPosts()) : undefined,
+      lifeUpdates ? orUndefined(fetchPublishedLifeUpdates()) : undefined,
+      // Any page showing sections may link to a case study.
+      sections.length > 0 ? orUndefined(fetchCaseStudySlugs()) : undefined,
+    ],
+  );
 
   const sectionsByPath: Record<string, PortfolioSection[]> = {};
   sections.forEach((path, i) => {

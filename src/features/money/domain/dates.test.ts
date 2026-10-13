@@ -25,7 +25,11 @@ describe("dates", () => {
   });
 
   it("round-trips day numbers across 400 years", () => {
-    for (let day = toDayNumber("1900-01-01"); day < toDayNumber("2300-01-01"); day += 37) {
+    for (
+      let day = toDayNumber("1900-01-01");
+      day < toDayNumber("2300-01-01");
+      day += 37
+    ) {
       expect(toDayNumber(fromDayNumber(day))).toBe(day);
     }
   });

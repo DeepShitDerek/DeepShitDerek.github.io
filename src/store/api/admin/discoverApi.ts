@@ -11,7 +11,7 @@ import { getAllQueryFn, saveQueryFn, deleteQueryFn } from "./query-helpers";
  * stale; a stale forecast is worse than none. RTK Query is holding the two
  * lists of *what to ask for*, and the components ask.
  */
-export const discoverApi = adminApi.injectEndpoints({
+const discoverApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getDiscoverPlaces: builder.query<DiscoverPlace[], void>({
       queryFn: getAllQueryFn<DiscoverPlace>("discover_places", [

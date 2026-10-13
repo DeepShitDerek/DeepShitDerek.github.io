@@ -106,7 +106,7 @@ function NavRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={cn(
-        // Ruled rows in one list, not a card each (north star §3.4).
+        // Ruled rows in one list, not a card each.
         "group flex flex-wrap items-center gap-x-3 gap-y-2 p-3 transition-colors hover:bg-secondary/40 sm:flex-nowrap",
         isDragging && "opacity-50",
       )}
@@ -200,7 +200,7 @@ function NavRow({
           className="mx-1"
         />
 
-        {/* Edit and delete under one menu (P-menu): the row had five
+        {/* Edit and delete under one menu: the row had five
             controls, and two of them were rarely used. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -343,7 +343,7 @@ export default function NavigationPage() {
     }
   };
 
-  // Delete offers Undo instead of asking first (P1-10). A page built from a
+  // Delete offers Undo instead of asking first. A page built from a
   // link only leaves the site at the next deploy, so the toast says so.
   const { pending: deleting, remove: removeLink } = useUndoableDelete<NavLink>(
     async (link) => {

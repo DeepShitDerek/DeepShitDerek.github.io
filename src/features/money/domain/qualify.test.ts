@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DOCUMENTS, documentProgress, recentInquiries } from "./applications";
+import {
+  DEFAULT_DOCUMENTS,
+  documentProgress,
+  recentInquiries,
+} from "./applications";
 import {
   debtServiceRatios,
   housingExtras,
@@ -47,29 +51,59 @@ describe("down payment and insurance", () => {
 });
 
 describe("debt service ratios", () => {
-  const costs = { propertyTaxMonthlyMinor: 30_000, heatingMonthlyMinor: 10_000, condoFeesMonthlyMinor: 40_000 };
+  const costs = {
+    propertyTaxMonthlyMinor: 30_000,
+    heatingMonthlyMinor: 10_000,
+    condoFeesMonthlyMinor: 40_000,
+  };
 
   it("counts half the condo fees", () => {
     expect(housingExtras(costs)).toBe(60_000);
   });
 
   it("computes GDS and TDS against gross income", () => {
-    const r = debtServiceRatios({ grossMonthlyIncomeMinor: 800_000, mortgagePaymentMinor: 240_000, costs, otherDebtPaymentsMinor: 60_000 })!;
+    const r = debtServiceRatios({
+      grossMonthlyIncomeMinor: 800_000,
+      mortgagePaymentMinor: 240_000,
+      costs,
+      otherDebtPaymentsMinor: 60_000,
+    })!;
     expect(r.gds).toBeCloseTo(0.375);
     expect(r.tds).toBeCloseTo(0.45);
     expect(r).toMatchObject({ passesGds: true, passesTds: false });
-    expect(debtServiceRatios({ grossMonthlyIncomeMinor: 0, mortgagePaymentMinor: 1, costs, otherDebtPaymentsMinor: 0 })).toBeNull();
+    expect(
+      debtServiceRatios({
+        grossMonthlyIncomeMinor: 0,
+        mortgagePaymentMinor: 1,
+        costs,
+        otherDebtPaymentsMinor: 0,
+      }),
+    ).toBeNull();
   });
 
   it("finds the largest mortgage both ratios allow, which then just passes", () => {
-    const input = { grossMonthlyIncomeMinor: 800_000, costs, otherDebtPaymentsMinor: 60_000, contractRatePct: 4.5, amortizationMonths: 300 };
+    const input = {
+      grossMonthlyIncomeMinor: 800_000,
+      costs,
+      otherDebtPaymentsMinor: 60_000,
+      contractRatePct: 4.5,
+      amortizationMonths: 300,
+    };
     const max = maximumMortgage(input);
     expect(max).toBeGreaterThan(0);
-    const at = debtServiceRatios({ ...input, mortgagePaymentMinor: qualifyingPayment(max, 4.5, 300) })!;
+    const at = debtServiceRatios({
+      ...input,
+      mortgagePaymentMinor: qualifyingPayment(max, 4.5, 300),
+    })!;
     expect(at.passesGds && at.passesTds).toBe(true);
-    const over = debtServiceRatios({ ...input, mortgagePaymentMinor: qualifyingPayment(max + 500_000, 4.5, 300) })!;
+    const over = debtServiceRatios({
+      ...input,
+      mortgagePaymentMinor: qualifyingPayment(max + 500_000, 4.5, 300),
+    })!;
     expect(over.passesGds && over.passesTds).toBe(false);
-    expect(maximumMortgage({ ...input, otherDebtPaymentsMinor: 10_000_000 })).toBe(0);
+    expect(
+      maximumMortgage({ ...input, otherDebtPaymentsMinor: 10_000_000 }),
+    ).toBe(0);
   });
 
   it("counts 3% of a revolving balance", () => {
@@ -89,10 +123,26 @@ describe("applications", () => {
   });
 
   it("counts hard inquiries in the last year", () => {
-    expect(recentInquiries([{ hardInquiryOn: "2025-08-01" }, { hardInquiryOn: "2026-03-01" }, { hardInquiryOn: null }, { hardInquiryOn: "2026-12-01" }], "2026-09-24")).toEqual(["2026-03-01"]);
+    expect(
+      recentInquiries(
+        [
+          { hardInquiryOn: "2025-08-01" },
+          { hardInquiryOn: "2026-03-01" },
+          { hardInquiryOn: null },
+          { hardInquiryOn: "2026-12-01" },
+        ],
+        "2026-09-24",
+      ),
+    ).toEqual(["2026-03-01"]);
   });
 
   it("measures document progress", () => {
-    expect(documentProgress([{ status: "needed" }, { status: "ready" }, { status: "sent" }])).toEqual({ done: 2, total: 3 });
+    expect(
+      documentProgress([
+        { status: "needed" },
+        { status: "ready" },
+        { status: "sent" },
+      ]),
+    ).toEqual({ done: 2, total: 3 });
   });
 });

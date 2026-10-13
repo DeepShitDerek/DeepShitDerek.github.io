@@ -13,7 +13,7 @@ import type { CalendarEntry } from "@/types";
  */
 
 export const MINUTES_PER_DAY = 24 * 60;
-export const SNAP_MINUTES = 15;
+const SNAP_MINUTES = 15;
 
 /** The local calendar date as a stable key: "2026-10-05". */
 export const dayKey = (date: Date) => format(date, "yyyy-MM-dd");

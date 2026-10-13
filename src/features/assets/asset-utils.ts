@@ -50,7 +50,7 @@ export function sanitizeFolderName(raw: string): string | null {
  * builds a storage path has to derive it from `file_path`, never from
  * `file_name` — see `targetPathForMove`.
  */
-export function assetBasename(filePath: string): string {
+function assetBasename(filePath: string): string {
   return filePath.split("/").pop() ?? filePath;
 }
 

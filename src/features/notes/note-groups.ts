@@ -19,7 +19,7 @@ function editedAt(note: Note): number {
   return Number.isNaN(time) ? 0 : time;
 }
 
-export function sortByEdited(notes: Note[]): Note[] {
+function sortByEdited(notes: Note[]): Note[] {
   return [...notes].sort((a, b) => editedAt(b) - editedAt(a));
 }
 

@@ -2,19 +2,31 @@ import { configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it, vi } from "vitest";
 
 /**
- * ADM-018: habits load their whole log history, a page at a time, so
+ * Habits load their whole log history, a page at a time, so
  * streaks, "best", the delete warning and the year heatmap see all of it.
  */
 
 const HABITS = [
-  { id: "h1", title: "Read", created_at: "2020-01-01T00:00:00Z", display_order: 0 },
-  { id: "h2", title: "Run", created_at: "2020-01-01T00:00:00Z", display_order: 1 },
+  {
+    id: "h1",
+    title: "Read",
+    created_at: "2020-01-01T00:00:00Z",
+    display_order: 0,
+  },
+  {
+    id: "h2",
+    title: "Run",
+    created_at: "2020-01-01T00:00:00Z",
+    display_order: 1,
+  },
 ];
 // 2,500 logs over the two habits: three pages at PostgREST's 1,000-row cap.
 const LOGS = Array.from({ length: 2500 }, (_, i) => ({
   id: `l${String(i).padStart(5, "0")}`,
   habit_id: i % 5 === 0 ? "h2" : "h1",
-  completed_date: new Date(Date.UTC(2020, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
+  completed_date: new Date(Date.UTC(2020, 0, 1) + i * 86_400_000)
+    .toISOString()
+    .slice(0, 10),
   value: 1,
   note: null,
 }));
@@ -36,16 +48,23 @@ function query(table: string) {
       return builder;
     },
     then: (resolve: (v: unknown) => void) =>
-      resolve({ data: table === "habits" ? HABITS : LOGS.slice(state.from, state.to + 1), error: null }),
+      resolve({
+        data:
+          table === "habits" ? HABITS : LOGS.slice(state.from, state.to + 1),
+        error: null,
+      }),
   });
   return builder;
 }
 
 vi.mock("@/supabase/client", () => ({
-  supabase: { from: (table: string) => query(table), rpc: async () => ({ data: null, error: null }) },
+  supabase: {
+    from: (table: string) => query(table),
+    rpc: async () => ({ data: null, error: null }),
+  },
 }));
 
-describe("getHabits (ADM-018)", () => {
+describe("getHabits", () => {
   it("loads every log, across pages, onto its habit", async () => {
     const { adminApi } = await import("./baseApi");
     const { habitsApi } = await import("./habitsApi");
@@ -53,12 +72,20 @@ describe("getHabits (ADM-018)", () => {
       reducer: { [adminApi.reducerPath]: adminApi.reducer },
       middleware: (m) => m().concat(adminApi.middleware),
     });
-    const result = await store.dispatch(habitsApi.endpoints.getHabits.initiate());
+    const result = await store.dispatch(
+      habitsApi.endpoints.getHabits.initiate(),
+    );
     expect(result.error).toBeUndefined();
     const habits = result.data!;
-    expect(ranges).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
+    expect(ranges).toEqual([
+      [0, 999],
+      [1000, 1999],
+      [2000, 2999],
+    ]);
     expect(habits.map((h) => h.habit_logs!.length)).toEqual([2000, 500]);
-    expect(habits[0].habit_logs!.every((log) => log.habit_id === "h1")).toBe(true);
+    expect(habits[0].habit_logs!.every((log) => log.habit_id === "h1")).toBe(
+      true,
+    );
     // The oldest log, years back, is there — no 30-day window.
     expect(habits[0].habit_logs![0].completed_date).toBe("2020-01-02");
   });
@@ -73,7 +100,9 @@ describe("setHabitLog", () => {
       middleware: (m) => m().concat(adminApi.middleware),
     });
     await store.dispatch(habitsApi.endpoints.getHabits.initiate());
-    await store.dispatch(habitsApi.endpoints.getHabits.initiate({ includeArchived: true }));
+    await store.dispatch(
+      habitsApi.endpoints.getHabits.initiate({ includeArchived: true }),
+    );
 
     // It returned { data: undefined }. RTK Query checks the shape only in
     // development, where it logged "returned an object containing neither a
@@ -82,7 +111,11 @@ describe("setHabitLog", () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const result = await store.dispatch(
-        habitsApi.endpoints.setHabitLog.initiate({ habit_id: "h2", date: "2030-01-01", value: 1 }),
+        habitsApi.endpoints.setHabitLog.initiate({
+          habit_id: "h2",
+          date: "2030-01-01",
+          value: 1,
+        }),
       );
       expect("error" in result && result.error).toBeFalsy();
       expect(logged).not.toHaveBeenCalled();
@@ -92,8 +125,14 @@ describe("setHabitLog", () => {
     }
 
     for (const args of [undefined, { includeArchived: true }] as const) {
-      const habits = habitsApi.endpoints.getHabits.select(args)(store.getState()).data!;
-      expect(habits.find((h) => h.id === "h2")!.habit_logs!.some((l) => l.completed_date === "2030-01-01")).toBe(true);
+      const habits = habitsApi.endpoints.getHabits.select(args)(
+        store.getState(),
+      ).data!;
+      expect(
+        habits
+          .find((h) => h.id === "h2")!
+          .habit_logs!.some((l) => l.completed_date === "2030-01-01"),
+      ).toBe(true);
     }
   });
 });

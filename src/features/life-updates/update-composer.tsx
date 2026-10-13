@@ -234,7 +234,8 @@ export function UpdateComposer({
   };
 
   const primaryLabel = isEdit && wasPublished ? "Save" : "Publish";
-  const secondaryLabel = isEdit && wasPublished ? "Move to drafts" : "Save draft";
+  const secondaryLabel =
+    isEdit && wasPublished ? "Move to drafts" : "Save draft";
   const disabled = isEmpty || isSaving || isUploading;
 
   return (

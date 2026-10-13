@@ -106,7 +106,7 @@ export default function ContentPage() {
     if (sections) setLocalSections(sections);
   }, [sections]);
 
-  // Deletes offer Undo instead of asking first (P1-10). Nothing is deleted
+  // Deletes offer Undo instead of asking first. Nothing is deleted
   // until the toast closes, so a section's items, and the public page, stay
   // as they were if you undo.
   const { pending: deletingSections, remove: removeSection } =

@@ -38,7 +38,7 @@ const learningSessionSlice = createSlice({
   },
 });
 
-export const { setLoading, sessionStarted, sessionStopped, tick } =
+export const { sessionStarted, sessionStopped, tick } =
   learningSessionSlice.actions;
 
 export default learningSessionSlice.reducer;

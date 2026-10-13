@@ -5,14 +5,22 @@ const deps = (over: Partial<PublishDeps> = {}): PublishDeps => ({
   isOwner: vi.fn(async () => true),
   activeRuns: vi.fn(async () => 0),
   dispatch: vi.fn(async () => {}),
-  latestRun: vi.fn(async () => ({ status: "completed", conclusion: "success", createdAt: "2026-09-25T10:00:00Z", url: "https://github.com/x" })),
+  latestRun: vi.fn(async () => ({
+    status: "completed",
+    conclusion: "success",
+    createdAt: "2026-09-25T10:00:00Z",
+    url: "https://github.com/x",
+  })),
   ...over,
 });
 
-describe("publish site (ADM-009)", () => {
+describe("publish site", () => {
   it("starts a deploy for the owner", async () => {
     const d = deps();
-    expect(await handlePublish("POST", d)).toEqual({ status: 202, body: { started: true } });
+    expect(await handlePublish("POST", d)).toEqual({
+      status: 202,
+      body: { started: true },
+    });
     expect(d.dispatch).toHaveBeenCalledOnce();
   });
 
@@ -32,13 +40,28 @@ describe("publish site (ADM-009)", () => {
   });
 
   it("reports the latest run, and rejects other methods", async () => {
-    expect(await handlePublish("GET", deps())).toMatchObject({ status: 200, body: { latest: { conclusion: "success" } } });
+    expect(await handlePublish("GET", deps())).toMatchObject({
+      status: 200,
+      body: { latest: { conclusion: "success" } },
+    });
     expect((await handlePublish("DELETE", deps())).status).toBe(405);
   });
 
   it("lets only the admin's own origin call it from a browser, once configured", () => {
-    expect(corsHeaders("https://me.dev", "https://me.dev")["Access-Control-Allow-Origin"]).toBe("https://me.dev");
-    expect(corsHeaders("https://me.dev", "https://evil.example")["Access-Control-Allow-Origin"]).toBeUndefined();
-    expect(corsHeaders(undefined, "http://localhost:3000")["Access-Control-Allow-Origin"]).toBe("http://localhost:3000");
+    expect(
+      corsHeaders("https://me.dev", "https://me.dev")[
+        "Access-Control-Allow-Origin"
+      ],
+    ).toBe("https://me.dev");
+    expect(
+      corsHeaders("https://me.dev", "https://evil.example")[
+        "Access-Control-Allow-Origin"
+      ],
+    ).toBeUndefined();
+    expect(
+      corsHeaders(undefined, "http://localhost:3000")[
+        "Access-Control-Allow-Origin"
+      ],
+    ).toBe("http://localhost:3000");
   });
 });

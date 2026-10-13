@@ -4,7 +4,7 @@ import { balances, type Account, type Transaction } from "./ledger";
 import { convert, money } from "./money";
 
 /**
- * Savings goals (V2-080). A goal is funded by the accounts set aside for it;
+ * Savings goals. A goal is funded by the accounts set aside for it;
  * its progress is their balance in the goal's currency, never a number
  * typed in. From that: how much is left, what saving per month reaches the
  * target date, and — from how those balances actually moved over the last
@@ -21,6 +21,24 @@ export interface Goal {
   notes: string | null;
   achievedAt: string | null;
   archivedAt: string | null;
+}
+
+/**
+ * Goals by where they stand. An archived goal is only archived, whether or
+ * not it was reached first, so each goal is listed once.
+ */
+export function groupGoals(goals: readonly Goal[]): {
+  active: Goal[];
+  achieved: Goal[];
+  archived: Goal[];
+} {
+  return {
+    active: goals.filter((g) => !g.archivedAt && !g.achievedAt),
+    achieved: goals
+      .filter((g) => !g.archivedAt && g.achievedAt)
+      .sort((a, b) => b.achievedAt!.localeCompare(a.achievedAt!)),
+    archived: goals.filter((g) => g.archivedAt),
+  };
 }
 
 export interface GoalProgress {
@@ -58,7 +76,11 @@ function linkedTotal(
       if (balance !== 0) unpriced += 1;
       continue;
     }
-    total += convert(money(balance, account.currency), quote.rate, goal.currency).minor;
+    total += convert(
+      money(balance, account.currency),
+      quote.rate,
+      goal.currency,
+    ).minor;
   }
   return { total, unpriced };
 }
@@ -71,7 +93,13 @@ export function goalProgress(
   rates: RateTable,
 ): GoalProgress {
   const now = linkedTotal(goal, accounts, transactions, today, rates);
-  const before = linkedTotal(goal, accounts, transactions, addDays(today, -90), rates);
+  const before = linkedTotal(
+    goal,
+    accounts,
+    transactions,
+    addDays(today, -90),
+    rates,
+  );
   const saved = Math.max(0, now.total);
   const remaining = Math.max(0, goal.targetMinor - saved);
 
@@ -90,7 +118,8 @@ export function goalProgress(
     remainingMinor: remaining,
     ratio: Math.min(1, saved / goal.targetMinor),
     monthsLeft,
-    requiredPerMonthMinor: monthsLeft === null ? null : Math.ceil(remaining / monthsLeft),
+    requiredPerMonthMinor:
+      monthsLeft === null ? null : Math.ceil(remaining / monthsLeft),
     pacePerMonthMinor: pace,
     projectedDate: projected,
     unpricedAccounts: now.unpriced,

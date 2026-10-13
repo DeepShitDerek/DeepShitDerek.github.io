@@ -289,7 +289,9 @@ export function ReviewSession({
                   >
                     <span className="flex w-full items-center justify-between text-sm font-medium">
                       {option.label}
-                      <kbd className="text-micro font-normal opacity-70">{i + 1}</kbd>
+                      <kbd className="text-micro font-normal opacity-70">
+                        {i + 1}
+                      </kbd>
                     </span>
                     <span className="text-micro font-normal opacity-80">
                       {preview && describeInterval(preview[option.value])}

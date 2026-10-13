@@ -110,7 +110,11 @@ export const HabitCell = React.memo(
                       isCompleted ? "bg-success" : "bg-muted-foreground/50",
                     )}
                   />
-                  {isCompleted ? "Completed" : partial ? `${partial.label} so far` : "Not done"}
+                  {isCompleted
+                    ? "Completed"
+                    : partial
+                      ? `${partial.label} so far`
+                      : "Not done"}
                 </div>
                 {isCompleted && (
                   <p className="mt-1 border-t border-border/50 pt-1 text-micro opacity-70">

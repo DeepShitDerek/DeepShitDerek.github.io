@@ -77,24 +77,3 @@ export function searchNodes(
     .slice(0, limit)
     .map(({ node }) => node);
 }
-
-/** Axis-aligned bounds of some nodes, for fit/zoom-to. Null when empty. */
-export function bounds(
-  nodes: readonly GraphNode[],
-  size: { w: number; h: number },
-): { x: number; y: number; width: number; height: number } | null {
-  if (nodes.length === 0) return null;
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const node of nodes) {
-    const w = node.width ?? size.w;
-    const h = node.height ?? size.h;
-    minX = Math.min(minX, node.position.x);
-    minY = Math.min(minY, node.position.y);
-    maxX = Math.max(maxX, node.position.x + w);
-    maxY = Math.max(maxY, node.position.y + h);
-  }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-}

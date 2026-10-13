@@ -10,9 +10,21 @@ import type {
 import type { RateRow } from "../domain/fx";
 import type { Budget } from "../domain/budget";
 import type { Goal } from "../domain/goals";
-import type { Application, ApplicationStatus, CreditProduct, DocumentStatus } from "../domain/applications";
+import type {
+  Application,
+  ApplicationStatus,
+  CreditProduct,
+  DocumentStatus,
+} from "../domain/applications";
 import type { CreditScore, IncomeSource } from "../domain/lender-report";
-import type { AssetClass, Price, Region, Security, Trade, TradeKind } from "../domain/invest";
+import type {
+  AssetClass,
+  Price,
+  Region,
+  Security,
+  Trade,
+  TradeKind,
+} from "../domain/invest";
 import type { Compounding, LoanTerms, PaymentFrequency } from "../domain/loan";
 import type { RoomEntry, RoomRegistration } from "../domain/room";
 import type { Frequency, Schedule, ScheduleKind } from "../domain/schedule";
@@ -20,10 +32,10 @@ import type { Bucket, Category, MoneySettings } from "../domain/model";
 import { DEFAULT_SETTINGS } from "../domain/model";
 
 export { DEFAULT_SETTINGS };
-export type { Bucket, Category, MoneySettings };
+export type { Category, MoneySettings };
 
 /**
- * Database rows ↔ domain objects (V2-080).
+ * Database rows ↔ domain objects.
  *
  * Rows are snake_case and carry Postgres types as PostgREST serialises them:
  * BIGINT and NUMERIC arrive as numbers or numeric strings, dates as
@@ -40,10 +52,10 @@ export function toMinor(value: unknown): number {
   return n;
 }
 
-export const toMinorOrNull = (value: unknown): number | null =>
+const toMinorOrNull = (value: unknown): number | null =>
   value == null ? null : toMinor(value);
 
-export function toRate(value: unknown): number | null {
+function toRate(value: unknown): number | null {
   if (value == null) return null;
   const n = typeof value === "string" ? Number(value) : value;
   if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) {
@@ -65,8 +77,6 @@ export interface SettingsRow {
   emergency_months: number | string;
 }
 
-
-
 export const settingsFromRow = (row: SettingsRow): MoneySettings => ({
   baseCurrency: row.base_currency,
   homeCurrency: row.home_currency,
@@ -79,7 +89,9 @@ export const settingsFromRow = (row: SettingsRow): MoneySettings => ({
   emergencyMonths: Number(row.emergency_months),
 });
 
-export const settingsToRow = (s: MoneySettings): Omit<SettingsRow, "user_id"> => ({
+export const settingsToRow = (
+  s: MoneySettings,
+): Omit<SettingsRow, "user_id"> => ({
   base_currency: s.baseCurrency,
   home_currency: s.homeCurrency,
   province: s.province,
@@ -90,7 +102,6 @@ export const settingsToRow = (s: MoneySettings): Omit<SettingsRow, "user_id"> =>
   save_pct: s.savePct,
   emergency_months: s.emergencyMonths,
 });
-
 
 export interface AccountRow {
   id: string;
@@ -167,8 +178,6 @@ export const accountToRow = (a: Omit<AccountRecord, "id" | "archivedAt">) => ({
   sort_order: a.sortOrder,
 });
 
-
-
 export interface CategoryRow {
   id: string;
   parent_id: string | null;
@@ -218,7 +227,7 @@ export interface TransactionRow {
   money_posting: PostingRow[];
 }
 
-export const postingFromRow = (row: PostingRow): Posting => ({
+const postingFromRow = (row: PostingRow): Posting => ({
   accountId: row.account_id,
   categoryId: row.category_id,
   amountMinor: toMinor(row.amount_minor),
@@ -343,7 +352,9 @@ export const scheduleFromRow = (row: ScheduleRow): Schedule => ({
   archivedAt: row.archived_at,
 });
 
-export const scheduleToRow = (s: Omit<Schedule, "id" | "archivedAt">): Omit<ScheduleRow, "id" | "archived_at"> => ({
+export const scheduleToRow = (
+  s: Omit<Schedule, "id" | "archivedAt">,
+): Omit<ScheduleRow, "id" | "archived_at"> => ({
   name: s.name.trim(),
   kind: s.kind,
   account_id: s.accountId,
@@ -442,7 +453,10 @@ export const loanFromRow = (row: LoanRow): Loan => ({
   amortizationMonths: row.amortization_months,
   termMonths: row.term_months,
   firstPaymentDate: row.first_payment_date,
-  prepaymentAllowancePct: row.prepayment_allowance_pct == null ? null : Number(row.prepayment_allowance_pct),
+  prepaymentAllowancePct:
+    row.prepayment_allowance_pct == null
+      ? null
+      : Number(row.prepayment_allowance_pct),
   notes: row.notes,
 });
 
@@ -488,7 +502,9 @@ export const incomeFromRow = (row: IncomeSourceRow): IncomeSource => ({
   notes: row.notes,
 });
 
-export const incomeToRow = (s: Omit<IncomeSource, "id">): Omit<IncomeSourceRow, "id"> => ({
+export const incomeToRow = (
+  s: Omit<IncomeSource, "id">,
+): Omit<IncomeSourceRow, "id"> => ({
   name: s.name.trim(),
   employment: s.employment,
   role: s.role?.trim() || null,
@@ -516,7 +532,7 @@ export const scoreFromRow = (row: CreditScoreRow): CreditScore => ({
   source: row.source,
 });
 
-export interface ApplicationDocRow {
+interface ApplicationDocRow {
   id: string;
   application_id: string;
   name: string;
@@ -568,10 +584,18 @@ export const applicationFromRow = (row: ApplicationRow): Application => ({
   notes: row.notes,
   documents: [...(row.money_application_doc ?? [])]
     .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
-    .map((d) => ({ id: d.id, name: d.name, status: d.status, note: d.note, sortOrder: d.sort_order })),
+    .map((d) => ({
+      id: d.id,
+      name: d.name,
+      status: d.status,
+      note: d.note,
+      sortOrder: d.sort_order,
+    })),
 });
 
-export const applicationToRow = (a: Omit<Application, "id" | "documents">): Omit<ApplicationRow, "id" | "money_application_doc"> => ({
+export const applicationToRow = (
+  a: Omit<Application, "id" | "documents">,
+): Omit<ApplicationRow, "id" | "money_application_doc"> => ({
   lender: a.lender.trim(),
   product: a.product,
   status: a.status,
@@ -582,9 +606,12 @@ export const applicationToRow = (a: Omit<Application, "id" | "documents">): Omit
   amortization_months: a.amortizationMonths,
   purchase_price_minor: a.product === "mortgage" ? a.purchasePriceMinor : null,
   down_payment_minor: a.product === "mortgage" ? a.downPaymentMinor : null,
-  property_tax_monthly_minor: a.product === "mortgage" ? a.propertyTaxMonthlyMinor : null,
-  heating_monthly_minor: a.product === "mortgage" ? a.heatingMonthlyMinor : null,
-  condo_fees_monthly_minor: a.product === "mortgage" ? a.condoFeesMonthlyMinor : null,
+  property_tax_monthly_minor:
+    a.product === "mortgage" ? a.propertyTaxMonthlyMinor : null,
+  heating_monthly_minor:
+    a.product === "mortgage" ? a.heatingMonthlyMinor : null,
+  condo_fees_monthly_minor:
+    a.product === "mortgage" ? a.condoFeesMonthlyMinor : null,
   submitted_on: a.submittedOn,
   decided_on: a.decidedOn,
   hard_inquiry_on: a.hardInquiryOn,
@@ -613,7 +640,9 @@ export const securityFromRow = (row: SecurityRow): Security => ({
   notes: row.notes,
 });
 
-export const securityToRow = (s: Omit<Security, "id">): Omit<SecurityRow, "id"> => ({
+export const securityToRow = (
+  s: Omit<Security, "id">,
+): Omit<SecurityRow, "id"> => ({
   symbol: s.symbol.trim().toUpperCase(),
   name: s.name.trim(),
   currency: s.currency,
@@ -630,7 +659,8 @@ export interface PriceRow {
 
 export const priceFromRow = (row: PriceRow): Price => {
   const price = Number(row.price);
-  if (!Number.isFinite(price) || price <= 0) throw new Error(`Unreadable price for ${row.security_id} on ${row.date}`);
+  if (!Number.isFinite(price) || price <= 0)
+    throw new Error(`Unreadable price for ${row.security_id} on ${row.date}`);
   return { securityId: row.security_id, date: row.date, price };
 };
 

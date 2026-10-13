@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Behavioural database tests (V2-015).
+ * Behavioural database tests.
  *
  * The static checks in src/test/db-security.test.ts read schema.sql as text;
  * these run it. A throwaway supabase/postgres container gets the test shims,

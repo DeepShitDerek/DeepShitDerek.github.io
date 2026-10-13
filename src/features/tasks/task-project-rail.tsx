@@ -5,7 +5,7 @@ import type { TaskProject } from "@/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 
-export type ProjectSelection = string | "all" | "none";
+type ProjectSelection = string | "all" | "none";
 
 export interface TaskProjectRailProps {
   projects: TaskProject[];

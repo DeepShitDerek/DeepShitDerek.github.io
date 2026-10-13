@@ -1,3 +1,4 @@
+import type { SiteStyle } from "@/lib/site-style";
 // =============================================================================
 // API TYPES
 // =============================================================================
@@ -33,15 +34,6 @@ export interface StorageAsset {
   created_at: string;
 }
 
-export interface CalendarItem {
-  item_id: string;
-  title: string;
-  start_time: string;
-  end_time: string | null;
-  item_type: "event" | "task" | "transaction";
-  data: Record<string, unknown>;
-}
-
 // =============================================================================
 // PORTFOLIO
 // =============================================================================
@@ -58,7 +50,7 @@ export interface PortfolioSection {
   is_visible: boolean;
   /**
    * Whether the public page shows the section's title. Absent on fallback
-   * data and on databases before migration 019, where it means shown.
+   * data and on a database set up from an older schema, where it means shown.
    */
   show_title?: boolean;
   page_path: string;
@@ -84,12 +76,11 @@ export interface PortfolioItem {
    *
    * Concurrency on the timeline is *derived* from overlapping dates, which is
    * honest. A merge is not derivable — "these ended near each other" is a
-   * different claim from "one became the other" — so it is stated. See
-   * db/migrations/017.
+   * different claim from "one became the other" — so it is stated.
    */
   merged_into_id?: string | null;
   display_order?: number;
-  /** Case study (V2-042): with a non-blank `case_study`, the page is /work/<slug>/. */
+  /** Case study: with a non-blank `case_study`, the page is /work/<slug>/. */
   slug?: string | null;
   /** Markdown. Not in list queries; read `has_case_study` there. */
   case_study?: string | null;
@@ -122,7 +113,7 @@ export interface BlogPost {
   updated_at?: string;
 }
 
-export interface GitHubRepoOwner {
+interface GitHubRepoOwner {
   login: string;
   avatar_url: string;
   html_url: string;
@@ -183,7 +174,7 @@ export interface Note {
  * deliberately loose (`unknown[]` / record) rather than mirroring Excalidraw's
  * internal types, which change between minor versions.
  */
-/** A Maps list row (V2-070). The graph itself is not loaded for the list. */
+/** A Maps list row. The graph itself is not loaded for the list. */
 export interface ThinkingMapSummary {
   id: string;
   name: string;
@@ -298,14 +289,14 @@ export interface Task {
   sub_tasks?: SubTask[];
 }
 
-export type HabitKind = "build" | "quit";
-export type HabitSchedule =
+type HabitKind = "build" | "quit";
+type HabitSchedule =
   | "daily"
   | "weekdays"
   | "weekends"
   | "custom"
   | "weekly_count";
-export type HabitTimeOfDay = "anytime" | "morning" | "afternoon" | "evening";
+type HabitTimeOfDay = "anytime" | "morning" | "afternoon" | "evening";
 
 export interface Habit {
   id: string;
@@ -499,6 +490,8 @@ export interface SiteContent {
     };
     updates_layout?: "timeline" | "scrapbook";
     typography_preset?: string;
+    /** Classic, or an immersive style for the public site. Unknown → classic. */
+    site_style?: SiteStyle;
   };
   social_links: {
     id: string;
@@ -508,22 +501,11 @@ export interface SiteContent {
   }[];
   footer_data: {
     copyright_text: string;
-    /** Footer-only links, after the nav (V2-040a). Defaults to Updates. */
+    /** Footer-only links, after the nav. Defaults to Updates. */
     links?: { label: string; href: string }[];
   };
 }
 
-export interface AnalyticsData {
-  task_status_distribution:
-    | { name: "todo" | "inprogress" | "done"; value: number }[]
-    | null;
-  tasks_completed_weekly: { week: string; completed: number }[] | null;
-  productivity_heatmap: { date: string; count: number }[] | null;
-  top_blog_posts:
-    | { id: string; title: string; slug: string; views: number }[]
-    | null;
-  learning_time_by_subject: { name: string; value: number }[] | null;
-}
 export interface InventoryItem {
   id: string;
   user_id?: string;
@@ -557,7 +539,7 @@ export interface InventoryItem {
   updated_at?: string;
 }
 
-export type InventoryArchiveReason =
+type InventoryArchiveReason =
   | "sold"
   | "gifted"
   | "lost"
@@ -569,7 +551,7 @@ export type InventoryArchiveReason =
 // =============================================================================
 
 export interface DashboardData {
-  /** Whole rows: the dashboard completes them, recurrence included (ADM-013). */
+  /** Whole rows: the dashboard completes them, recurrence included. */
   overdueTasks: Task[];
   /** Due today, finished ones included, so the day's progress can move. */
   tasksDueToday: Task[];
@@ -581,9 +563,6 @@ export interface DashboardData {
    * Major units, unlike the rest of the money module: the RPC divides by the base
    * currency's exponent so the one division happens in one place, and the
    * dashboard formats them with the shared `formatMoney({ amount, currency })`.
-   *
-   * `recurring` and `primaryGoal` used to sit here. Both were fetched from v1's
-   * tables on every dashboard load, typed, and rendered by nothing.
    */
   dailyExpenses: { day: string; total: number }[];
   dailyEarnings: { day: string; total: number }[];
@@ -609,7 +588,7 @@ export interface ContactSubmission {
   email: string;
   subject: string;
   message: string;
-  /** Role / project / other (V2-040b); null on messages from before it. */
+  /** Role / project / other; null on messages from before it. */
   topic?: "role" | "project" | "other" | null;
   is_read: boolean;
   is_archived: boolean;

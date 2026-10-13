@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, LoadError, LoadingState } from "@/components/admin/shared";
 
 /**
- * The component state matrix (V2-032): every core primitive in every state it
+ * The component state matrix: every core primitive in every state it
  * has, and the token scales, on one page. Lives in the dev harness only
  * (/dev/ui), and `check:a11y` scans it in light, dark and high-contrast
  * themes, so a state that fails contrast or loses its name fails CI rather
@@ -24,10 +24,22 @@ import { EmptyState, LoadError, LoadingState } from "@/components/admin/shared";
  * focus rings, which the keyboard walk in `check:a11y` also checks.
  */
 
-const BUTTON_VARIANTS = ["default", "secondary", "outline", "ghost", "destructive", "link"] as const;
-const BADGE_VARIANTS = ["default", "secondary", "outline", "destructive"] as const;
+const BUTTON_VARIANTS = [
+  "default",
+  "secondary",
+  "outline",
+  "ghost",
+  "destructive",
+  "link",
+] as const;
+const BADGE_VARIANTS = [
+  "default",
+  "secondary",
+  "outline",
+  "destructive",
+] as const;
 
-export const Z_LAYERS: [name: string, value: number, use: string][] = [
+const Z_LAYERS: [name: string, value: number, use: string][] = [
   ["raised", 10, "Above its siblings: badges, hover actions"],
   ["sticky", 20, "Sticky inside a scroll area: table columns, toolbars"],
   ["chrome", 30, "Page chrome: top bar, reading progress, floating buttons"],
@@ -36,15 +48,26 @@ export const Z_LAYERS: [name: string, value: number, use: string][] = [
   ["skip", 60, "Skip link, above an open overlay"],
   ["top", 100, "Maintenance screen"],
 ];
-export const DURATIONS: [name: string, ms: number, use: string][] = [
+const DURATIONS: [name: string, ms: number, use: string][] = [
   ["fast", 150, "Small feedback: a check, a colour change"],
   ["base", 200, "Most transitions"],
   ["slow", 300, "Things that move across the screen"],
 ];
 
-function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+function Section({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section aria-labelledby={id} className="space-y-4 rounded-surface bg-card p-6 shadow-e1">
+    <section
+      aria-labelledby={id}
+      className="space-y-4 rounded-surface bg-card p-6 shadow-e1"
+    >
       <h2 id={id} className="text-lg font-semibold">
         {title}
       </h2>
@@ -53,7 +76,13 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-function State({ label, children }: { label: string; children: React.ReactNode }) {
+function State({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col items-start gap-2">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -70,7 +99,8 @@ export function StateMatrix() {
       <header>
         <h1 className="text-2xl font-semibold">Component states</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every core primitive in every state, and the token scales. Tab through to see focus.
+          Every core primitive in every state, and the token scales. Tab through
+          to see focus.
         </p>
       </header>
 
@@ -79,14 +109,23 @@ export function StateMatrix() {
           <table className="text-sm">
             <thead>
               <tr>
-                <th scope="col" className="pb-3 pr-6 text-left font-medium text-muted-foreground">
+                <th
+                  scope="col"
+                  className="pb-3 pr-6 text-left font-medium text-muted-foreground"
+                >
                   Variant
                 </th>
-                {["Default", "Disabled", "Loading", "Small", "Icon"].map((h) => (
-                  <th key={h} scope="col" className="pb-3 pr-6 text-left font-medium text-muted-foreground">
-                    {h}
-                  </th>
-                ))}
+                {["Default", "Disabled", "Loading", "Small", "Icon"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      scope="col"
+                      className="pb-3 pr-6 text-left font-medium text-muted-foreground"
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
@@ -105,7 +144,10 @@ export function StateMatrix() {
                   </td>
                   <td className="py-2 pr-6">
                     <Button variant={variant} disabled aria-busy>
-                      <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                      <Loader2
+                        className="mr-2 size-4 animate-spin"
+                        aria-hidden
+                      />
                       Saving…
                     </Button>
                   </td>
@@ -115,7 +157,11 @@ export function StateMatrix() {
                     </Button>
                   </td>
                   <td className="py-2 pr-6">
-                    <Button variant={variant} size="icon" aria-label={`Inbox (${variant})`}>
+                    <Button
+                      variant={variant}
+                      size="icon"
+                      aria-label={`Inbox (${variant})`}
+                    >
                       <Inbox className="size-4" aria-hidden />
                     </Button>
                   </td>
@@ -138,7 +184,12 @@ export function StateMatrix() {
           </State>
           <State label="Invalid">
             <Label htmlFor="f-invalid">Email</Label>
-            <Input id="f-invalid" defaultValue="not-an-email" aria-invalid aria-describedby="f-invalid-msg" />
+            <Input
+              id="f-invalid"
+              defaultValue="not-an-email"
+              aria-invalid
+              aria-describedby="f-invalid-msg"
+            />
             <p id="f-invalid-msg" className="text-sm text-destructive">
               Enter an email address.
             </p>
@@ -162,7 +213,11 @@ export function StateMatrix() {
         <div className="flex flex-wrap gap-8">
           <State label="Checkbox">
             <div className="flex items-center gap-2">
-              <Checkbox id="c-on" checked={checked} onCheckedChange={(v) => setChecked(v === true)} />
+              <Checkbox
+                id="c-on"
+                checked={checked}
+                onCheckedChange={(v) => setChecked(v === true)}
+              />
               <Label htmlFor="c-on">Interactive</Label>
             </div>
           </State>
@@ -211,7 +266,9 @@ export function StateMatrix() {
           </Alert>
           <Alert variant="destructive">
             <AlertTitle>Couldn&apos;t save</AlertTitle>
-            <AlertDescription>The connection dropped. Nothing was changed.</AlertDescription>
+            <AlertDescription>
+              The connection dropped. Nothing was changed.
+            </AlertDescription>
           </Alert>
         </div>
       </Section>
@@ -228,11 +285,20 @@ export function StateMatrix() {
             </div>
           </State>
           <State label="Empty">
-            <EmptyState icon={Inbox} title="No notes yet" description="Start one and it appears here." size="compact" />
+            <EmptyState
+              icon={Inbox}
+              title="No notes yet"
+              description="Start one and it appears here."
+              size="compact"
+            />
           </State>
         </div>
         <State label="Load error">
-          <LoadError what="your notes" error={new Error("The request timed out.")} onRetry={() => {}} />
+          <LoadError
+            what="your notes"
+            error={new Error("The request timed out.")}
+            onRetry={() => {}}
+          />
         </State>
       </Section>
 
@@ -244,7 +310,10 @@ export function StateMatrix() {
               <tbody>
                 {Z_LAYERS.map(([name, value, use]) => (
                   <tr key={name}>
-                    <th scope="row" className="py-1 pr-4 text-left font-mono text-xs font-normal">
+                    <th
+                      scope="row"
+                      className="py-1 pr-4 text-left font-mono text-xs font-normal"
+                    >
                       z-{name}
                     </th>
                     <td className="py-1 pr-4 tabular-nums">{value}</td>
@@ -260,7 +329,10 @@ export function StateMatrix() {
               <tbody>
                 {DURATIONS.map(([name, ms, use]) => (
                   <tr key={name}>
-                    <th scope="row" className="py-1 pr-4 text-left font-mono text-xs font-normal">
+                    <th
+                      scope="row"
+                      className="py-1 pr-4 text-left font-mono text-xs font-normal"
+                    >
                       duration-{name}
                     </th>
                     <td className="py-1 pr-4 tabular-nums">{ms} ms</td>
@@ -274,12 +346,23 @@ export function StateMatrix() {
             <h3 className="mb-2 text-sm font-medium">Shape and elevation</h3>
             <div className="flex flex-wrap gap-4">
               {/* Whole class names: Tailwind only generates what it can read. */}
-              {([["e1", "shadow-e1"], ["e2", "shadow-e2"], ["e3", "shadow-e3"]] as const).map(([e, shadow]) => (
-                <div key={e} className={`flex size-20 items-center justify-center rounded-surface bg-card text-xs ${shadow}`}>
+              {(
+                [
+                  ["e1", "shadow-e1"],
+                  ["e2", "shadow-e2"],
+                  ["e3", "shadow-e3"],
+                ] as const
+              ).map(([e, shadow]) => (
+                <div
+                  key={e}
+                  className={`flex size-20 items-center justify-center rounded-surface bg-card text-xs ${shadow}`}
+                >
                   surface · {e}
                 </div>
               ))}
-              <div className="flex h-10 items-center rounded-control border px-3 text-xs">control</div>
+              <div className="flex h-10 items-center rounded-control border px-3 text-xs">
+                control
+              </div>
             </div>
           </div>
           <div>

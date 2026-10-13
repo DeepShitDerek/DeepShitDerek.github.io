@@ -15,10 +15,10 @@ import { cn } from "@/lib/cn";
  *  - `accent`  — a tinted surface, used sparingly to close a section or carry
  *                a call to action. Two adjacent accent bands is a mistake.
  */
-export type BandWeight = "feature" | "content" | "accent";
-export type BandWidth = "default" | "wide" | "prose";
+type BandWeight = "feature" | "content" | "accent";
+type BandWidth = "default" | "wide" | "prose";
 /** `tight` joins a band to the one before it as one group (48px). */
-export type BandRhythm = "normal" | "tight";
+type BandRhythm = "normal" | "tight";
 
 const WEIGHT_CLASS: Record<BandWeight, string> = {
   feature: "band band-feature",
@@ -58,11 +58,15 @@ export function Band({
   ...rest
 }: BandProps) {
   return (
-    <Tag id={id} className={cn(
+    <Tag
+      id={id}
+      className={cn(
         WEIGHT_CLASS[weight],
         rhythm === "tight" && "band-tight",
         className,
-      )} {...rest}>
+      )}
+      {...rest}
+    >
       <div className={cn(WIDTH_CLASS[width], innerClassName)}>{children}</div>
     </Tag>
   );
@@ -101,7 +105,7 @@ export function BandHeading({
     >
       <div className="max-w-prose">
         {eyebrow && <p className="t-eyebrow mb-2">{eyebrow}</p>}
-        {/* Section titles at the title size (P1-4): the scale used to jump
+        {/* Section titles at the title size: the scale used to jump
             from the 68px display straight to 28px, so sections read flat. */}
         <Heading id={id} className="t-title text-balance">
           {title}

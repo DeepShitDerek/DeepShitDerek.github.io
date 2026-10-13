@@ -8,6 +8,7 @@ import { DynamicPageContent } from "@/features/sections/dynamic-page-content";
 import { RepoGrid } from "@/features/github/repo-grid";
 import { pagePreload } from "@/lib/public-preload-server";
 import { PublicPreload } from "@/store/public-preload";
+import { StyleSwitch } from "@/features/immersive/style-switch";
 
 export const metadata: Metadata = {
   title: siteContent.pages.work.title,
@@ -21,16 +22,25 @@ export const metadata: Metadata = {
 };
 
 /**
- * /work — one answer to "what have you built?" (V2-040a).
+ * /work — one answer to "what have you built?".
  *
  * Its own sections (case studies, then projects, in the order set in
  * Content), then open source. /showcase and /projects no longer exist; their
- * sections were moved here (db/schema.sql).
+ * sections were moved here.
  */
 export default async function Page() {
   const data = await pagePreload({ sections: ["/work"] });
   return (
     <PublicPreload data={data}>
+      <StyleSwitch layout="work" classic={<ClassicWork />} />
+    </PublicPreload>
+  );
+}
+
+/** Today's page, unchanged: what Classic shows. */
+function ClassicWork() {
+  return (
+    <>
       <Band weight="content">
         <PageHeader
           kicker="Portfolio"
@@ -47,6 +57,6 @@ export default async function Page() {
           <RepoGrid />
         </div>
       </Band>
-    </PublicPreload>
+    </>
   );
 }

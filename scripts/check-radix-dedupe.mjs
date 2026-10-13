@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 /**
  * Every Radix package the app uses must share one copy of Radix's layering
- * internals (React 19 merge, 2026-09-25).
+ * internals.
  *
  * Focus traps and dismissable layers keep module-level stacks. A Popover or
  * Select running a different copy from the Dialog around it is invisible to
@@ -19,17 +19,34 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const modules = path.join(root, "node_modules");
-const SHARED = ["react-focus-scope", "react-dismissable-layer", "react-portal", "react-presence"];
+const SHARED = [
+  "react-focus-scope",
+  "react-dismissable-layer",
+  "react-portal",
+  "react-presence",
+];
 
 const pkg = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
-const appRadix = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).filter((n) => n.startsWith("@radix-ui/"));
+const appRadix = Object.keys({
+  ...pkg.dependencies,
+  ...pkg.devDependencies,
+}).filter((n) => n.startsWith("@radix-ui/"));
 
 /** The version of `name` that code in `fromDir` resolves to, Node-style. */
 function resolveVersion(name, fromDir) {
   let dir = fromDir;
   for (;;) {
-    const candidate = path.join(dir, "node_modules", ...name.split("/"), "package.json");
-    if (existsSync(candidate)) return { version: JSON.parse(readFileSync(candidate, "utf8")).version, where: path.relative(root, path.dirname(candidate)) };
+    const candidate = path.join(
+      dir,
+      "node_modules",
+      ...name.split("/"),
+      "package.json",
+    );
+    if (existsSync(candidate))
+      return {
+        version: JSON.parse(readFileSync(candidate, "utf8")).version,
+        where: path.relative(root, path.dirname(candidate)),
+      };
     const parent = path.dirname(dir);
     if (parent === dir || !dir.startsWith(root)) return null;
     dir = parent;
@@ -56,17 +73,24 @@ for (const shared of SHARED) {
   }
   if (seen.size > 1) {
     failed += 1;
-    console.error(`✗ ${name}: ${seen.size} copies used by the app's Radix packages`);
-    for (const [copy, users] of seen) console.error(`    ${copy}: ${users.join(", ")}`);
+    console.error(
+      `✗ ${name}: ${seen.size} copies used by the app's Radix packages`,
+    );
+    for (const [copy, users] of seen)
+      console.error(`    ${copy}: ${users.join(", ")}`);
   } else {
-    console.log(`✓ ${name}: one copy${seen.size ? ` (${[...seen.keys()][0]})` : ""}`);
+    console.log(
+      `✓ ${name}: one copy${seen.size ? ` (${[...seen.keys()][0]})` : ""}`,
+    );
   }
 }
 
 // Stray nested copies of app packages that Radix layering depends on.
 const nestedOf = (dir) => {
   const nested = path.join(dir, "node_modules", "@radix-ui");
-  return existsSync(nested) ? readdirSync(nested).filter((n) => SHARED.includes(n)) : [];
+  return existsSync(nested)
+    ? readdirSync(nested).filter((n) => SHARED.includes(n))
+    : [];
 };
 for (const dep of appRadix) {
   const bad = nestedOf(path.join(modules, ...dep.split("/")));
@@ -77,7 +101,11 @@ for (const dep of appRadix) {
 }
 
 if (failed) {
-  console.error("\nUpdate the app's @radix-ui packages together (npm update @radix-ui/…), then npm dedupe.");
+  console.error(
+    "\nUpdate the app's @radix-ui packages together (npm update @radix-ui/…), then npm dedupe.",
+  );
   process.exit(1);
 }
-console.log("\nThe app's Radix packages share one copy of each layering internal.");
+console.log(
+  "\nThe app's Radix packages share one copy of each layering internal.",
+);

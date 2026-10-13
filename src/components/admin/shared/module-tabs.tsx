@@ -63,13 +63,18 @@ export function ModuleTabs<T extends string>({
     });
     measure();
     const observer =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(measure)
+        : null;
     observer?.observe(el);
     return () => observer?.disconnect();
   }, [current, measure]);
 
   return (
-    <nav aria-label={label} className={cn("relative mb-6 border-b border-border", className)}>
+    <nav
+      aria-label={label}
+      className={cn("relative mb-6 border-b border-border", className)}
+    >
       <ul
         ref={scroller}
         onScroll={measure}
@@ -77,11 +82,15 @@ export function ModuleTabs<T extends string>({
       >
         {tabs.map((tab, index) => {
           const active = tab.id === current;
-          const newGroup = index > 0 && (tab.group ?? 0) !== (tabs[index - 1].group ?? 0);
+          const newGroup =
+            index > 0 && (tab.group ?? 0) !== (tabs[index - 1].group ?? 0);
           return (
             <li key={tab.id} className="flex shrink-0 items-stretch">
               {newGroup && (
-                <span aria-hidden className="mx-2 my-2.5 w-px self-stretch bg-border" />
+                <span
+                  aria-hidden
+                  className="mx-2 my-2.5 w-px self-stretch bg-border"
+                />
               )}
               <button
                 type="button"

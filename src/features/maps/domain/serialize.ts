@@ -20,7 +20,7 @@ import {
  * (duplicate ids, edges to nowhere) are repaired and reported.
  */
 
-export const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 1;
 
 export interface Viewport {
   x: number;

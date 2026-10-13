@@ -3,7 +3,7 @@ import { publicApi } from "./api/publicApi";
 // The API instance only, not the ./api/adminApi barrel: the barrel re-exports
 // every admin module's endpoints (and supabase-js with them), and the store is
 // on every public page. Admin endpoints register themselves when an admin
-// page imports them (injectEndpoints), so the store needs none of them (V2-026).
+// page imports them (injectEndpoints), so the store needs none of them.
 import { adminApi } from "./api/admin/baseApi";
 import learningSessionReducer from "./slices/learningSessionSlice";
 import focusReducer from "./slices/focusSlice";

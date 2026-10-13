@@ -10,8 +10,11 @@ const local = (offsetDays: number) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 const TODAY = local(0);
-const item = (warranty_expiry: string | null) => ({ id: "i", name: "Kettle", warranty_expiry }) as InventoryItem;
-const badge = (expiry: string | null) => render(<WarrantyBadge item={item(expiry)} today={TODAY} />).container.firstElementChild!;
+const item = (warranty_expiry: string | null) =>
+  ({ id: "i", name: "Kettle", warranty_expiry }) as InventoryItem;
+const badge = (expiry: string | null) =>
+  render(<WarrantyBadge item={item(expiry)} today={TODAY} />).container
+    .firstElementChild!;
 
 describe("WarrantyBadge", () => {
   it("counts the days on a warranty about to end, in the warning colour", () => {

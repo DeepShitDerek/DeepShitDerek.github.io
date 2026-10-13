@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, Eye, Star } from "lucide-react";
+import { ExternalLink, Star } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   compactNumber,
@@ -29,7 +29,6 @@ import { Panel } from "./panel";
  * down should cost you that panel and nothing else — the same rule the
  * dashboard's batch had to learn the hard way.
  */
-
 
 function Row({
   href,
@@ -154,7 +153,11 @@ export function MostRead({ window }: { window: Window }) {
         setState("failed");
         return;
       }
-      setArticles(window === "day" ? parseMostRead(bodies[0], 6) : parseTopArticles(bodies, 6));
+      setArticles(
+        window === "day"
+          ? parseMostRead(bodies[0], 6)
+          : parseTopArticles(bodies, 6),
+      );
       setState("done");
     })();
 
@@ -237,5 +240,3 @@ export function NewRepos({ window }: { window: Window }) {
     </Panel>
   );
 }
-
-export { Eye };

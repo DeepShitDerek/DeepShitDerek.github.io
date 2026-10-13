@@ -38,7 +38,6 @@ import { Panel } from "./panel";
 
 type State = "loading" | "done" | "failed";
 
-
 /* ── Currency corridor ───────────────────────────────────────────────────── */
 
 /**

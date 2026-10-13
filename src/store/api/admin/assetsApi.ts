@@ -9,7 +9,7 @@ import {
   updateQueryFn,
 } from "./query-helpers";
 
-export const assetsApi = adminApi.injectEndpoints({
+const assetsApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getAssets: builder.query<StorageAsset[], void>({
       queryFn: getAllQueryFn<StorageAsset>("storage_assets", [

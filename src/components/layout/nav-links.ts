@@ -1,5 +1,5 @@
 /**
- * How the public navigation is laid out (V2-040a, "work-led" IA).
+ * How the public navigation is laid out (led by the work).
  *
  * The links themselves come from the CMS (`navigation_links`, or
  * portfolio.config.ts in static mode). Two rules shape them:

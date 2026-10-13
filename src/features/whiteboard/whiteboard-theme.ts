@@ -5,7 +5,7 @@
  * `--background` token — that works for every preset and for custom themes,
  * which have no name at all.
  */
-import { isDarkBackground, lightnessOf } from "@/lib/color-utils";
+import { isDarkBackground } from "@/lib/color-utils";
 
 export type ExcalidrawTheme = "light" | "dark";
 
@@ -15,9 +15,7 @@ export type ExcalidrawTheme = "light" | "dark";
  * same lightness derivation to set the `dark` class — a feature is the wrong
  * owner for a contract that `lib` depends on.
  */
-export { lightnessOf };
-
-export function themeForBackground(hslToken: string): ExcalidrawTheme {
+function themeForBackground(hslToken: string): ExcalidrawTheme {
   return isDarkBackground(hslToken) ? "dark" : "light";
 }
 

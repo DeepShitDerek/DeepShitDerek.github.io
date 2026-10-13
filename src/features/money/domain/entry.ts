@@ -8,10 +8,16 @@ import {
   type TransactionKind,
   validateTransaction,
 } from "./ledger";
-import { convert, money, MoneyError, parseAmount, toInputString } from "./money";
+import {
+  convert,
+  money,
+  MoneyError,
+  parseAmount,
+  toInputString,
+} from "./money";
 
 /**
- * The transaction form's arithmetic (V2-080): what the owner typed → a
+ * The transaction form's arithmetic: what the owner typed → a
  * validated, priced draft, and a saved transaction → what the form shows.
  *
  * Amounts are typed as positive numbers; the kind decides the sign, so
@@ -21,7 +27,7 @@ import { convert, money, MoneyError, parseAmount, toInputString } from "./money"
 
 export type EntryKind = Exclude<TransactionKind, "adjustment">;
 
-export interface EntryLine {
+interface EntryLine {
   categoryId: string | null;
   amount: string;
   memo: string;
@@ -83,20 +89,38 @@ export interface EntryDraft {
 type AccountInfo = Pick<Account, "id" | "currency" | "openingDate">;
 
 /** A positive amount in `currency`, or a message. */
-function positive(text: string, currency: string, what: string): number | string {
+function positive(
+  text: string,
+  currency: string,
+  what: string,
+): number | string {
   if (!text.trim()) return `Enter ${what}.`;
   try {
     const { minor } = parseAmount(text, currency);
-    if (minor <= 0) return `${what[0].toUpperCase()}${what.slice(1)} has to be more than zero.`;
+    if (minor <= 0)
+      return `${what[0].toUpperCase()}${what.slice(1)} has to be more than zero.`;
     return minor;
   } catch (error) {
-    return error instanceof MoneyError ? `${what[0].toUpperCase()}${what.slice(1)}: ${error.message}` : "Unreadable amount.";
+    return error instanceof MoneyError
+      ? `${what[0].toUpperCase()}${what.slice(1)}: ${error.message}`
+      : "Unreadable amount.";
   }
 }
 
-function priced(amountMinor: number, currency: string, base: string, date: IsoDate, rates: RateTable) {
-  const price = isIsoDate(date) ? priceInBase(money(amountMinor, currency), base, date, rates) : null;
-  return { fxRate: price?.fxRate ?? null, baseAmountMinor: price?.baseAmountMinor ?? null };
+function priced(
+  amountMinor: number,
+  currency: string,
+  base: string,
+  date: IsoDate,
+  rates: RateTable,
+) {
+  const price = isIsoDate(date)
+    ? priceInBase(money(amountMinor, currency), base, date, rates)
+    : null;
+  return {
+    fxRate: price?.fxRate ?? null,
+    baseAmountMinor: price?.baseAmountMinor ?? null,
+  };
 }
 
 export function buildDraft(
@@ -113,29 +137,49 @@ export function buildDraft(
   if (form.kind === "transfer") {
     const from = accounts.get(form.fromAccountId);
     const to = accounts.get(form.toAccountId);
-    if (!from || !to) problems.push("Choose where the money comes from and where it goes.");
+    if (!from || !to)
+      problems.push("Choose where the money comes from and where it goes.");
     else if (from.id === to.id) problems.push("Choose two different accounts.");
     else {
       const out = positive(form.amountOut, from.currency, "the amount sent");
       const cross = from.currency !== to.currency;
-      const inn = cross ? positive(form.amountIn, to.currency, "the amount received") : out;
+      const inn = cross
+        ? positive(form.amountIn, to.currency, "the amount received")
+        : out;
       if (typeof out === "string") problems.push(out);
       if (cross && typeof inn === "string") problems.push(inn);
       if (typeof out === "number" && typeof inn === "number") {
-        postings.push({ accountId: from.id, categoryId: null, amountMinor: -out, ...priced(-out, from.currency, base, form.date, rates) });
-        postings.push({ accountId: to.id, categoryId: null, amountMinor: inn, ...priced(inn, to.currency, base, form.date, rates) });
+        postings.push({
+          accountId: from.id,
+          categoryId: null,
+          amountMinor: -out,
+          ...priced(-out, from.currency, base, form.date, rates),
+        });
+        postings.push({
+          accountId: to.id,
+          categoryId: null,
+          amountMinor: inn,
+          ...priced(inn, to.currency, base, form.date, rates),
+        });
       }
       if (form.fee.trim()) {
         const fee = positive(form.fee, from.currency, "the fee");
         if (typeof fee === "string") problems.push(fee);
-        else if (!form.feeCategoryId) problems.push("Choose a category for the fee.");
+        else if (!form.feeCategoryId)
+          problems.push("Choose a category for the fee.");
         else {
-          postings.push({ accountId: from.id, categoryId: form.feeCategoryId, amountMinor: -fee, ...priced(-fee, from.currency, base, form.date, rates) });
+          postings.push({
+            accountId: from.id,
+            categoryId: form.feeCategoryId,
+            amountMinor: -fee,
+            ...priced(-fee, from.currency, base, form.date, rates),
+          });
         }
       }
       if (form.marketRate.trim()) {
         const rate = Number(form.marketRate.replace(/,/g, ""));
-        if (!Number.isFinite(rate) || rate <= 0) problems.push("The market rate has to be a positive number.");
+        if (!Number.isFinite(rate) || rate <= 0)
+          problems.push("The market rate has to be a positive number.");
         else if (cross) marketRate = rate;
       }
     }
@@ -143,11 +187,17 @@ export function buildDraft(
     const account = accounts.get(form.accountId);
     if (!account) problems.push("Choose an account.");
     else {
-      const lines = form.lines.filter((line) => line.amount.trim() || line.categoryId);
+      const lines = form.lines.filter(
+        (line) => line.amount.trim() || line.categoryId,
+      );
       if (lines.length === 0) problems.push("Enter an amount.");
       const sign = form.kind === "expense" ? -1 : 1;
       for (const [index, line] of lines.entries()) {
-        const amount = positive(line.amount, account.currency, lines.length > 1 ? `the amount on line ${index + 1}` : "an amount");
+        const amount = positive(
+          line.amount,
+          account.currency,
+          lines.length > 1 ? `the amount on line ${index + 1}` : "an amount",
+        );
         if (typeof amount === "string") {
           problems.push(amount);
           continue;
@@ -201,7 +251,8 @@ export function formFromTransaction(
     pending: txn.status === "pending",
   };
   const currencyOf = (id: string) => accounts.get(id)?.currency ?? "CAD";
-  const text = (minor: number, id: string) => toInputString(money(Math.abs(minor), currencyOf(id)));
+  const text = (minor: number, id: string) =>
+    toInputString(money(Math.abs(minor), currencyOf(id)));
 
   if (txn.kind !== "transfer") {
     const accountId = txn.postings[0]?.accountId ?? "";
@@ -209,7 +260,11 @@ export function formFromTransaction(
       ...common,
       accountId,
       fromAccountId: accountId,
-      lines: txn.postings.map((p) => ({ categoryId: p.categoryId, amount: text(p.amountMinor, p.accountId), memo: p.memo ?? "" })),
+      lines: txn.postings.map((p) => ({
+        categoryId: p.categoryId,
+        amount: text(p.amountMinor, p.accountId),
+        memo: p.memo ?? "",
+      })),
     };
   }
 
@@ -225,7 +280,10 @@ export function formFromTransaction(
     toAccountId: inn[0].accountId,
     accountId: out[0].accountId,
     amountOut: text(out[0].amountMinor, out[0].accountId),
-    amountIn: currencyOf(out[0].accountId) !== currencyOf(inn[0].accountId) ? text(inn[0].amountMinor, inn[0].accountId) : "",
+    amountIn:
+      currencyOf(out[0].accountId) !== currencyOf(inn[0].accountId)
+        ? text(inn[0].amountMinor, inn[0].accountId)
+        : "",
     fee: fees[0] ? text(fees[0].amountMinor, fees[0].accountId) : "",
     feeCategoryId: fees[0]?.categoryId ?? null,
     provider: txn.provider ?? "",
@@ -250,7 +308,10 @@ export function suggestReceived(
   try {
     const sent = parseAmount(amountOut, fromCurrency);
     if (sent.minor <= 0) return null;
-    return { amount: toInputString(convert(sent, quote.rate, toCurrency)), rate: quote.rate };
+    return {
+      amount: toInputString(convert(sent, quote.rate, toCurrency)),
+      rate: quote.rate,
+    };
   } catch {
     return null;
   }

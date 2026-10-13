@@ -1,10 +1,16 @@
-import { addMonths, endOfMonth, type IsoDate, monthKey, monthStart } from "./dates";
+import {
+  addMonths,
+  endOfMonth,
+  type IsoDate,
+  monthKey,
+  monthStart,
+} from "./dates";
 import { periodFlows } from "./flows";
 import type { Transaction } from "./ledger";
 import type { Bucket, Category } from "./model";
 
 /**
- * Budgets (V2-080). A budget is set on a top-level category and covers its
+ * Budgets. A budget is set on a top-level category and covers its
  * subcategories too — "Food: $600" includes Groceries and Restaurants — so
  * nothing can be counted under two budgets.
  *
@@ -24,7 +30,11 @@ export interface Budget {
 }
 
 /** The row in force for a category in a month, or null. */
-export function budgetInForce(budgets: readonly Budget[], categoryId: string, month: string): Budget | null {
+export function budgetInForce(
+  budgets: readonly Budget[],
+  categoryId: string,
+  month: string,
+): Budget | null {
   const first = monthStart(month);
   let best: Budget | null = null;
   for (const budget of budgets) {
@@ -34,9 +44,51 @@ export function budgetInForce(budgets: readonly Budget[], categoryId: string, mo
   return best && best.amountMinor > 0 ? best : null;
 }
 
+export type BudgetChange =
+  | { kind: "none" }
+  | { kind: "save"; budget: Omit<Budget, "id"> }
+  | { kind: "delete"; id: string };
+
+/**
+ * What to write when a category's budget is set to `amountMinor` in `month`.
+ * Zero means no budget. Clearing a budget that began this month removes its
+ * row, unless an earlier budget would come back into force; then, and when
+ * the budget began earlier, a zero from this month ends it and leaves the
+ * months before as they were.
+ */
+export function budgetChange(
+  budgets: readonly Budget[],
+  categoryId: string,
+  month: string,
+  amountMinor: number,
+  rollover: boolean,
+): BudgetChange {
+  const fromMonth = monthStart(month);
+  const current = budgetInForce(budgets, categoryId, month);
+  if (!current && amountMinor === 0) return { kind: "none" };
+  if (
+    current &&
+    current.amountMinor === amountMinor &&
+    current.rollover === rollover
+  )
+    return { kind: "none" };
+  if (current && amountMinor === 0 && current.fromMonth === fromMonth) {
+    const without = budgets.filter((b) => b.id !== current.id);
+    if (!budgetInForce(without, categoryId, month))
+      return { kind: "delete", id: current.id };
+  }
+  return {
+    kind: "save",
+    budget: { categoryId, fromMonth, amountMinor, rollover },
+  };
+}
+
 /** Spending per top-level category for a month (children rolled up), base currency. */
 export function spendingByRoot(
-  transactions: readonly Pick<Transaction, "date" | "kind" | "status" | "postings">[],
+  transactions: readonly Pick<
+    Transaction,
+    "date" | "kind" | "status" | "postings"
+  >[],
   categories: readonly Pick<Category, "id" | "parentId">[],
   month: string,
 ): Map<string | null, number> {
@@ -78,7 +130,9 @@ export function monthBudget(
   for (const categoryId of categories) {
     const current = budgetInForce(budgets, categoryId, month);
     if (!current) continue;
-    const carried = current.rollover ? carryInto(budgets, categoryId, month, spendingFor) : 0;
+    const carried = current.rollover
+      ? carryInto(budgets, categoryId, month, spendingFor)
+      : 0;
     const spent = spendingFor(month).get(categoryId) ?? 0;
     const available = current.amountMinor + carried;
     lines.push({
@@ -129,7 +183,10 @@ export interface BucketSplit {
 
 /** The 50/30/20 picture of a month: needs, wants and saved, as shares of income. */
 export function bucketSplit(
-  transactions: readonly Pick<Transaction, "date" | "kind" | "status" | "postings">[],
+  transactions: readonly Pick<
+    Transaction,
+    "date" | "kind" | "status" | "postings"
+  >[],
   categories: readonly Pick<Category, "id" | "bucket">[],
   month: string,
 ): BucketSplit {
@@ -156,7 +213,10 @@ export function bucketSplit(
     needMinor: need,
     wantMinor: want,
     savedMinor: saved,
-    shares: income > 0 ? { need: need / income, want: want / income, save: saved / income } : null,
+    shares:
+      income > 0
+        ? { need: need / income, want: want / income, save: saved / income }
+        : null,
     uncategorisedMinor: uncategorised,
   };
 }

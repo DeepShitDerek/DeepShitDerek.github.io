@@ -211,13 +211,6 @@ export const LAYOUT_GROUPS = [
   "Creative",
 ] as const;
 
-export const GROUP_BADGE: Record<string, string> = {
-  Basic: "bg-secondary text-muted-foreground",
-  "Must-haves": "bg-chart-1/10 text-chart-1",
-  "High Signal": "bg-chart-3/10 text-chart-3",
-  Creative: "bg-chart-4/10 text-chart-4",
-};
-
 // ─── Mini preview renderers ────────────────────────────
 
 export function LayoutPreview({ layout }: { layout: string }) {
@@ -344,9 +337,7 @@ export function LayoutPreview({ layout }: { layout: string }) {
                 className={`${block} h-10 flex-1 bg-gradient-to-br from-primary/10 to-accent/10`}
               />
               <div className="flex-1 space-y-1 py-1">
-                <div className="text-[9px] text-primary">
-                  Featured
-                </div>
+                <div className="text-[9px] text-primary">Featured</div>
                 <div className={`${bar} w-2/3`} />
                 <div className={`${sbar} w-full`} />
               </div>
@@ -412,9 +403,7 @@ export function LayoutPreview({ layout }: { layout: string }) {
                 ["03", "bg-chart-2/20 text-chart-2"],
               ].map(([n, c]) => (
                 <div key={n} className="flex items-start gap-2">
-                  <span
-                    className={`rounded px-1 py-0.5 text-[8px] ${c}`}
-                  >
+                  <span className={`rounded px-1 py-0.5 text-[8px] ${c}`}>
                     {n}
                   </span>
                   <div className="flex-1 space-y-0.5">
@@ -518,9 +507,7 @@ export function LayoutPreview({ layout }: { layout: string }) {
             <div key={r} className={`${block} flex items-center gap-2 p-2`}>
               <div className="size-5 rounded bg-muted-foreground/10" />
               <div className="flex-1 space-y-0.5">
-                <div className="text-[9px] text-muted-foreground">
-                  {r}
-                </div>
+                <div className="text-[9px] text-muted-foreground">{r}</div>
                 <div className={`${sbar} w-2/3`} />
               </div>
               <div className="text-[9px] text-chart-3">★ 128k</div>
@@ -598,9 +585,7 @@ export function LayoutPreview({ layout }: { layout: string }) {
             <div key={l} className={`${block} flex items-start gap-2 p-2`}>
               <div className={`mt-1 size-2 shrink-0 rounded-full ${c}`} />
               <div className="space-y-0.5">
-                <div className="text-[8px] text-muted-foreground">
-                  {l}
-                </div>
+                <div className="text-[8px] text-muted-foreground">{l}</div>
                 <div className={`${sbar} w-full`} />
               </div>
             </div>

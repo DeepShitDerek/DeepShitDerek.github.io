@@ -28,8 +28,7 @@
  * **With a key** — pasted into the admin, stored on `integration_settings`,
  * which has RLS and *no public read policy at all* — quotes appear. Discover is
  * an admin route, so the owner's own browser can read that row and the key
- * never enters the bundle. It is the same argument migration 007 made about the
- * Discord webhook.
+ * never enters the bundle. It is the same argument as for the Discord webhook.
  */
 
 export type InstrumentKind =
@@ -74,7 +73,7 @@ export function normalizeSymbol(raw: string): string {
 }
 
 /** Two entries are the same instrument if they name the same thing on the same venue. */
-export function isDuplicate(
+function isDuplicate(
   entries: WatchlistEntry[],
   symbol: string,
   exchange?: string | null,

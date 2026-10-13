@@ -6,7 +6,12 @@ import { ArrowRight, ArrowUpRight, Check, Quote } from "lucide-react";
 import type { PortfolioItem } from "@/types";
 import { safeImageUrl } from "@/lib/safe-url";
 import { cn } from "@/lib/cn";
-import { CountUp, Reveal, Stagger, StaggerItem } from "@/components/layout/motion";
+import {
+  CountUp,
+  Reveal,
+  Stagger,
+  StaggerItem,
+} from "@/components/layout/motion";
 import { timelineDuration } from "./timeline-model";
 import { useNow } from "./use-now";
 import { useBuiltCaseStudySlugs } from "@/store/public-preload";
@@ -45,7 +50,7 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
  * Long-form proof of work: a wide hero, then the story beside a margin rail
  * of facts — when, the stack, and the way in.
  *
- * Ruled entries, not cards (north star §3.4): a card is for something that is
+ * Ruled entries, not cards: a card is for something that is
  * one link, and only the "Read the case study" line here is. The rail sits on
  * the left, as on the home page's rows and in a post.
  *
@@ -54,7 +59,7 @@ function Meta({ label, children }: { label: string; children: ReactNode }) {
  * goes through `TextLink`'s allowlist; `link_url` is unconstrained TEXT and
  * the seed stores `javascript:` values in it.
  *
- * An item with a written case study (V2-042) leads with "Read case study";
+ * An item with a written case study leads with "Read case study";
  * the project link then steps down to a secondary action.
  */
 export function CaseStudyLayout({ items }: LayoutProps) {
@@ -135,7 +140,7 @@ export function CaseStudyLayout({ items }: LayoutProps) {
                         "inline-flex items-center gap-1.5 text-sm font-semibold",
                         // A text link, never a filled button: a page of
                         // rows each with its own filled button had a dozen
-                        // primaries competing in one viewport (X7).
+                        // primaries competing in one viewport.
                         "w-fit text-primary underline-offset-4 hover:underline",
                       )}
                     >
@@ -168,7 +173,7 @@ export function ServicesLayout({ items }: LayoutProps) {
             className={cn(CARD, "flex min-w-0 flex-col p-6 sm:p-7")}
           >
             {/* No letter tile in place of an icon: a tile repeating the
-                title's first letter is a placeholder (X1). */}
+                title's first letter is a placeholder. */}
             <h3 className="font-heading text-lg font-semibold [overflow-wrap:anywhere]">
               <TextLink
                 href={item.link_url}
@@ -177,7 +182,10 @@ export function ServicesLayout({ items }: LayoutProps) {
                 {item.title}
               </TextLink>
             </h3>
-            <PlainText className="mt-1 text-sm font-medium text-primary" clamp={1}>
+            <PlainText
+              className="mt-1 text-sm font-medium text-primary"
+              clamp={1}
+            >
               {item.subtitle}
             </PlainText>
             <Markdown className="mt-3 text-muted-foreground">
@@ -186,7 +194,10 @@ export function ServicesLayout({ items }: LayoutProps) {
             {features.length > 0 && (
               <ul className="mt-auto space-y-2 border-t border-border/60 pt-5 [&:not(:first-child)]:mt-5">
                 {features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-sm">
+                  <li
+                    key={feature}
+                    className="flex items-start gap-2.5 text-sm"
+                  >
                     <Check
                       aria-hidden
                       className="mt-0.5 size-4 shrink-0 text-primary"
@@ -221,8 +232,9 @@ export function WorkExperienceLayout({ items }: LayoutProps) {
             className={cn(
               CARD,
               "grid gap-4 p-5 sm:gap-5 sm:p-6",
-              // The logo column exists only when there is a logo (X1).
-              safeImageUrl(item.image_url) && "sm:grid-cols-[3.5rem_minmax(0,1fr)]",
+              // The logo column exists only when there is a logo.
+              safeImageUrl(item.image_url) &&
+                "sm:grid-cols-[3.5rem_minmax(0,1fr)]",
             )}
           >
             {safeImageUrl(item.image_url) && (
@@ -243,7 +255,10 @@ export function WorkExperienceLayout({ items }: LayoutProps) {
                       {item.title}
                     </TextLink>
                   </h3>
-                  <PlainText className="text-sm font-medium text-primary" clamp={2}>
+                  <PlainText
+                    className="text-sm font-medium text-primary"
+                    clamp={2}
+                  >
                     {item.subtitle}
                   </PlainText>
                 </div>

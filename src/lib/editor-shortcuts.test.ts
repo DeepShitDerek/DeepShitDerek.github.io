@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { OWNS_SHORTCUTS_ATTR, shortcutsOwnedByEditor } from "./editor-shortcuts";
+import {
+  OWNS_SHORTCUTS_ATTR,
+  shortcutsOwnedByEditor,
+} from "./editor-shortcuts";
 
 afterEach(() => document.body.replaceChildren());
 

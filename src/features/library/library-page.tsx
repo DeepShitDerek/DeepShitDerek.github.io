@@ -85,7 +85,7 @@ export default function LibraryPage() {
   const [saveSource] = useSaveLibrarySourceMutation();
   const [deleteSource] = useDeleteLibrarySourceMutation();
 
-  // Reading first (03-workspace-ui.md §2.8): it holds what you are in the
+  // Reading first: it holds what you are in the
   // middle of. In the URL, so a reload or a shared link keeps the tab.
   const [tab, setTab] = useUrlTab<Tab>("reading", TABS);
   const [search, setSearch] = useState("");
@@ -105,7 +105,7 @@ export default function LibraryPage() {
   // An id rather than the row, so the view follows edits made while it is open.
   const [viewingId, setViewingId] = useState<string | null>(null);
 
-  // Deletes offer Undo instead of asking first (P1-10). Nothing is deleted
+  // Deletes offer Undo instead of asking first. Nothing is deleted
   // until the toast closes: a public highlight stays on the site meanwhile,
   // and a source's highlights keep their source.
   const { pending: deletingHighlights, remove: removeHighlightLater } =
@@ -235,7 +235,7 @@ export default function LibraryPage() {
     }
   };
 
-  /** One primary action, which asks what to add (P-menu). */
+  /** One primary action, which asks what to add. */
   const addMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

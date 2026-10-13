@@ -28,9 +28,15 @@ describe("SourceRow", () => {
       </ul>,
     );
     expect(screen.getByText("Watching")).toBeInTheDocument();
-    expect(screen.getByText("Someone · Video · 2 highlights")).toBeInTheDocument();
+    expect(
+      screen.getByText("Someone · Video · 2 highlights"),
+    ).toBeInTheDocument();
     // The status select, Play, Open, Edit and Delete are gone from the row.
-    expect(screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? b.textContent)).toEqual([
+    expect(
+      screen
+        .getAllByRole("button")
+        .map((b) => b.getAttribute("aria-label") ?? b.textContent),
+    ).toEqual([
       "A talkSomeone · Video · 2 highlights",
       "More actions for A talk",
     ]);
@@ -39,13 +45,17 @@ describe("SourceRow", () => {
 
 describe("NowReading", () => {
   it("is absent when nothing is in progress", () => {
-    const { container } = render(<NowReading sources={[]} keptPer={new Map()} onOpen={vi.fn()} />);
+    const { container } = render(
+      <NowReading sources={[]} keptPer={new Map()} onOpen={vi.fn()} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
   it("continues the source it names", () => {
     const onOpen = vi.fn();
-    render(<NowReading sources={[source()]} keptPer={new Map()} onOpen={onOpen} />);
+    render(
+      <NowReading sources={[source()]} keptPer={new Map()} onOpen={onOpen} />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Continue A talk" }));
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ id: "s1" }));
   });

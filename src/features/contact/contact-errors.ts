@@ -1,5 +1,5 @@
 /**
- * What to tell a visitor whose message didn't go through (V2-044).
+ * What to tell a visitor whose message didn't go through.
  *
  * The raw error is written for developers: a Postgres code, a constraint
  * name, "TypeError: Failed to fetch". A visitor needs two things instead —

@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
  *
  * Hierarchy is size and space: an eyebrow in the meta voice, the title at the
  * title size, a lead at reading measure. The display size belongs to the home
- * hero alone (north star §3.1); every other page's h1 is a title, so a page
+ * hero alone; every other page's h1 is a title, so a page
  * opens on its content rather than on a poster. Nothing in it animates.
  */
 export function PageHeader({

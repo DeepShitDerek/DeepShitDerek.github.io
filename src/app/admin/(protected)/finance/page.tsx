@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import MoneyPage from "@/features/money/ui/money-page";
 
 /**
- * The money module (finance v3, V2-080). Needs the `money_*` tables from
+ * The money module. Needs the `money_*` tables from
  * db/schema.sql; without them the page says so rather than showing empty
  * screens. The area lives in the query string, which needs Suspense.
  */

@@ -35,7 +35,7 @@ function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export function symbolSearchUrl(query: string): string {
+function symbolSearchUrl(query: string): string {
   // Encoded, not interpolated: a query containing `&` would truncate the URL
   // and silently search for something else.
   return `https://api.twelvedata.com/symbol_search?symbol=${encodeURIComponent(
@@ -43,7 +43,7 @@ export function symbolSearchUrl(query: string): string {
   )}&outputsize=12`;
 }
 
-export function coinSearchUrl(query: string): string {
+function coinSearchUrl(query: string): string {
   return `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(
     query,
   )}`;
@@ -57,7 +57,7 @@ export function coinSearchUrl(query: string): string {
  * result, and losing it would make the search look broken for exactly the
  * instruments that are unusual enough to be worth searching for.
  */
-export function kindFromInstrumentType(type: string | null): InstrumentKind {
+function kindFromInstrumentType(type: string | null): InstrumentKind {
   const value = (type ?? "").toLowerCase();
 
   if (value.includes("etf")) return "etf";
@@ -68,7 +68,7 @@ export function kindFromInstrumentType(type: string | null): InstrumentKind {
   return "stock";
 }
 
-export function parseSymbolResults(body: unknown): SymbolResult[] {
+function parseSymbolResults(body: unknown): SymbolResult[] {
   const rows = (body as { data?: unknown[] } | null)?.data;
   if (!Array.isArray(rows)) return [];
 
@@ -92,7 +92,7 @@ export function parseSymbolResults(body: unknown): SymbolResult[] {
     .filter((result): result is SymbolResult => result !== null);
 }
 
-export function parseCoinResults(body: unknown): SymbolResult[] {
+function parseCoinResults(body: unknown): SymbolResult[] {
   const coins = (body as { coins?: unknown[] } | null)?.coins;
   if (!Array.isArray(coins)) return [];
 

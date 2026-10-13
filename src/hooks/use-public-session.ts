@@ -3,7 +3,7 @@ import { hasStoredSession } from "@/lib/rest";
 
 /**
  * Whether this browser is signed in, for the public site's chrome — the
- * header's admin link and getting past the lockdown screen (V2-026).
+ * header's admin link and getting past the lockdown screen.
  *
  * Read from supabase-js's stored session rather than through supabase-js,
  * which would cost every visitor ~59 KB for a yes/no. Display only: every

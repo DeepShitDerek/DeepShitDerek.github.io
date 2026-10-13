@@ -1,6 +1,6 @@
 /**
  * A short fingerprint of a post's markdown (FNV-1a, 32-bit), to tell whether
- * the body the browser fetched is the one rendered at build (V2-043).
+ * the body the browser fetched is the one rendered at build.
  *
  * The body, not `updated_at`: the timestamp moved on every view until the
  * trigger was fixed, and moves for edits that leave the body alone. Not a

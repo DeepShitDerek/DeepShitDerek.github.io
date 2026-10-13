@@ -11,9 +11,11 @@ import { PostPage } from "@/features/blog/post-page";
 import { PostBody } from "@/features/blog/post-body";
 import { contentHash } from "@/features/blog/content-hash";
 import { PublicPreload } from "@/store/public-preload";
+import { pagePreload } from "@/lib/public-preload-server";
+import { StyleSwitch } from "@/features/immersive/style-switch";
 
 /*
-  One prerendered page per post published at build time (ADR-004, V2-025).
+  One prerendered page per post published at build time.
   Each gets its own <title>, description and link preview, which the old
   single /blog/view/?slug= page could not have. Posts published since the
   last build are served by /blog/view until the next one (see postHref).
@@ -50,7 +52,7 @@ export async function generateMetadata(props: {
     description,
     path,
     // The owner's cover when there is one; otherwise the card built for
-    // this post (V2-045).
+    // this post.
     image:
       safeImageUrl(post.cover_image_url) ??
       `/og/blog/${encodeURIComponent(post.slug)}/image.png`,
@@ -72,23 +74,35 @@ export async function generateMetadata(props: {
   };
 }
 
-export default async function Page(props: { params: Promise<{ slug: string }> }) {
+export default async function Page(props: {
+  params: Promise<{ slug: string }>;
+}) {
   const params = await props.params;
-  const post = await orUndefined(fetchPostBySlug(params.slug));
+  // The post list too (titles and slugs, no bodies): the immersive hand-off
+  // names the next post, and that belongs in the HTML.
+  const [post, list] = await Promise.all([
+    orUndefined(fetchPostBySlug(params.slug)),
+    pagePreload({ posts: true }),
+  ]);
+  const prerendered = post
+    ? {
+        contentHash: contentHash(post.content ?? ""),
+        body: <PostBody content={post.content ?? ""} />,
+      }
+    : undefined;
   return (
     <PublicPreload
-      data={post ? { postsBySlug: { [params.slug]: post } } : undefined}
+      data={{
+        ...list,
+        ...(post ? { postsBySlug: { [params.slug]: post } } : {}),
+      }}
     >
-      <PostPage
+      <StyleSwitch
+        layout="post"
         slug={params.slug}
-        prerendered={
-          post
-            ? {
-                contentHash: contentHash(post.content ?? ""),
-                body: <PostBody content={post.content ?? ""} />,
-              }
-            : undefined
-        }
+        prerendered={prerendered}
+        builtSlugs={(list.posts ?? []).map((item) => item.slug)}
+        classic={<PostPage slug={params.slug} prerendered={prerendered} />}
       />
     </PublicPreload>
   );

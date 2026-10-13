@@ -1,8 +1,15 @@
 import { type IsoDate, daysBetween } from "./dates";
-import { convert, impliedRate, type Money, money, MoneyError, subtract } from "./money";
+import {
+  convert,
+  impliedRate,
+  type Money,
+  money,
+  MoneyError,
+  subtract,
+} from "./money";
 
 /**
- * Exchange rates (V2-080).
+ * Exchange rates.
  *
  * A rate row says: on `asOf`, one `base` bought `rate` of `quote`. Lookups
  * take the latest row on or before the day asked about — a Saturday uses
@@ -47,7 +54,8 @@ export function buildRateTable(rows: readonly RateRow[]): RateTable {
     known.add(row.base);
     known.add(row.quote);
   }
-  for (const list of series.values()) list.sort((a, b) => a.asOf.localeCompare(b.asOf));
+  for (const list of series.values())
+    list.sort((a, b) => a.asOf.localeCompare(b.asOf));
 
   /** Latest row on or before `on` (binary search). */
   const latest = (from: string, to: string, on: IsoDate): RateRow | null => {
@@ -70,7 +78,8 @@ export function buildRateTable(rows: readonly RateRow[]): RateTable {
     if (direct && (!inverse || direct.asOf >= inverse.asOf)) {
       return { rate: direct.rate, asOf: direct.asOf, route: "direct" };
     }
-    if (inverse) return { rate: 1 / inverse.rate, asOf: inverse.asOf, route: "inverse" };
+    if (inverse)
+      return { rate: 1 / inverse.rate, asOf: inverse.asOf, route: "inverse" };
     return null;
   };
 
@@ -116,7 +125,8 @@ export function priceInBase(
   on: IsoDate,
   table: RateTable,
 ): BasePrice | null {
-  if (amount.currency === base) return { fxRate: 1, baseAmountMinor: amount.minor };
+  if (amount.currency === base)
+    return { fxRate: 1, baseAmountMinor: amount.minor };
   const quote = table.quote(amount.currency, base, on);
   if (!quote) return null;
   return {
@@ -162,12 +172,19 @@ export function remittanceCost(input: {
   if (fee.currency !== sent.currency) {
     throw new MoneyError("The fee has to be in the currency that was sent");
   }
-  if (!(marketRate > 0)) throw new MoneyError(`Not an exchange rate: ${marketRate}`);
+  if (!(marketRate > 0))
+    throw new MoneyError(`Not an exchange rate: ${marketRate}`);
 
   const atMarket = convert(sent, marketRate, received.currency);
-  const marginReceived = subtract(atMarket, money(Math.abs(received.minor), received.currency));
+  const marginReceived = subtract(
+    atMarket,
+    money(Math.abs(received.minor), received.currency),
+  );
   const marginSent = convert(marginReceived, 1 / marketRate, sent.currency);
-  const totalCost = money(marginSent.minor + Math.abs(fee.minor), sent.currency);
+  const totalCost = money(
+    marginSent.minor + Math.abs(fee.minor),
+    sent.currency,
+  );
 
   return {
     deliveredRate: impliedRate(sent, received),

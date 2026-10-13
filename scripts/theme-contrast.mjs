@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Contrast of every theme preset's token pairs (V2-060), from
+ * Contrast of every theme preset's token pairs, from
  * src/styles/themes.css. Text pairs need 4.5:1, UI pairs 3:1 (WCAG 1.4.11).
  *   node scripts/theme-contrast.mjs          → report, exit 1 on a failure
  * Run after editing a preset. The pairs are the ones the app draws text
@@ -16,21 +16,24 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // Comments out, so a rule's selector text is only its selectors.
-const css = readFileSync(path.join(root, "src/styles/themes.css"), "utf8").replace(
-  /\/\*[\s\S]*?\*\//g,
-  "",
-);
+const css = readFileSync(
+  path.join(root, "src/styles/themes.css"),
+  "utf8",
+).replace(/\/\*[\s\S]*?\*\//g, "");
 
 const hslToRgb = (h, s, l) => {
   s /= 100;
   l /= 100;
   const k = (n) => (n + h / 30) % 12;
   const a = s * Math.min(l, 1 - l);
-  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const f = (n) =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
   return [f(0), f(8), f(4)];
 };
 const luminance = ([r, g, b]) => {
-  const c = [r, g, b].map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const c = [r, g, b].map((v) =>
+    v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4,
+  );
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 };
 const parse = (value) => {
@@ -93,10 +96,16 @@ for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     .map((s) => /^\.(theme-[a-z0-9-]+)$/.exec(s)?.[1])
     .filter(Boolean);
   // Only rules made of preset selectors (and the `:root` default alongside Ink).
-  if (presets.length === 0 || presets.length !== selectors.filter((s) => s !== ":root").length) continue;
+  if (
+    presets.length === 0 ||
+    presets.length !== selectors.filter((s) => s !== ":root").length
+  )
+    continue;
   const vars = {};
-  for (const v of rule[2].matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) vars[v[1]] = v[2];
-  for (const name of presets) themes.set(name, { ...(themes.get(name) ?? {}), ...vars });
+  for (const v of rule[2].matchAll(/--([a-z0-9-]+):\s*([^;]+);/g))
+    vars[v[1]] = v[2];
+  for (const name of presets)
+    themes.set(name, { ...(themes.get(name) ?? {}), ...vars });
 }
 
 let failures = 0;
@@ -121,5 +130,7 @@ for (const [name, vars] of themes) {
     console.log(`✗ ${name}: ${bad.join("; ")}`);
   }
 }
-console.log(`\n${themes.size} presets, ${failures} failing check${failures === 1 ? "" : "s"}`);
+console.log(
+  `\n${themes.size} presets, ${failures} failing check${failures === 1 ? "" : "s"}`,
+);
 process.exit(failures ? 1 : 0);

@@ -4,7 +4,7 @@ import { adminApi } from "./baseApi";
 import { NO_DB_ERROR, deleteQueryFn } from "./query-helpers";
 
 /**
- * Maps endpoints (V2-070, ADR-007).
+ * Maps endpoints.
  *
  * The list projects away `doc` — a large map is hundreds of kilobytes and the
  * list only needs counts. A map's document is fetched when it is opened.
@@ -19,7 +19,7 @@ const SUMMARY_COLUMNS =
 
 export const MAP_CONFLICT = "CONFLICT";
 
-export interface SaveMapDocArgs {
+interface SaveMapDocArgs {
   id: string;
   expectedRevision: number;
   name: string;
@@ -28,7 +28,7 @@ export interface SaveMapDocArgs {
   edgeCount: number;
 }
 
-export const mapsApi = adminApi.injectEndpoints({
+const mapsApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getMaps: builder.query<ThinkingMapSummary[], void>({
       queryFn: async () => {

@@ -21,7 +21,7 @@ export const PUBLIC_BLOG_LIST_SELECT =
 export const PUBLIC_SECTION_WITH_ITEMS_SELECT =
   "*, portfolio_items(id, section_id, user_id, title, subtitle, date_from, date_to, description, image_url, link_url, tags, display_order, merged_into_id, slug, has_case_study, created_at, updated_at)";
 
-/** One case-study page (V2-042). */
+/** One case-study page. */
 export const PUBLIC_CASE_STUDY_SELECT =
   "id, section_id, title, subtitle, date_from, date_to, description, image_url, link_url, tags, slug, case_study, has_case_study, created_at, updated_at";
 

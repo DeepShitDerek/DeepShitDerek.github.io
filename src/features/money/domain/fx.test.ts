@@ -12,15 +12,24 @@ const rates = buildRateTable([
 
 describe("rate lookup", () => {
   it("uses the latest rate on or before the day", () => {
-    expect(rates.quote("CAD", "INR", "2026-02-05")).toMatchObject({ rate: 60, asOf: "2026-02-02", route: "direct" });
+    expect(rates.quote("CAD", "INR", "2026-02-05")).toMatchObject({
+      rate: 60,
+      asOf: "2026-02-02",
+      route: "direct",
+    });
     expect(rates.quote("CAD", "INR", "2026-02-06")?.rate).toBe(61);
     expect(rates.quote("CAD", "INR", "2026-12-31")?.rate).toBe(61);
     expect(rates.quote("CAD", "INR", "2026-02-01")).toBeNull();
   });
 
   it("inverts and crosses when it has to", () => {
-    expect(rates.quote("INR", "CAD", "2026-02-06")).toMatchObject({ route: "inverse" });
-    expect(rates.quote("INR", "CAD", "2026-02-06")!.rate).toBeCloseTo(1 / 61, 12);
+    expect(rates.quote("INR", "CAD", "2026-02-06")).toMatchObject({
+      route: "inverse",
+    });
+    expect(rates.quote("INR", "CAD", "2026-02-06")!.rate).toBeCloseTo(
+      1 / 61,
+      12,
+    );
     const cross = rates.quote("EUR", "CAD", "2026-02-10")!;
     expect(cross.route).toBe("cross");
     expect(cross.rate).toBeCloseTo(1.35 / 0.9, 12);
@@ -30,7 +39,10 @@ describe("rate lookup", () => {
   it("returns null with no route and ignores nonsense rows", () => {
     expect(rates.quote("CAD", "JPY", "2026-02-10")).toBeNull();
     expect(rates.quote("CAD", "BAD", "2026-02-10")).toBeNull();
-    expect(rates.quote("CAD", "CAD", "2026-02-10")).toMatchObject({ rate: 1, route: "same" });
+    expect(rates.quote("CAD", "CAD", "2026-02-10")).toMatchObject({
+      rate: 1,
+      route: "same",
+    });
   });
 
   it("reports how stale a quote is", () => {
@@ -41,13 +53,17 @@ describe("rate lookup", () => {
 
 describe("pricing a posting", () => {
   it("prices the base currency at 1 and others at the day's rate", () => {
-    expect(priceInBase(money(-4500, "CAD"), "CAD", "2026-02-06", rates)).toEqual({ fxRate: 1, baseAmountMinor: -4500 });
+    expect(
+      priceInBase(money(-4500, "CAD"), "CAD", "2026-02-06", rates),
+    ).toEqual({ fxRate: 1, baseAmountMinor: -4500 });
     const inr = priceInBase(money(6100000, "INR"), "CAD", "2026-02-06", rates)!;
     expect(inr.baseAmountMinor).toBe(100000);
   });
 
   it("refuses to guess when there is no rate", () => {
-    expect(priceInBase(money(100, "JPY"), "CAD", "2026-02-06", rates)).toBeNull();
+    expect(
+      priceInBase(money(100, "JPY"), "CAD", "2026-02-06", rates),
+    ).toBeNull();
   });
 });
 
@@ -80,7 +96,12 @@ describe("remittance cost", () => {
 
   it("refuses a fee in the wrong currency", () => {
     expect(() =>
-      remittanceCost({ sent: money(1, "CAD"), received: money(1, "INR"), fee: money(1, "INR"), marketRate: 61 }),
+      remittanceCost({
+        sent: money(1, "CAD"),
+        received: money(1, "INR"),
+        fee: money(1, "INR"),
+        marketRate: 61,
+      }),
     ).toThrow();
   });
 });

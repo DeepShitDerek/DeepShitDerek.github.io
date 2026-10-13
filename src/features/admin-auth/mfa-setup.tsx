@@ -153,7 +153,11 @@ export function MfaSetup() {
     return (
       <AuthPanel title="Couldn't start two-factor setup">
         <AuthError message={error} />
-        <Button size="lg" className="mt-6 w-full" onClick={() => router.push("/admin/login")}>
+        <Button
+          size="lg"
+          className="mt-6 w-full"
+          onClick={() => router.push("/admin/login")}
+        >
           Back to sign in
         </Button>
       </AuthPanel>
@@ -178,7 +182,10 @@ export function MfaSetup() {
 
         <Step number={2} title="Enter the code it shows">
           <form onSubmit={handleVerify} className="space-y-5">
-            <label htmlFor="mfa-setup-otp" className="block text-sm text-muted-foreground">
+            <label
+              htmlFor="mfa-setup-otp"
+              className="block text-sm text-muted-foreground"
+            >
               The 6-digit code from your app.
             </label>
             <InputOTP
@@ -205,7 +212,12 @@ export function MfaSetup() {
               >
                 {isBusy ? "Checking…" : "Turn on two-factor"}
               </Button>
-              <Button type="button" size="lg" variant="ghost" onClick={handleSignOut}>
+              <Button
+                type="button"
+                size="lg"
+                variant="ghost"
+                onClick={handleSignOut}
+              >
                 Sign out
               </Button>
             </div>

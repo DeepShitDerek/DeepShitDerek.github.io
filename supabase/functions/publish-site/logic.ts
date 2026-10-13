@@ -1,5 +1,5 @@
 /**
- * "Publish site" (ADM-009, ADR-004): rebuild and redeploy the static site.
+ * "Publish site": rebuild and redeploy the static site.
  *
  * The site is a static export. A new post is readable at once through the
  * client-rendered route, but its own page and link-preview card only exist
@@ -11,7 +11,7 @@
  * (logic.test.ts) apart from Deno and the network (index.ts wires them).
  */
 
-export interface RunSummary {
+interface RunSummary {
   status: string;
   conclusion: string | null;
   createdAt: string;
@@ -33,13 +33,24 @@ export interface PublishResponse {
   body: Record<string, unknown>;
 }
 
-export async function handlePublish(method: string, deps: PublishDeps): Promise<PublishResponse> {
+export async function handlePublish(
+  method: string,
+  deps: PublishDeps,
+): Promise<PublishResponse> {
   if (method !== "GET" && method !== "POST") {
-    return { status: 405, body: { error: "Use GET for status, POST to publish" } };
+    return {
+      status: 405,
+      body: { error: "Use GET for status, POST to publish" },
+    };
   }
   // Every request, status included: the run list names the repository.
   if (!(await deps.isOwner())) {
-    return { status: 403, body: { error: "Only the site owner, signed in with two-factor, can publish" } };
+    return {
+      status: 403,
+      body: {
+        error: "Only the site owner, signed in with two-factor, can publish",
+      },
+    };
   }
 
   if (method === "GET") {
@@ -49,16 +60,26 @@ export async function handlePublish(method: string, deps: PublishDeps): Promise<
   // One build at a time: a second would only queue behind the first (the
   // workflow's concurrency group) and deploy the same commit again.
   if ((await deps.activeRuns()) > 0) {
-    return { status: 409, body: { error: "A publish is already running", latest: await deps.latestRun() } };
+    return {
+      status: 409,
+      body: {
+        error: "A publish is already running",
+        latest: await deps.latestRun(),
+      },
+    };
   }
   await deps.dispatch();
   return { status: 202, body: { started: true } };
 }
 
 /** Browser access for the admin's own origin only, when it is configured. */
-export function corsHeaders(allowedOrigin: string | undefined, requestOrigin: string | null): Record<string, string> {
+export function corsHeaders(
+  allowedOrigin: string | undefined,
+  requestOrigin: string | null,
+): Record<string, string> {
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     Vary: "Origin",
   };
@@ -66,14 +87,4 @@ export function corsHeaders(allowedOrigin: string | undefined, requestOrigin: st
     headers["Access-Control-Allow-Origin"] = requestOrigin;
   }
   return headers;
-}
-
-/** GitHub's workflow run, trimmed to what the admin shows. */
-export function summariseRun(run: {
-  status: string;
-  conclusion: string | null;
-  created_at: string;
-  html_url: string;
-}): RunSummary {
-  return { status: run.status, conclusion: run.conclusion, createdAt: run.created_at, url: run.html_url };
 }

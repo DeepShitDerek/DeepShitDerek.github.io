@@ -54,7 +54,7 @@ import { OPEN_KEYBOARD_MAP } from "@/features/admin-shell/keyboard-map";
 import { cn } from "@/lib/cn";
 import { NODE_H, NODE_W } from "../domain/commands";
 import { isClip } from "../domain/clipboard";
-import { fromDocument, type MapDocument } from "../domain/serialize";
+import { fromDocument } from "../domain/serialize";
 import { MapCanvas, type MenuTarget } from "../canvas/map-canvas";
 import { createEditorActions } from "../state/actions";
 import {
@@ -722,7 +722,7 @@ function useFocusNode() {
 }
 
 /**
- * One toolbar, at the bottom (03-workspace-ui.md §2.20): what you can do to
+ * One toolbar, at the bottom: what you can do to
  * the map, then how you look at it. It replaces a floating rail of four
  * unlabelled icons at the top left and a separate zoom bar, two of four
  * surfaces on an empty canvas. Every button has a name and a tooltip.
@@ -903,5 +903,3 @@ function MobileDetails({
     </Sheet>
   );
 }
-
-export type { MapDocument };

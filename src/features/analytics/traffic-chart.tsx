@@ -44,7 +44,7 @@ export function TrafficChart({
   // A year of daily ticks is unreadable; label roughly six points whatever the
   // range, and let the tooltip carry the exact date.
   const tickInterval = Math.max(Math.floor(series.length / 6), 0);
-  // The same numbers as a table (P-chart): a chart is the only way in for
+  // The same numbers as a table: a chart is the only way in for
   // nobody, and the exact count for a given day is a reasonable question.
   const [asTable, setAsTable] = useState(false);
 

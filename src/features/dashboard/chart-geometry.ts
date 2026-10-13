@@ -89,30 +89,6 @@ function round(value: number): number {
 }
 
 /**
- * A stroke-dasharray pair that fills `percent` of a circle.
- *
- * Used instead of an arc path because a dashed circle animates smoothly with
- * one CSS transition, where an arc has to be recomputed every frame.
- */
-export function ringDash(
-  percent: number,
-  radius: number,
-): { dash: number; gap: number; circumference: number } {
-  const circumference = 2 * Math.PI * radius;
-  // Clamped: a goal at 130% would otherwise draw a second lap over the first.
-  const clamped = Math.min(Math.max(percent, 0), 100);
-  const dash = (clamped / 100) * circumference;
-
-  return { dash, gap: circumference - dash, circumference };
-}
-
-export interface HeatCell {
-  date: string;
-  /** 0 = nothing, 1 = everything that was due. */
-  intensity: number;
-}
-
-/**
  * A grid of the last `weeks` weeks, oldest first, aligned so each row is one
  * weekday.
  *
@@ -150,26 +126,4 @@ export function heatLevel(intensity: number): 0 | 1 | 2 | 3 {
   if (intensity < 0.5) return 1;
   if (intensity < 1) return 2;
   return 3;
-}
-
-/**
- * Nice round bounds for an axis label.
- *
- * A chart labelled "£1,247.83" at the top is reporting a data point, not a
- * scale. Rounding up to something legible is what makes it a scale.
- */
-export function niceCeiling(value: number): number {
-  if (value <= 0) return 0;
-
-  const magnitude = 10 ** Math.floor(Math.log10(value));
-  const normalised = value / magnitude;
-
-  // The 1/2/5/10 ladder, because those are the numbers people read without
-  // effort. Rounding to the next multiple of the magnitude alone leaves single
-  // digits untouched — it would label an axis "7", which is a data point
-  // wearing a scale's clothes.
-  const step =
-    normalised <= 1 ? 1 : normalised <= 2 ? 2 : normalised <= 5 ? 5 : 10;
-
-  return step * magnitude;
 }

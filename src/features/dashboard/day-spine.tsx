@@ -11,7 +11,7 @@ import type { PlacedItem } from "./day-plan";
  * across it; the space between blocks is the free time left.
  *
  * It shows the next few hours by default, with "Whole day" to see the rest
- * (03-workspace-ui.md §2.1): fifteen hours at full height pushed everything
+ *: fifteen hours at full height pushed everything
  * else on the page, on a phone the Today list too, a screen and a half down.
  * Habits are no longer chips here; they are logged in the Today list.
  *

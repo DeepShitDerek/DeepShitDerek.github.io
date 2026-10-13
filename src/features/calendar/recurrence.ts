@@ -30,7 +30,7 @@ import { toLocalISODate } from "@/lib/date-utils";
  * browser knows it.
  */
 
-export type Frequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+type Frequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
 /** RFC day codes, Sunday first to match `getDay()`. */
 export const DAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;

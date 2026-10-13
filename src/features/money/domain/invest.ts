@@ -4,7 +4,7 @@ import type { Transaction } from "./ledger";
 import { convert, exponentOf, money, roundHalfAwayFromZero } from "./money";
 
 /**
- * Investing (V2-080). An investment account's ledger balance is its cash
+ * Investing. An investment account's ledger balance is its cash
  * as the ledger sees it: deposits, withdrawals, and the dividends, interest
  * and fees posted by their trades. Buys, sells, returns of capital and
  * splits never touch the ledger — everything they change (the cash left,
@@ -21,17 +21,53 @@ import { convert, exponentOf, money, roundHalfAwayFromZero } from "./money";
  * the same security is held in two taxable accounts.)
  */
 
-export const ASSET_CLASSES = ["equity", "fixed_income", "cash", "real_estate", "commodity", "crypto", "balanced", "other"] as const;
+export const ASSET_CLASSES = [
+  "equity",
+  "fixed_income",
+  "cash",
+  "real_estate",
+  "commodity",
+  "crypto",
+  "balanced",
+  "other",
+] as const;
 export type AssetClass = (typeof ASSET_CLASSES)[number];
-export const REGIONS = ["canada", "us", "india", "international", "emerging", "global", "other"] as const;
+export const REGIONS = [
+  "canada",
+  "us",
+  "india",
+  "international",
+  "emerging",
+  "global",
+  "other",
+] as const;
 export type Region = (typeof REGIONS)[number];
-export const TRADE_KINDS = ["buy", "sell", "reinvest", "dividend", "interest", "fee", "return_of_capital", "split"] as const;
+export const TRADE_KINDS = [
+  "buy",
+  "sell",
+  "reinvest",
+  "dividend",
+  "interest",
+  "fee",
+  "return_of_capital",
+  "split",
+] as const;
 export type TradeKind = (typeof TRADE_KINDS)[number];
 
 /** Kinds that own a ledger transaction (income, or a fee). */
-export const LEDGER_TRADE_KINDS: readonly TradeKind[] = ["dividend", "interest", "fee", "reinvest"];
+export const LEDGER_TRADE_KINDS: readonly TradeKind[] = [
+  "dividend",
+  "interest",
+  "fee",
+  "reinvest",
+];
 /** Kinds with a number of units. */
-export const UNIT_TRADE_KINDS: readonly TradeKind[] = ["buy", "sell", "reinvest", "split"];
+export const UNIT_TRADE_KINDS: readonly TradeKind[] = [
+  "buy",
+  "sell",
+  "reinvest",
+  "split",
+];
 
 export interface Security {
   id: string;
@@ -66,20 +102,35 @@ export interface Trade {
 }
 
 const UNIT_PRECISION = 1e8;
-export const roundUnits = (units: number): number => Math.round(units * UNIT_PRECISION) / UNIT_PRECISION;
+export const roundUnits = (units: number): number =>
+  Math.round(units * UNIT_PRECISION) / UNIT_PRECISION;
 
 /** Why a trade is not allowed — the same rules as money_trade_shape. */
-export function validateTrade(t: Pick<Trade, "kind" | "securityId" | "quantity" | "amountMinor" | "feeMinor">): string[] {
+export function validateTrade(
+  t: Pick<
+    Trade,
+    "kind" | "securityId" | "quantity" | "amountMinor" | "feeMinor"
+  >,
+): string[] {
   const found: string[] = [];
   const needsSecurity = t.kind !== "interest" && t.kind !== "fee";
   if (needsSecurity && !t.securityId) found.push("Choose the security.");
   if (UNIT_TRADE_KINDS.includes(t.kind)) {
-    if (t.quantity === null || !(t.quantity > 0)) found.push(t.kind === "split" ? "Enter the split ratio (new units for each old one)." : "Enter how many units.");
-  } else if (t.quantity !== null) found.push("This kind of trade has no units.");
-  if (!Number.isSafeInteger(t.amountMinor) || t.amountMinor < 0) found.push("The amount can't be negative.");
-  if (!Number.isSafeInteger(t.feeMinor) || t.feeMinor < 0) found.push("The commission can't be negative.");
+    if (t.quantity === null || !(t.quantity > 0))
+      found.push(
+        t.kind === "split"
+          ? "Enter the split ratio (new units for each old one)."
+          : "Enter how many units.",
+      );
+  } else if (t.quantity !== null)
+    found.push("This kind of trade has no units.");
+  if (!Number.isSafeInteger(t.amountMinor) || t.amountMinor < 0)
+    found.push("The amount can't be negative.");
+  if (!Number.isSafeInteger(t.feeMinor) || t.feeMinor < 0)
+    found.push("The commission can't be negative.");
   if (t.kind === "split") {
-    if (t.amountMinor !== 0 || t.feeMinor !== 0) found.push("A split moves no money.");
+    if (t.amountMinor !== 0 || t.feeMinor !== 0)
+      found.push("A split moves no money.");
   } else if (t.kind !== "buy" && t.kind !== "sell") {
     if (t.amountMinor <= 0) found.push("Enter the amount.");
     if (t.feeMinor !== 0) found.push("Only a buy or sell has a commission.");
@@ -88,7 +139,9 @@ export function validateTrade(t: Pick<Trade, "kind" | "securityId" | "quantity" 
 }
 
 /** What a trade does to the account's cash. */
-export function cashEffect(t: Pick<Trade, "kind" | "amountMinor" | "feeMinor">): number {
+export function cashEffect(
+  t: Pick<Trade, "kind" | "amountMinor" | "feeMinor">,
+): number {
   switch (t.kind) {
     case "buy":
       return -(t.amountMinor + t.feeMinor);
@@ -120,10 +173,18 @@ export function ledgerEffect(t: Pick<Trade, "kind" | "amountMinor">): number {
   }
 }
 
-export const sortTrades = <T extends Pick<Trade, "date" | "createdAt">>(trades: readonly T[]): T[] =>
-  [...trades].sort((a, b) => (a.date === b.date ? a.createdAt.localeCompare(b.createdAt) : a.date < b.date ? -1 : 1));
+const sortTrades = <T extends Pick<Trade, "date" | "createdAt">>(
+  trades: readonly T[],
+): T[] =>
+  [...trades].sort((a, b) =>
+    a.date === b.date
+      ? a.createdAt.localeCompare(b.createdAt)
+      : a.date < b.date
+        ? -1
+        : 1,
+  );
 
-export interface Disposition {
+interface Disposition {
   tradeId: string;
   date: IsoDate;
   securityId: string;
@@ -134,7 +195,7 @@ export interface Disposition {
   gainMinor: number;
 }
 
-export interface Position {
+interface Position {
   securityId: string;
   units: number;
   acbMinor: number;
@@ -159,7 +220,11 @@ export interface Book {
  * Replays one account's trades up to `on`. A sell of more units than are
  * held is a problem, and is applied as selling all of them.
  */
-export function replay(trades: readonly Trade[], on: IsoDate, symbolOf: (id: string) => string = (id) => id): Book {
+export function replay(
+  trades: readonly Trade[],
+  on: IsoDate,
+  symbolOf: (id: string) => string = (id) => id,
+): Book {
   const positions = new Map<string, Position>();
   const dispositions: Disposition[] = [];
   const problems: string[] = [];
@@ -170,7 +235,17 @@ export function replay(trades: readonly Trade[], on: IsoDate, symbolOf: (id: str
 
   const position = (id: string) => {
     let p = positions.get(id);
-    if (!p) positions.set(id, (p = { securityId: id, units: 0, acbMinor: 0, incomeMinor: 0, realisedMinor: 0 }));
+    if (!p)
+      positions.set(
+        id,
+        (p = {
+          securityId: id,
+          units: 0,
+          acbMinor: 0,
+          incomeMinor: 0,
+          realisedMinor: 0,
+        }),
+      );
     return p;
   };
 
@@ -203,23 +278,41 @@ export function replay(trades: readonly Trade[], on: IsoDate, symbolOf: (id: str
         p.incomeMinor += t.amountMinor;
         break;
       case "split":
-        if (p.units <= 0) problems.push(`${t.date}: a split of ${symbolOf(t.securityId)} with none held.`);
+        if (p.units <= 0)
+          problems.push(
+            `${t.date}: a split of ${symbolOf(t.securityId)} with none held.`,
+          );
         p.units = roundUnits(p.units * units);
         break;
       case "sell": {
         commissions += t.feeMinor;
         let sold = units;
         if (sold > p.units + 1 / UNIT_PRECISION) {
-          problems.push(`${t.date}: sold ${units} ${symbolOf(t.securityId)} with only ${p.units} held.`);
+          problems.push(
+            `${t.date}: sold ${units} ${symbolOf(t.securityId)} with only ${p.units} held.`,
+          );
           sold = p.units;
         }
-        const acbOut = p.units > 0 ? (sold >= p.units ? p.acbMinor : roundHalfAwayFromZero((p.acbMinor * sold) / p.units)) : 0;
+        const acbOut =
+          p.units > 0
+            ? sold >= p.units
+              ? p.acbMinor
+              : roundHalfAwayFromZero((p.acbMinor * sold) / p.units)
+            : 0;
         const proceeds = t.amountMinor - t.feeMinor;
         const gain = proceeds - acbOut;
         p.units = roundUnits(p.units - sold);
         p.acbMinor = p.units === 0 ? 0 : p.acbMinor - acbOut;
         p.realisedMinor += gain;
-        dispositions.push({ tradeId: t.id, date: t.date, securityId: t.securityId, kind: "sell", proceedsMinor: proceeds, acbMinor: acbOut, gainMinor: gain });
+        dispositions.push({
+          tradeId: t.id,
+          date: t.date,
+          securityId: t.securityId,
+          kind: "sell",
+          proceedsMinor: proceeds,
+          acbMinor: acbOut,
+          gainMinor: gain,
+        });
         break;
       }
       case "return_of_capital": {
@@ -228,13 +321,41 @@ export function replay(trades: readonly Trade[], on: IsoDate, symbolOf: (id: str
         if (excess > 0) {
           // Return of capital beyond the ACB is a capital gain, and the ACB stays at zero.
           p.realisedMinor += excess;
-          dispositions.push({ tradeId: t.id, date: t.date, securityId: t.securityId, kind: "return_of_capital", proceedsMinor: excess, acbMinor: 0, gainMinor: excess });
+          dispositions.push({
+            tradeId: t.id,
+            date: t.date,
+            securityId: t.securityId,
+            kind: "return_of_capital",
+            proceedsMinor: excess,
+            acbMinor: 0,
+            gainMinor: excess,
+          });
         }
         break;
       }
     }
   }
-  return { positions, dispositions, cashAdjustmentMinor: cashAdjustment, interestMinor: interest, feesMinor: fees, commissionsMinor: commissions, problems };
+  return {
+    positions,
+    dispositions,
+    cashAdjustmentMinor: cashAdjustment,
+    interestMinor: interest,
+    feesMinor: fees,
+    commissionsMinor: commissions,
+    problems,
+  };
+}
+
+/** One security's recorded prices, newest first, at most `limit` of them. */
+export function recentPrices(
+  prices: readonly Price[],
+  securityId: string,
+  limit: number,
+): Price[] {
+  return prices
+    .filter((p) => p.securityId === securityId)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit);
 }
 
 export interface PriceBook {
@@ -249,7 +370,8 @@ export function buildPriceBook(prices: readonly Price[]): PriceBook {
     list.push(p);
     bySecurity.set(p.securityId, list);
   }
-  for (const list of bySecurity.values()) list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  for (const list of bySecurity.values())
+    list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   return {
     latest(securityId, on) {
       const list = bySecurity.get(securityId);
@@ -270,11 +392,15 @@ export function buildPriceBook(prices: readonly Price[]): PriceBook {
 }
 
 /** Units × price per unit, in minor units of the currency. */
-export function marketValue(units: number, price: number, currency: string): number {
+export function marketValue(
+  units: number,
+  price: number,
+  currency: string,
+): number {
   return roundHalfAwayFromZero(units * price * 10 ** exponentOf(currency));
 }
 
-export interface Holding extends Position {
+interface Holding extends Position {
   security: Security;
   price: Price | null;
   /** At the latest price; null without one. */
@@ -309,15 +435,31 @@ export function portfolio(input: {
   on: IsoDate;
 }): Portfolio {
   const trades = input.trades.filter((t) => t.accountId === input.accountId);
-  const book = replay(trades, input.on, (id) => input.securities.get(id)?.symbol ?? "?");
+  const book = replay(
+    trades,
+    input.on,
+    (id) => input.securities.get(id)?.symbol ?? "?",
+  );
   const holdings: Holding[] = [];
   const unpriced: string[] = [];
   for (const p of book.positions.values()) {
     const security = input.securities.get(p.securityId);
     if (!security) continue;
-    if (p.units === 0 && p.acbMinor === 0 && p.incomeMinor === 0 && p.realisedMinor === 0) continue;
-    const price = p.units > 0 ? input.prices.latest(p.securityId, input.on) : null;
-    const mv = p.units === 0 ? 0 : price ? marketValue(p.units, price.price, input.currency) : null;
+    if (
+      p.units === 0 &&
+      p.acbMinor === 0 &&
+      p.incomeMinor === 0 &&
+      p.realisedMinor === 0
+    )
+      continue;
+    const price =
+      p.units > 0 ? input.prices.latest(p.securityId, input.on) : null;
+    const mv =
+      p.units === 0
+        ? 0
+        : price
+          ? marketValue(p.units, price.price, input.currency)
+          : null;
     if (p.units > 0 && !price) unpriced.push(security.symbol);
     holdings.push({
       ...p,
@@ -329,7 +471,11 @@ export function portfolio(input: {
       priceAgeDays: price ? daysBetween(price.date, input.on) : null,
     });
   }
-  holdings.sort((a, b) => b.valueMinor - a.valueMinor || a.security.symbol.localeCompare(b.security.symbol));
+  holdings.sort(
+    (a, b) =>
+      b.valueMinor - a.valueMinor ||
+      a.security.symbol.localeCompare(b.security.symbol),
+  );
   const cash = input.ledgerBalanceMinor + book.cashAdjustmentMinor;
   const value = cash + holdings.reduce((t, h) => t + h.valueMinor, 0);
   return {
@@ -359,12 +505,22 @@ export interface Flow {
  */
 export function xirr(flows: readonly Flow[]): number | null {
   const list = flows.filter((f) => f.amountMinor !== 0);
-  if (list.length < 2 || !list.some((f) => f.amountMinor > 0) || !list.some((f) => f.amountMinor < 0)) return null;
+  if (
+    list.length < 2 ||
+    !list.some((f) => f.amountMinor > 0) ||
+    !list.some((f) => f.amountMinor < 0)
+  )
+    return null;
   const first = list.reduce((m, f) => (f.date < m ? f.date : m), list[0].date);
   const years = list.map((f) => daysBetween(first, f.date) / 365);
   if (Math.max(...years) === 0) return null;
-  const npv = (r: number) => list.reduce((t, f, i) => t + f.amountMinor / (1 + r) ** years[i], 0);
-  const slope = (r: number) => list.reduce((t, f, i) => t - (years[i] * f.amountMinor) / (1 + r) ** (years[i] + 1), 0);
+  const npv = (r: number) =>
+    list.reduce((t, f, i) => t + f.amountMinor / (1 + r) ** years[i], 0);
+  const slope = (r: number) =>
+    list.reduce(
+      (t, f, i) => t - (years[i] * f.amountMinor) / (1 + r) ** (years[i] + 1),
+      0,
+    );
 
   // Newton first; fall back to bisection, which cannot miss a bracketed root.
   let r = 0.1;
@@ -380,7 +536,8 @@ export function xirr(flows: readonly Flow[]): number | null {
   let lo = -0.9999;
   let hi = 100;
   let flo = npv(lo);
-  if (!Number.isFinite(flo) || Math.sign(flo) === Math.sign(npv(hi))) return null;
+  if (!Number.isFinite(flo) || Math.sign(flo) === Math.sign(npv(hi)))
+    return null;
   for (let i = 0; i < 300; i += 1) {
     const mid = (lo + hi) / 2;
     const fm = npv(mid);
@@ -411,7 +568,10 @@ export function accountFlows(input: {
   let contributed = 0;
   let withdrawn = 0;
   if (input.openingBalanceMinor !== 0) {
-    flows.push({ date: input.openingDate, amountMinor: -input.openingBalanceMinor });
+    flows.push({
+      date: input.openingDate,
+      amountMinor: -input.openingBalanceMinor,
+    });
     if (input.openingBalanceMinor > 0) contributed += input.openingBalanceMinor;
   }
   for (const txn of input.transactions) {
@@ -444,21 +604,31 @@ export interface Allocation {
 }
 
 /** Every portfolio's holdings and cash, in the base currency, by class, region and currency. Cash counts as the "cash" class. */
-export function allocation(portfolios: readonly Portfolio[], base: string, on: IsoDate, rates: RateTable): Allocation {
+export function allocation(
+  portfolios: readonly Portfolio[],
+  base: string,
+  on: IsoDate,
+  rates: RateTable,
+): Allocation {
   const byClass = new Map<AssetClass, number>();
   const byRegion = new Map<Region | "cash", number>();
   const byCurrency = new Map<string, number>();
   const unconverted = new Set<string>();
   let total = 0;
-  const add = <K>(map: Map<K, number>, key: K, v: number) => map.set(key, (map.get(key) ?? 0) + v);
+  const add = <K>(map: Map<K, number>, key: K, v: number) =>
+    map.set(key, (map.get(key) ?? 0) + v);
 
   for (const pf of portfolios) {
-    const quote = pf.currency === base ? { rate: 1 } : rates.quote(pf.currency, base, on);
+    const quote =
+      pf.currency === base ? { rate: 1 } : rates.quote(pf.currency, base, on);
     if (!quote) {
       unconverted.add(pf.currency);
       continue;
     }
-    const toBase = (minor: number) => (pf.currency === base ? minor : convert(money(minor, pf.currency), quote.rate, base).minor);
+    const toBase = (minor: number) =>
+      pf.currency === base
+        ? minor
+        : convert(money(minor, pf.currency), quote.rate, base).minor;
     if (pf.cashMinor > 0) {
       const v = toBase(pf.cashMinor);
       add(byClass, "cash", v);
@@ -476,8 +646,20 @@ export function allocation(portfolios: readonly Portfolio[], base: string, on: I
     }
   }
   const slices = <K extends string>(map: Map<K, number>): Slice<K>[] =>
-    [...map].map(([key, valueMinor]) => ({ key, valueMinor, share: total ? valueMinor / total : 0 })).sort((a, b) => b.valueMinor - a.valueMinor);
-  return { total, byClass: slices(byClass), byRegion: slices(byRegion), byCurrency: slices(byCurrency), unconverted: [...unconverted] };
+    [...map]
+      .map(([key, valueMinor]) => ({
+        key,
+        valueMinor,
+        share: total ? valueMinor / total : 0,
+      }))
+      .sort((a, b) => b.valueMinor - a.valueMinor);
+  return {
+    total,
+    byClass: slices(byClass),
+    byRegion: slices(byRegion),
+    byCurrency: slices(byCurrency),
+    unconverted: [...unconverted],
+  };
 }
 
 // ── Prices from a paste ────────────────────────────────────────────────────
@@ -511,7 +693,10 @@ function splitCells(line: string): string[] {
   return cells;
 }
 
-export function parsePrices(text: string): { prices: ParsedPrice[]; errors: string[] } {
+export function parsePrices(text: string): {
+  prices: ParsedPrice[];
+  errors: string[];
+} {
   const prices: ParsedPrice[] = [];
   const errors: string[] = [];
   text.split(/\r?\n/).forEach((raw, index) => {
@@ -519,8 +704,11 @@ export function parsePrices(text: string): { prices: ParsedPrice[]; errors: stri
     const cells = splitCells(raw);
     if (cells.every((c) => c === "")) return;
     if (index === 0 && cells.some((c) => /date/i.test(c))) return;
-    const [symbol, date, priceText] = cells.length >= 3 ? cells : [null, cells[0], cells[1]];
-    const price = Number((priceText ?? "").replace(/[$₹\s]/g, "").replace(/,/g, ""));
+    const [symbol, date, priceText] =
+      cells.length >= 3 ? cells : [null, cells[0], cells[1]];
+    const price = Number(
+      (priceText ?? "").replace(/[$₹\s]/g, "").replace(/,/g, ""),
+    );
     if (!isIsoDate(date)) {
       errors.push(`Line ${line}: the date has to look like 2026-03-31.`);
       return;
@@ -529,7 +717,12 @@ export function parsePrices(text: string): { prices: ParsedPrice[]; errors: stri
       errors.push(`Line ${line}: the price has to be a number above zero.`);
       return;
     }
-    prices.push({ line, symbol: symbol ? symbol.toUpperCase() : null, date, price });
+    prices.push({
+      line,
+      symbol: symbol ? symbol.toUpperCase() : null,
+      date,
+      price,
+    });
   });
   return { prices, errors };
 }

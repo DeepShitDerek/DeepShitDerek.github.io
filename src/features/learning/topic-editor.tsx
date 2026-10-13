@@ -99,15 +99,21 @@ const getResourceIcon = (type: string) => {
     case "Video":
       return <Video className="size-3.5 text-muted-foreground" aria-hidden />;
     case "Article":
-      return <FileText className="size-3.5 text-muted-foreground" aria-hidden />;
+      return (
+        <FileText className="size-3.5 text-muted-foreground" aria-hidden />
+      );
     case "Course":
-      return <GraduationCap className="size-3.5 text-muted-foreground" aria-hidden />;
+      return (
+        <GraduationCap className="size-3.5 text-muted-foreground" aria-hidden />
+      );
     case "Official":
       return <Globe className="size-3.5 text-muted-foreground" aria-hidden />;
     case "OpenSource":
       return <Globe className="size-3.5 text-muted-foreground" aria-hidden />;
     default:
-      return <LinkIcon className="size-3.5 text-muted-foreground" aria-hidden />;
+      return (
+        <LinkIcon className="size-3.5 text-muted-foreground" aria-hidden />
+      );
   }
 };
 
@@ -207,7 +213,9 @@ const ResourceList = ({
           onClick={onAdd}
           className="flex w-full flex-col items-center justify-center rounded-surface border border-dashed border-border p-6 text-center transition-colors hover:bg-muted/30 focus-ring"
         >
-          <span className="text-xs font-medium text-foreground">No resources yet</span>
+          <span className="text-xs font-medium text-foreground">
+            No resources yet
+          </span>
           <span className="mt-1 text-micro text-muted-foreground">
             Add links, videos, or docs.
           </span>

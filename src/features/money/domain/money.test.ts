@@ -67,7 +67,9 @@ describe("roundHalfAwayFromZero", () => {
   it("keeps a charge and its refund exact negatives", () => {
     for (let i = 0; i < 2000; i += 1) {
       const value = (Math.random() - 0.5) * 1e7;
-      expect(roundHalfAwayFromZero(-value)).toBe(-roundHalfAwayFromZero(value) + 0);
+      expect(roundHalfAwayFromZero(-value)).toBe(
+        -roundHalfAwayFromZero(value) + 0,
+      );
     }
   });
 });
@@ -99,12 +101,21 @@ describe("parseAmount", () => {
     expect(parseAmount(input, currency).minor).toBe(minor);
   });
 
-  it.each(["", "abc", "1e5", "12..3", "1.2.3", "$", "--5", "(-5)", "-5 DR", "+-5", "12 34x"])(
-    'refuses "%s"',
-    (input) => {
-      expect(() => parseAmount(input, "CAD")).toThrow(MoneyError);
-    },
-  );
+  it.each([
+    "",
+    "abc",
+    "1e5",
+    "12..3",
+    "1.2.3",
+    "$",
+    "--5",
+    "(-5)",
+    "-5 DR",
+    "+-5",
+    "12 34x",
+  ])('refuses "%s"', (input) => {
+    expect(() => parseAmount(input, "CAD")).toThrow(MoneyError);
+  });
 
   it("refuses amounts too large to hold exactly", () => {
     expect(() => parseAmount("999999999999999999", "CAD")).toThrow(/too large/);
@@ -157,7 +168,9 @@ describe("allocate", () => {
   });
 
   it("splits $10.00 three ways as 3.34 / 3.33 / 3.33", () => {
-    expect(allocate(cad(1000), [1, 1, 1]).map((p) => p.minor)).toEqual([334, 333, 333]);
+    expect(allocate(cad(1000), [1, 1, 1]).map((p) => p.minor)).toEqual([
+      334, 333, 333,
+    ]);
   });
 
   it("refuses nonsense weights", () => {
@@ -182,7 +195,10 @@ describe("conversion", () => {
   });
 
   it("recovers the rate a remittance delivered", () => {
-    expect(impliedRate(cad(-100000), money(6000000, "INR"))).toBeCloseTo(60, 10);
+    expect(impliedRate(cad(-100000), money(6000000, "INR"))).toBeCloseTo(
+      60,
+      10,
+    );
     expect(impliedRate(money(10000, "JPY"), cad(9100))).toBeCloseTo(0.0091, 10);
     expect(() => impliedRate(cad(0), money(1, "INR"))).toThrow();
   });

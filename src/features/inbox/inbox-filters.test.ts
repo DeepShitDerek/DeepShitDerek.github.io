@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextSelection } from "./inbox-filters";
 
-describe("inbox selection (ADM-021)", () => {
+describe("inbox selection", () => {
   it("fills the detail pane with the first message on a wide screen", () => {
     expect(nextSelection(["a", "b"], null, false)).toBe("a");
     // An open message that left the view (archived, filtered out) is replaced.

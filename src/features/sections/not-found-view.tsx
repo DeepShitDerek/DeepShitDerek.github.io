@@ -62,7 +62,11 @@ export function NotFoundView() {
  * loaded to decide whether the path was a CMS page — so a mistyped URL is one
  * tap from wherever the visitor was probably going.
  */
-function GenuineNotFound({ links }: { links: { label: string; href: string }[] }) {
+function GenuineNotFound({
+  links,
+}: {
+  links: { label: string; href: string }[];
+}) {
   const pages = links.filter((link) => link.href !== "/").slice(0, 6);
 
   return (

@@ -18,6 +18,11 @@ import { ContactView } from "@/features/contact/contact-page";
 import { ContactCta } from "@/features/home/contact-cta";
 import SiteHeader from "@/components/layout/site-header";
 import { FooterView } from "@/components/layout/public-footer";
+import { isImmersive, resolveSiteStyle } from "@/lib/site-style";
+import { immersiveFontVars } from "@/features/immersive/styles/fonts";
+import { ImmersiveHeader } from "@/features/immersive/shell/immersive-header";
+import { ImmersiveFooter } from "@/features/immersive/shell/immersive-footer";
+import { ImmersiveStyles } from "@/features/immersive/shell/immersive-styles";
 import type { PreviewPage } from "./settings-groups";
 
 /**
@@ -158,6 +163,8 @@ export function SettingsPreview({
 
   const width = FRAME_WIDTHS[viewport];
   const typography = identity.profile_data.typography_preset;
+  const siteStyle = resolveSiteStyle(identity.profile_data.site_style);
+  const immersive = isImmersive(siteStyle);
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -229,16 +236,33 @@ export function SettingsPreview({
           The whole frame is inert. A click inside it would navigate the admin
           away and take unsaved changes with it, and a preview is for looking
           at rather than for using.
+
+          An immersive style shows here as its colours, type, header and
+          footer around the same pages. The scroll layouts are not played: the
+          frame is scaled and inert.
         */}
         <div
           data-testid="preview-frame"
-          className="pointer-events-none flex min-h-full flex-col bg-background"
+          data-style-scope={siteStyle}
+          className={cn(
+            "pointer-events-none flex min-h-full flex-col bg-background text-foreground",
+            immersive && immersiveFontVars,
+          )}
         >
-          <SiteHeader identity={identity} />
+          {immersive && <ImmersiveStyles />}
+          {immersive ? (
+            <ImmersiveHeader identity={identity} />
+          ) : (
+            <SiteHeader identity={identity} />
+          )}
           <main className="flex-1">
             <PreviewPageBody page={page} identity={identity} />
           </main>
-          <FooterView identity={identity} />
+          {immersive ? (
+            <ImmersiveFooter identity={identity} />
+          ) : (
+            <FooterView identity={identity} />
+          )}
         </div>
       </PreviewFrame>
     </div>

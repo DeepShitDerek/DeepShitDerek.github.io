@@ -30,7 +30,7 @@ const FIELD =
   "rounded-control bg-background transition-[box-shadow,border-color] duration-base ease-enter focus-visible:border-primary/60 aria-[invalid=true]:border-destructive/60";
 
 /**
- * The outcome stays until the visitor acts (V2-044). Both used to clear
+ * The outcome stays until the visitor acts. Both used to clear
  * themselves after five seconds: a visitor who looked away came back to an
  * empty form and no word on whether it had sent, and an error vanished before
  * it could be read.
@@ -55,7 +55,7 @@ export function ContactForm() {
     if (sentTo) sentHeading.current?.focus();
   }, [sentTo]);
 
-  // A link can choose the topic (P1-16): the home page's "Have a project?"
+  // A link can choose the topic: the home page's "Have a project?"
   // goes to /contact?topic=project. Read after mount, since the page is
   // prerendered without a query string; an unknown value is ignored.
   useEffect(() => {
@@ -193,7 +193,7 @@ export function ContactForm() {
       className="space-y-5"
     >
       {/*
-        One path serves every kind of enquiry (V2-040b). Native radios in a
+        One path serves every kind of enquiry. Native radios in a
         fieldset: the group is one Tab stop, arrow keys move the choice, and a
         screen reader announces the legend with each option.
       */}

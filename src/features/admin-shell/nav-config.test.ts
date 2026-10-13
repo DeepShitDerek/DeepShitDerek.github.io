@@ -19,7 +19,7 @@ describe("workspace navigation", () => {
   });
 
   it("has no empty or oversized group", () => {
-    // More than five in one group and the eye stops grouping (P1-12).
+    // More than five in one group and the eye stops grouping.
     for (const group of NAV_GROUPS) {
       expect(group.items.length, group.label).toBeGreaterThan(0);
       expect(group.items.length, group.label).toBeLessThanOrEqual(5);

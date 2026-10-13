@@ -178,25 +178,28 @@ export const WORKSPACE: {
         href: "/admin/analytics",
         name: "Analytics",
         icon: LineChart,
-        description: "Visits and what people read, without storing an IP address.",
+        description:
+          "Visits and what people read, without storing an IP address.",
       },
       {
         href: "/admin/settings",
         name: "Settings",
         icon: Settings,
-        description: "Brand, theme, type and every public page, with live previews.",
+        description:
+          "Brand, theme, type and every public page, with live previews.",
       },
       {
         href: "/admin/security",
         name: "Security",
         icon: Lock,
-        description: "Two-factor, password, and a switch to take the site offline.",
+        description:
+          "Two-factor, password, and a switch to take the site offline.",
       },
     ],
   },
 ];
 
-export const WORKSPACE_MODULE_COUNT = WORKSPACE.reduce(
+const WORKSPACE_MODULE_COUNT = WORKSPACE.reduce(
   (count, group) => count + group.modules.length,
   0,
 );

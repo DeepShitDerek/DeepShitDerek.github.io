@@ -6,12 +6,26 @@ import type { Budget } from "../domain/budget";
 import { buildRateTable, type RateTable } from "../domain/fx";
 import type { Goal } from "../domain/goals";
 import type { Application } from "../domain/applications";
-import { buildPriceBook, type Portfolio, portfolio, type Price, type PriceBook, type Security, type Trade } from "../domain/invest";
+import {
+  buildPriceBook,
+  type Portfolio,
+  portfolio,
+  type Price,
+  type PriceBook,
+  type Security,
+  type Trade,
+} from "../domain/invest";
 import type { CreditScore, IncomeSource } from "../domain/lender-report";
 import type { Loan, RoomRecord } from "../data/rows";
 import type { Schedule } from "../domain/schedule";
 import { type Balance, balances, type Transaction } from "../domain/ledger";
-import type { Category, Institution, MoneySettings, Reconciliation, Rule } from "../domain/model";
+import type {
+  Category,
+  Institution,
+  MoneySettings,
+  Reconciliation,
+  Rule,
+} from "../domain/model";
 import type { AccountRecord } from "../data/rows";
 import {
   useGetAccountsQuery,
@@ -38,7 +52,7 @@ import {
 import type { RateRow } from "../domain/fx";
 
 /**
- * Everything the money screens read, loaded once and derived once (V2-080).
+ * Everything the money screens read, loaded once and derived once.
  *
  * Each area used to fetch and re-derive on its own; with one ledger and one
  * rate table in context, two screens can never disagree about a balance.
@@ -121,7 +135,28 @@ export function MoneyProvider({ children }: { children: ReactNode }) {
   const prices = useGetPricesQuery();
   const trades = useGetTradesQuery();
   const room = useGetRoomQuery();
-  const queries = [settings, accounts, institutions, categories, transactions, rates, rules, reconciliations, schedules, skips, budgets, goals, loans, incomeSources, creditScores, applications, securities, prices, trades, room];
+  const queries = [
+    settings,
+    accounts,
+    institutions,
+    categories,
+    transactions,
+    rates,
+    rules,
+    reconciliations,
+    schedules,
+    skips,
+    budgets,
+    goals,
+    loans,
+    incomeSources,
+    creditScores,
+    applications,
+    securities,
+    prices,
+    trades,
+    room,
+  ];
 
   const isLoading = queries.some((q) => q.isLoading);
   const error = queries.find((q) => q.error)?.error;
@@ -171,7 +206,11 @@ export function MoneyProvider({ children }: { children: ReactNode }) {
         on: today,
       });
       portfolioByAccount.set(account.id, pf);
-      if (balance) worthByAccount.set(account.id, { ...balance, balanceMinor: pf.valueMinor });
+      if (balance)
+        worthByAccount.set(account.id, {
+          ...balance,
+          balanceMinor: pf.valueMinor,
+        });
     }
     return {
       settings: settings.data,
@@ -202,7 +241,11 @@ export function MoneyProvider({ children }: { children: ReactNode }) {
       trades: trades.data,
       room: room.data,
       portfolioByAccount,
-      tradeTransactionIds: new Set(trades.data.map((t) => t.transactionId).filter((id): id is string => !!id)),
+      tradeTransactionIds: new Set(
+        trades.data
+          .map((t) => t.transactionId)
+          .filter((id): id is string => !!id),
+      ),
       today,
       balanceByAccount,
       worthByAccount,
@@ -241,12 +284,15 @@ export function MoneyProvider({ children }: { children: ReactNode }) {
     [data, isLoading, error],
   );
 
-  return <MoneyContext.Provider value={value}>{children}</MoneyContext.Provider>;
+  return (
+    <MoneyContext.Provider value={value}>{children}</MoneyContext.Provider>
+  );
 }
 
 export function useMoneyState(): MoneyState {
   const state = useContext(MoneyContext);
-  if (!state) throw new Error("useMoneyState must be used inside <MoneyProvider>");
+  if (!state)
+    throw new Error("useMoneyState must be used inside <MoneyProvider>");
   return state;
 }
 

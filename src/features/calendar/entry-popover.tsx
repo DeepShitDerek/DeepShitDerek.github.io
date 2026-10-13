@@ -95,7 +95,7 @@ function Anchored({
 }
 
 /** "Monday 5 October, 09:00–10:30", or the dates of an all-day span. */
-export function whenLine(entry: CalendarEntry): string {
+function whenLine(entry: CalendarEntry): string {
   if (isAllDayLike(entry)) {
     const { first, last } = allDayRange(entry);
     return isSameDay(first, last)

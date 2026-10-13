@@ -34,7 +34,7 @@ const EASE_MIN = 1.3;
 const EASE_MAX = 3.5;
 const INTERVAL_MAX = 3650;
 
-export interface ReviewState {
+interface ReviewState {
   ease: number;
   intervalDays: number;
   lapses: number;
@@ -51,10 +51,7 @@ function clamp(value: number, min: number, max: number): number {
  * recall is exactly the one worth seeing soon, and burying it deeper is how
  * material gets abandoned.
  */
-export function applyRating(
-  state: ReviewState,
-  rating: ReviewRating,
-): ReviewState {
+function applyRating(state: ReviewState, rating: ReviewRating): ReviewState {
   const ease = state.ease || 2.5;
   const interval = state.intervalDays ?? 0;
 
@@ -102,7 +99,7 @@ export function applyRating(
   }
 }
 
-export function stateOf(topic: LearningTopic): ReviewState {
+function stateOf(topic: LearningTopic): ReviewState {
   return {
     ease: topic.ease ?? 2.5,
     intervalDays: topic.interval_days ?? 0,
@@ -140,7 +137,7 @@ export function todayIso(now = new Date()): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-export function isNew(topic: LearningTopic): boolean {
+function isNew(topic: LearningTopic): boolean {
   return !topic.last_reviewed_at;
 }
 

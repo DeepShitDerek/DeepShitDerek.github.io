@@ -48,7 +48,7 @@ export default function LearningPage() {
     null,
   );
   const [isReviewing, setIsReviewing] = useState(false);
-  // Today · Topics as views with a URL (03-workspace-ui.md §2.7). The
+  // Today · Topics as views with a URL. The
   // catalogue was a "Modules" toggle that expanded a section headed
   // "Library" at the bottom of the page, the name of another module.
   const [tab, setTab] = useUrlTab<Tab>("today", TABS);
@@ -94,7 +94,7 @@ export default function LearningPage() {
 
   const today = todayIso();
 
-  // Deletes offer Undo instead of asking first (P1-10). Nothing is deleted
+  // Deletes offer Undo instead of asking first. Nothing is deleted
   // until the toast closes, so a module's topics and their review history
   // are all still there if you undo. Archiving remains the way to keep them.
   const { pending: deletingTopics, remove: removeTopicLater } =

@@ -28,7 +28,7 @@ export interface Measured {
 type Side = "t" | "r" | "b" | "l";
 
 /** The pair of sides that face each other, so edges don't loop around nodes. */
-export function facingSides(
+function facingSides(
   a: Point,
   aSize: Measured,
   b: Point,

@@ -32,7 +32,7 @@ export function normalizeHref(href: string): string {
   return trimmed.replace(/\/+$/, "");
 }
 
-export function rootSegment(href: string): string {
+function rootSegment(href: string): string {
   return normalizeHref(href).replace(/^\//, "").split("/")[0] ?? "";
 }
 

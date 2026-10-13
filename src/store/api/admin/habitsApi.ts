@@ -26,7 +26,7 @@ export const habitsApi = adminApi.injectEndpoints({
         if (!habits?.length) return { data: [] };
 
         /*
-          The whole history, not the last 30 days (ADM-018). Streaks walk back
+          The whole history, not the last 30 days. Streaks walk back
           until a missed day, "best" is the longest run on record, the delete
           warning counts every recorded day and the heatmap spans the year: a
           30-day window capped all four without saying so. Fetched a page at a
@@ -147,24 +147,30 @@ export const habitsApi = adminApi.injectEndpoints({
         // way, so a tap there lands at once rather than after the refetch.
         patches.push(
           dispatch(
-            dashboardApi.util.updateQueryData("getDashboardData", undefined, (draft) => {
-              const habit = draft.habits.find((h) => h.id === habit_id);
-              if (!habit) return;
-              if (!habit.habit_logs) habit.habit_logs = [];
-              const index = habit.habit_logs.findIndex((l) => l.completed_date === date);
-              if (value <= 0) {
-                if (index !== -1) habit.habit_logs.splice(index, 1);
-              } else if (index !== -1) {
-                habit.habit_logs[index].value = value;
-              } else {
-                habit.habit_logs.push({
-                  id: `optimistic-${habit_id}-${date}`,
-                  habit_id,
-                  completed_date: date,
-                  value,
-                });
-              }
-            }),
+            dashboardApi.util.updateQueryData(
+              "getDashboardData",
+              undefined,
+              (draft) => {
+                const habit = draft.habits.find((h) => h.id === habit_id);
+                if (!habit) return;
+                if (!habit.habit_logs) habit.habit_logs = [];
+                const index = habit.habit_logs.findIndex(
+                  (l) => l.completed_date === date,
+                );
+                if (value <= 0) {
+                  if (index !== -1) habit.habit_logs.splice(index, 1);
+                } else if (index !== -1) {
+                  habit.habit_logs[index].value = value;
+                } else {
+                  habit.habit_logs.push({
+                    id: `optimistic-${habit_id}-${date}`,
+                    habit_id,
+                    completed_date: date,
+                    value,
+                  });
+                }
+              },
+            ),
           ),
         );
         try {
@@ -173,7 +179,7 @@ export const habitsApi = adminApi.injectEndpoints({
           patches.forEach((patch) => patch.undo());
         }
       },
-      // Both copies are patched above; the dashboard still refetches (ADM-012).
+      // Both copies are patched above; the dashboard still refetches.
       invalidatesTags: ["Dashboard"],
     }),
     updateHabitOrder: builder.mutation<null, string[]>({
@@ -203,7 +209,7 @@ export const habitsApi = adminApi.injectEndpoints({
         if (error) return { error };
         return { data: null };
       },
-      invalidatesTags: ["Analytics", "Dashboard"],
+      invalidatesTags: ["Dashboard"],
     }),
   }),
 });

@@ -30,7 +30,11 @@ export function SecurityHarness() {
   const [seeded, setSeeded] = useState(false);
   useEffect(() => {
     dispatch(authApi.util.upsertQueryData("getMfaFactors", undefined, FACTORS));
-    dispatch(siteApi.util.upsertQueryData("getSecuritySettings", undefined, { lockdown_level: 0 }));
+    dispatch(
+      siteApi.util.upsertQueryData("getSecuritySettings", undefined, {
+        lockdown_level: 0,
+      }),
+    );
     setSeeded(true);
   }, [dispatch]);
 
@@ -40,7 +44,9 @@ export function SecurityHarness() {
         Workspace
       </header>
       <main className="flex-1 px-4 pb-6 pt-6 sm:px-6">
-        <div className="mx-auto w-full max-w-wide">{seeded && <SecurityPage />}</div>
+        <div className="mx-auto w-full max-w-wide">
+          {seeded && <SecurityPage />}
+        </div>
       </main>
     </div>
   );

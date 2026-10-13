@@ -134,7 +134,11 @@ export default function NovelEditor({
 
   // The editor's key handler is created once; it reads the menu from here.
   const menu = useRef({ open: false, items: [] as MenuEntry[], index: 0 });
-  menu.current = { open: !!suggest && items.length > 0, items, index: activeIndex };
+  menu.current = {
+    open: !!suggest && items.length > 0,
+    items,
+    index: activeIndex,
+  };
 
   const insertImage = useCallback(async (file: File, at?: number) => {
     const upload = uploadRef.current;
@@ -190,7 +194,9 @@ export default function NovelEditor({
 
   const syncSuggest = (editor: Editor) => {
     const link =
-      editor.isEditable && linksRef.current ? wikiLinkQuery(editor.state) : null;
+      editor.isEditable && linksRef.current
+        ? wikiLinkQuery(editor.state)
+        : null;
     const slash = !link && editor.isEditable ? slashQuery(editor.state) : null;
     const match = link ?? slash;
     if (!match) {
@@ -278,7 +284,10 @@ export default function NovelEditor({
         );
         if (!file || !uploadRef.current) return false;
         event.preventDefault();
-        const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+        const at = view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        });
         void insertImageRef.current(file, at?.pos);
         return true;
       },
@@ -353,7 +362,9 @@ export default function NovelEditor({
         if (editor.isEditable && last && !endsOnEmptyLine) {
           editor
             .chain()
-            .insertContentAt(editor.state.doc.content.size, { type: "paragraph" })
+            .insertContentAt(editor.state.doc.content.size, {
+              type: "paragraph",
+            })
             .focus("end")
             .run();
         } else {
@@ -378,7 +389,9 @@ export default function NovelEditor({
           blocks={TURN_INTO_COMMANDS}
         />
       )}
-      {editable && <BubbleToolbar editor={editor} blocks={TURN_INTO_COMMANDS} />}
+      {editable && (
+        <BubbleToolbar editor={editor} blocks={TURN_INTO_COMMANDS} />
+      )}
 
       <EditorContent editor={editor} />
 

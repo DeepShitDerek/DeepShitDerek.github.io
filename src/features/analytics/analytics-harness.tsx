@@ -8,14 +8,21 @@ import AnalyticsPage from "./analytics-page";
 
 /** Placeholder rows: the harness checks layout, not what the numbers say. */
 const slices = (prefix: string, n: number): VisitorSlice[] =>
-  Array.from({ length: n }, (_, i) => ({ name: `${prefix} ${i + 1}`, value: (n - i) * 7 }));
+  Array.from({ length: n }, (_, i) => ({
+    name: `${prefix} ${i + 1}`,
+    value: (n - i) * 7,
+  }));
 
 function sample(days: number): VisitorAnalytics {
   const today = new Date();
   const by_day = Array.from({ length: days }, (_, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (days - 1 - i));
-    return { day: d.toISOString().slice(0, 10), views: 10 + ((i * 7) % 23), visitors: 4 + ((i * 3) % 9) };
+    return {
+      day: d.toISOString().slice(0, 10),
+      views: 10 + ((i * 7) % 23),
+      visitors: 4 + ((i * 3) % 9),
+    };
   });
   const views = by_day.reduce((a, b) => a + b.views, 0);
   return {
@@ -55,7 +62,13 @@ export function AnalyticsHarness() {
   useEffect(() => {
     for (const days of [7, 30, 90, 365]) {
       for (const withBots of [false, true]) {
-        dispatch(analyticsApi.util.upsertQueryData("getVisitorAnalytics", { days, withBots }, sample(days)));
+        dispatch(
+          analyticsApi.util.upsertQueryData(
+            "getVisitorAnalytics",
+            { days, withBots },
+            sample(days),
+          ),
+        );
       }
     }
     setSeeded(true);
@@ -67,7 +80,9 @@ export function AnalyticsHarness() {
         Workspace
       </header>
       <main className="flex-1 px-4 pb-6 pt-6 sm:px-6">
-        <div className="mx-auto w-full max-w-wide">{seeded && <AnalyticsPage />}</div>
+        <div className="mx-auto w-full max-w-wide">
+          {seeded && <AnalyticsPage />}
+        </div>
       </main>
     </div>
   );

@@ -47,16 +47,16 @@ const ONE_ROW_LINKS = 3;
  * The site header: a plain bar, not a floating pill.
  *
  *  - **No menu.** Three or four links fit on any phone, and a link that is
- *    visible gets used; one behind a hamburger mostly does not (S02, S03).
+ *    visible gets used; one behind a hamburger mostly does not.
  *    That also removes the old phone sheet, which let keyboard focus wander
- *    into the page behind it (P0-3). Past three links, the links take a
+ *    into the page behind it. Past three links, the links take a
  *    second row on phones rather than hide.
  *  - **One call to action.** "Work with me" ends the bar from `sm` up; on a
  *    phone the hero and the closing band carry it, so the bar never holds two
- *    filled buttons with the hero's in view (X7).
+ *    filled buttons with the hero's in view.
  *  - **Solid when it matters.** It sits on the ground at the top and gains a
  *    hairline once content scrolls under it. The fill is the page ground at
- *    95%, so text under it can never show through at low contrast (P2-7).
+ *    95%, so text under it can never show through at low contrast.
  *  - **The current page is underlined** in the primary colour, by CSS. There
  *    is no travelling pill, and no animation library in the bar.
  *
@@ -161,7 +161,12 @@ export default function SiteHeader({
           )}
         </ul>
 
-        <div className={cn("flex items-center gap-1", twoRows && "ml-auto sm:ml-0")}>
+        <div
+          className={cn(
+            "flex items-center gap-1",
+            twoRows && "ml-auto sm:ml-0",
+          )}
+        >
           <SchemeToggle />
           {session && (
             <Link

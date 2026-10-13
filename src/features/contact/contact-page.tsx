@@ -95,7 +95,10 @@ export function ContactView({
       {showBadge && (
         <Reveal className="mb-10">
           <p className="inline-flex items-center gap-2 font-mono text-micro text-muted-foreground">
-            <span aria-hidden className="size-2 shrink-0 rounded-full bg-success" />
+            <span
+              aria-hidden
+              className="size-2 shrink-0 rounded-full bg-success"
+            />
             {identity?.profile_data.status_panel.availability ||
               "Available for work"}
           </p>

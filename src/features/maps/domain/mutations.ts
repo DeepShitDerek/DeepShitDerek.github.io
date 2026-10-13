@@ -126,10 +126,7 @@ export function applyMutation(
 }
 
 /** The mutation that undoes `mutation`, given the graph *before* it applies. */
-export function invertMutation(
-  graph: Graph,
-  mutation: GraphMutation,
-): GraphMutation {
+function invertMutation(graph: Graph, mutation: GraphMutation): GraphMutation {
   switch (mutation.type) {
     case "CREATE_NODE":
       return { type: "DELETE_NODE", id: mutation.node.id };

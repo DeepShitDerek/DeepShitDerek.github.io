@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { StateMatrix } from "@/features/design-system/state-matrix";
 
 /**
- * Dev-only component state matrix (V2-032). Exists only in builds made with
+ * Dev-only component state matrix. Exists only in builds made with
  * NEXT_PUBLIC_DEV_HARNESS=1; every other build answers 404.
  */
 export const metadata: Metadata = {

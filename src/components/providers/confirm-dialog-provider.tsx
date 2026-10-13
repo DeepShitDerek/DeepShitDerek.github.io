@@ -25,7 +25,7 @@ interface ConfirmOptions {
   variant?: "default" | "destructive";
 }
 
-/** A choice between two actions, plus a way out (ADM-010). */
+/** A choice between two actions, plus a way out. */
 interface ChoiceOptions extends ConfirmOptions {
   /** The second action, shown between Cancel and the confirm button. */
   alternativeText: string;
@@ -77,24 +77,21 @@ export const ConfirmDialogProvider = ({
     resolve?.(value);
   }, []);
 
-  const choose = useCallback(
-    (opts: Partial<ChoiceOptions>) => {
-      resolver.current?.(null);
-      setOptions({
-        title: "Are you sure?",
-        description: "This action cannot be undone.",
-        confirmText: "Confirm",
-        cancelText: "Cancel",
-        variant: "default",
-        ...opts,
-      });
-      setOpen(true);
-      return new Promise<Choice>((resolve) => {
-        resolver.current = resolve;
-      });
-    },
-    [],
-  );
+  const choose = useCallback((opts: Partial<ChoiceOptions>) => {
+    resolver.current?.(null);
+    setOptions({
+      title: "Are you sure?",
+      description: "This action cannot be undone.",
+      confirmText: "Confirm",
+      cancelText: "Cancel",
+      variant: "default",
+      ...opts,
+    });
+    setOpen(true);
+    return new Promise<Choice>((resolve) => {
+      resolver.current = resolve;
+    });
+  }, []);
 
   const confirm = useCallback(
     async (opts: ConfirmOptions) => (await choose(opts)) === "confirm",

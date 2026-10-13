@@ -8,7 +8,7 @@ export interface SearchHit {
   kind: SearchKind;
   id: string;
   title: string;
-  /** Where it opens: the module with the item in its URL (ADM-004). */
+  /** Where it opens: the module with the item in its URL. */
   href: string;
 }
 
@@ -26,7 +26,7 @@ function orValue(value: string): string {
 
 /**
  * Titles across notes, tasks, posts and messages, for the command palette
- * (ADM-027). It could find module names only.
+ *. It could find module names only.
  *
  * Titles, not bodies: ILIKE on a title is cheap on tables this size, and a
  * match the palette cannot show the reason for is a confusing result.
@@ -60,12 +60,15 @@ export const searchApi = adminApi.injectEndpoints({
           supabase
             .from("contact_submissions")
             .select("id, name, subject")
-            .or(`subject.ilike.${orValue(pattern)},name.ilike.${orValue(pattern)}`)
+            .or(
+              `subject.ilike.${orValue(pattern)},name.ilike.${orValue(pattern)}`,
+            )
             .eq("is_archived", false)
             .order("created_at", { ascending: false })
             .limit(PER_KIND),
         ]);
-        const failed = notes.error ?? tasks.error ?? posts.error ?? messages.error;
+        const failed =
+          notes.error ?? tasks.error ?? posts.error ?? messages.error;
         if (failed) return { error: failed };
 
         const hits: SearchHit[] = [

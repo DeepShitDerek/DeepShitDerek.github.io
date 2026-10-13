@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface TextareaProps
+interface TextareaProps
   extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> {
   /** Nullable for the same reason as `Input` — see the note there. */
   value?: React.TextareaHTMLAttributes<HTMLTextAreaElement>["value"] | null;

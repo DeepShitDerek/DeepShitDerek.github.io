@@ -15,8 +15,6 @@ import { Globe, Lock, ShieldAlert, type LucideIcon } from "lucide-react";
  * depends on a migration the owner may not have run, it says so.
  */
 
-export const MAX_LOCKDOWN_LEVEL = 3;
-
 export interface LockdownLevelMeta {
   level: number;
   icon: LucideIcon;
@@ -74,22 +72,6 @@ export function lockdownMeta(level: number): LockdownLevelMeta {
   );
 }
 
-/** Is the public site hidden from visitors who are not signed in? */
-export function isPublicHidden(level: number): boolean {
-  return level >= 1;
-}
-
-/**
- * Are admin writes meant to be refused?
- *
- * "Meant to" is deliberate: this is what the level *claims*, and the claim is
- * only true on a database running the current `db/schema.sql` (V2-016).
- * The UI pairs it with `enforcement` so the difference is visible.
- */
-export function writesBlocked(level: number): boolean {
-  return level >= 2;
-}
-
 /**
  * The warning shown before changing level.
  *
@@ -127,5 +109,3 @@ export function lockdownConfirmation(level: number): {
     destructive: true,
   };
 }
-
-export { type LucideIcon };

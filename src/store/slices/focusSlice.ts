@@ -1,9 +1,9 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type FocusMode = "work" | "break";
+type FocusMode = "work" | "break";
 
 /**
- * The focus timer runs on the wall clock (ADM-020).
+ * The focus timer runs on the wall clock.
  *
  * It used to count `setInterval` ticks, and browsers slow timers in a
  * background tab to one a minute or less, so a 25-minute session ran long
@@ -41,7 +41,9 @@ export const initialFocusState: FocusState = {
 };
 
 const secondsLeft = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
-const withNow = <P>(payload: P) => ({ payload: { ...payload, now: Date.now() } });
+const withNow = <P>(payload: P) => ({
+  payload: { ...payload, now: Date.now() },
+});
 
 const focusSlice = createSlice({
   name: "focus",
@@ -68,8 +70,11 @@ const focusSlice = createSlice({
         state.taskTitle = taskTitle || null;
         state.taskId = taskId || null;
       },
-      prepare: (payload: { durationMinutes: number; taskTitle?: string; taskId?: string }) =>
-        withNow(payload),
+      prepare: (payload: {
+        durationMinutes: number;
+        taskTitle?: string;
+        taskId?: string;
+      }) => withNow(payload),
     },
     pauseFocus: {
       reducer: (state, action: PayloadAction<{ now: number }>) => {
@@ -86,7 +91,8 @@ const focusSlice = createSlice({
       reducer: (state, action: PayloadAction<{ now: number }>) => {
         if (!state.isActive || !state.isPaused) return;
         state.isPaused = false;
-        state.endsAt = action.payload.now + (state.pausedRemaining ?? state.timeLeft * 1000);
+        state.endsAt =
+          action.payload.now + (state.pausedRemaining ?? state.timeLeft * 1000);
         state.pausedRemaining = null;
       },
       prepare: () => withNow({}),
@@ -105,6 +111,12 @@ const focusSlice = createSlice({
   },
 });
 
-export const { startFocus, pauseFocus, resumeFocus, stopFocus, syncFocus, restoreFocus } =
-  focusSlice.actions;
+export const {
+  startFocus,
+  pauseFocus,
+  resumeFocus,
+  stopFocus,
+  syncFocus,
+  restoreFocus,
+} = focusSlice.actions;
 export default focusSlice.reducer;

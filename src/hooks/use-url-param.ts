@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 /**
- * One query-string value as state (ADM-004): the open note, message or post,
+ * One query-string value as state: the open note, message or post,
  * so a reload reopens it and it can be linked to. Other
  * parameters are kept. The page must render inside `<Suspense>`, as
  * `useSearchParams` requires for a static export.

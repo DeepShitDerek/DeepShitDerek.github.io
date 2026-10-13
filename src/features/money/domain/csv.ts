@@ -1,5 +1,5 @@
 /**
- * CSV as banks actually export it (V2-080): RFC 4180 quoting, quoted
+ * CSV as banks actually export it: RFC 4180 quoting, quoted
  * newlines and doubled quotes, a UTF-8 byte-order mark, CRLF or LF, and
  * whichever delimiter the bank chose — comma, semicolon or tab. Blank lines
  * are dropped; ragged rows are kept as they are for the mapper to judge.
@@ -16,7 +16,10 @@ export function detectDelimiter(text: string): "," | ";" | "\t" {
   return counts[0].n > 0 ? counts[0].d : ",";
 }
 
-export function parseCsv(input: string, delimiter = detectDelimiter(input)): string[][] {
+export function parseCsv(
+  input: string,
+  delimiter = detectDelimiter(input),
+): string[][] {
   const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
   const rows: string[][] = [];
   let row: string[] = [];
@@ -29,7 +32,8 @@ export function parseCsv(input: string, delimiter = detectDelimiter(input)): str
   };
   const endRow = () => {
     endField();
-    if (row.some((cell) => cell.trim() !== "")) rows.push(row.map((cell) => cell.trim()));
+    if (row.some((cell) => cell.trim() !== ""))
+      rows.push(row.map((cell) => cell.trim()));
     row = [];
   };
 

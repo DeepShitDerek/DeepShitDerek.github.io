@@ -25,25 +25,15 @@ export function currentValue(item: InventoryItem): number {
   return item.current_value ?? purchasePrice(item);
 }
 
-/**
- * Percentage lost against the purchase price, or null when depreciation is not
- * meaningful — nothing was paid (which would divide by zero), or the item has
- * held or gained value.
- */
-export function depreciationPercent(item: InventoryItem): number | null {
-  const paid = purchasePrice(item);
-  if (paid <= 0) return null;
-  const now = currentValue(item);
-  if (now >= paid) return null;
-  return Math.round(((paid - now) / paid) * 100);
-}
-
-/** The item's currency, the base currency when none was recorded (ADM-024). */
-export function itemCurrency(item: Pick<InventoryItem, "currency">, base: string): string {
+/** The item's currency, the base currency when none was recorded. */
+export function itemCurrency(
+  item: Pick<InventoryItem, "currency">,
+  base: string,
+): string {
   return item.currency || base;
 }
 
-/** Formatted in its currency (ADM-024); it used to be bare digits. */
+/** Formatted in its currency; it used to be bare digits. */
 export function formatValue(value: number, currency: string): string {
   return formatMoney({ amount: value, currency });
 }

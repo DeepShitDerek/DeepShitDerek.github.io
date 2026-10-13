@@ -9,7 +9,7 @@ import { parseQuickAdd } from "./quick-add";
 import { todayIso } from "./task-filters";
 
 /**
- * "Add a task…" at the head of the list (03-workspace-ui.md §2.2, P-inline).
+ * "Add a task…" at the head of the list.
  *
  * Every task used to cost a sheet, a form and a save. Here it is one line and
  * Enter; focus stays in the field for the next one. A line can carry its
@@ -30,7 +30,10 @@ export function TaskQuickAdd({
 }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const parsed = useMemo(() => parseQuickAdd(text, projects, todayIso()), [text, projects]);
+  const parsed = useMemo(
+    () => parseQuickAdd(text, projects, todayIso()),
+    [text, projects],
+  );
   const hintId = "task-quick-add-hint";
 
   const submit = async () => {
@@ -47,7 +50,9 @@ export function TaskQuickAdd({
       });
       setText("");
     } catch (err) {
-      toast.error("Couldn't add the task", { description: getErrorMessage(err) });
+      toast.error("Couldn't add the task", {
+        description: getErrorMessage(err),
+      });
     } finally {
       setBusy(false);
     }
@@ -74,7 +79,11 @@ export function TaskQuickAdd({
           className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>
-      <p id={hintId} aria-live="polite" className="mt-1.5 min-h-5 px-1 font-mono text-micro text-muted-foreground">
+      <p
+        id={hintId}
+        aria-live="polite"
+        className="mt-1.5 min-h-5 px-1 font-mono text-micro text-muted-foreground"
+      >
         {text.trim() && parsed.understood.length > 0
           ? parsed.understood.join(" · ")
           : text.trim()

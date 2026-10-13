@@ -23,7 +23,7 @@ import { ModuleGrid } from "./app-launcher";
 import { isActiveNavHref, NAV_GROUPS } from "./nav-config";
 
 /** The four modules opened most days, each one tap from anywhere. */
-export const TABS: { name: string; href: string; icon: LucideIcon }[] = [
+const TABS: { name: string; href: string; icon: LucideIcon }[] = [
   { name: "Today", href: "/admin", icon: LayoutDashboard },
   { name: "Tasks", href: "/admin/tasks", icon: ListTodo },
   { name: "Notes", href: "/admin/notes", icon: StickyNote },
@@ -39,7 +39,7 @@ const TAB =
   "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-control py-1.5 text-micro font-medium transition-colors duration-fast focus-ring";
 
 /**
- * The workspace on a phone: a bottom tab bar (P1-11, information-architecture
+ * The workspace on a phone: a bottom tab bar (information-architecture
  * §6).
  *
  * Below `lg` the only way between modules was the launcher at the top right,

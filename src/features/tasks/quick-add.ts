@@ -2,7 +2,7 @@ import type { TaskProject } from "@/types";
 import type { TaskPriority } from "./task-meta";
 
 /**
- * Quick add's small grammar (03-workspace-ui.md §2.2, "Inline add"): a task
+ * Quick add's small grammar: a task
  * is typed as one line, and three kinds of word set its fields.
  *
  *  - **When:** `today`, `tomorrow`, or a weekday (`fri`, `friday`) for the
@@ -25,7 +25,15 @@ export interface QuickAddResult {
   understood: string[];
 }
 
-const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const WEEKDAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
 
 const PRIORITIES: Record<string, TaskPriority> = {
   high: "high",
@@ -49,7 +57,16 @@ function addDays(iso: string, days: number): string {
  * A weekday from its full name or a short form, else -1. Saturday and Sunday
  * need the full name: "sat" and "sun" are ordinary words ("buy sun cream").
  */
-const SHORT_DAYS: Record<string, number> = { mon: 1, tue: 2, tues: 2, wed: 3, thu: 4, thur: 4, thurs: 4, fri: 5 };
+const SHORT_DAYS: Record<string, number> = {
+  mon: 1,
+  tue: 2,
+  tues: 2,
+  wed: 3,
+  thu: 4,
+  thur: 4,
+  thurs: 4,
+  fri: 5,
+};
 function weekdayOf(word: string): number {
   return SHORT_DAYS[word] ?? WEEKDAYS.indexOf(word);
 }
@@ -84,21 +101,26 @@ export function parseQuickAdd(
     const day = dueDate ? -1 : weekdayOf(lower);
     if (day >= 0) {
       const current = new Date(`${today}T00:00:00Z`).getUTCDay();
-      dueDate = addDays(today, ((day - current + 7) % 7) || 7);
+      dueDate = addDays(today, (day - current + 7) % 7 || 7);
       continue;
     }
 
     if (word.startsWith("!") && PRIORITIES[lower.slice(1)] && !priority) {
       priority = PRIORITIES[lower.slice(1)];
-      understood.push(`${priority[0].toUpperCase()}${priority.slice(1)} priority`);
+      understood.push(
+        `${priority[0].toUpperCase()}${priority.slice(1)} priority`,
+      );
       continue;
     }
 
     if (word.length > 1 && word.startsWith("#")) {
       const wanted = norm(word.slice(1));
       const exact = projects.find((project) => norm(project.name) === wanted);
-      const prefixed = projects.filter((project) => norm(project.name).startsWith(wanted));
-      const project = exact ?? (prefixed.length === 1 ? prefixed[0] : undefined);
+      const prefixed = projects.filter((project) =>
+        norm(project.name).startsWith(wanted),
+      );
+      const project =
+        exact ?? (prefixed.length === 1 ? prefixed[0] : undefined);
       if (project && !projectId) {
         projectId = project.id;
         understood.push(`Project: ${project.name}`);
@@ -113,7 +135,15 @@ export function parseQuickAdd(
   }
 
   if (dueDate) understood.unshift(label(dueDate, today));
-  if (tags.length) understood.push(`Tag${tags.length === 1 ? "" : "s"}: ${tags.join(", ")}`);
+  if (tags.length)
+    understood.push(`Tag${tags.length === 1 ? "" : "s"}: ${tags.join(", ")}`);
 
-  return { title: kept.join(" "), dueDate, projectId, priority, tags, understood };
+  return {
+    title: kept.join(" "),
+    dueDate,
+    projectId,
+    priority,
+    tags,
+    understood,
+  };
 }

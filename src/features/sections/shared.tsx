@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { useId } from "react";
 import { Markdown as MarkdownBase } from "@/components/ui/markdown";
 import { ArrowRight, ArrowUpRight, ImageOff } from "lucide-react";
 import type { PortfolioItem } from "@/types";
@@ -207,10 +206,7 @@ export function MaybeLink({
   const safe = safeLinkUrl(href);
   if (!safe) return <div className={className}>{children}</div>;
 
-  const classes = cn(
-    "group/link block focus-ring rounded-control",
-    className,
-  );
+  const classes = cn("group/link block focus-ring rounded-control", className);
 
   if (isInternalUrl(safe)) {
     return (
@@ -326,7 +322,7 @@ export function ItemImage({
       loading="lazy"
       decoding="async"
       className={cn("bg-secondary", className)}
-      // Prerendered pages (V2-025): a dead URL can fail before React hydrates,
+      // Prerendered pages: a dead URL can fail before React hydrates,
       // and then onError never fires — the browser's broken-image glyph
       // stays. So also check once React attaches to the element.
       ref={(el) => {
@@ -441,10 +437,4 @@ export function Monogram({
       {letter}
     </div>
   );
-}
-
-/** Shared heading id helper so sections can be labelled without duplication. */
-export function useSectionHeadingId(prefix = "section") {
-  const id = useId();
-  return `${prefix}-${id}`;
 }

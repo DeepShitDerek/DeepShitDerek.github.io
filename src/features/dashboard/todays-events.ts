@@ -1,9 +1,14 @@
-import type { Calendar, CalendarRow, DashboardData, EventException } from "@/types";
+import type {
+  Calendar,
+  CalendarRow,
+  DashboardData,
+  EventException,
+} from "@/types";
 import { buildEntries, filterEntries } from "@/features/calendar/build-entries";
 
 /**
  * Today's events for the dashboard, through the calendar's own pipeline
- * (ADM-011).
+ *.
  *
  * The dashboard used to read `events` whose `start_time` fell today. A
  * repeating series stores only its first occurrence there, so a weekly
@@ -35,7 +40,9 @@ export function todaysEvents({
   });
   const visible = filterEntries(built, {
     // The calendar page's rule, so both screens hide the same calendars.
-    hiddenCalendars: new Set(calendars.filter((c) => !c.is_visible).map((c) => c.id)),
+    hiddenCalendars: new Set(
+      calendars.filter((c) => !c.is_visible).map((c) => c.id),
+    ),
     showTasks: false,
     showHabits: false,
     showFinance: false,

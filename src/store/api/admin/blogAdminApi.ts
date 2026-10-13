@@ -9,7 +9,7 @@ import {
   updateQueryFn,
 } from "./query-helpers";
 
-export const blogAdminApi = adminApi.injectEndpoints({
+const blogAdminApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getAdminBlogPosts: builder.query<BlogPost[], void>({
       queryFn: getAllQueryFn<BlogPost>("blog_posts", [

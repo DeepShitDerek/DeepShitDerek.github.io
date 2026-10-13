@@ -13,10 +13,9 @@ import {
 import { cn } from "@/lib/cn";
 
 /**
- * One document in a gallery: Whiteboard boards and Maps (03-workspace-ui.md
- * §2.20–2.21, `DocumentCard`). The two had two different card designs for
- * the same idea, and the board card hid its pin, rename and delete buttons
- * until hover, which a touch screen never does.
+ * One document in a gallery: Whiteboard boards and Maps. One card for
+ * both, with pin, rename and delete always visible: buttons that appear on
+ * hover never appear on a touch screen.
  *
  * - A 16:10 thumbnail on the page ground, so a dark board reads as dark.
  * - Title, then a muted line of whatever the module knows (when, how big).

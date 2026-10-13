@@ -64,7 +64,7 @@ export default function BlogAdminPage() {
   } = useGetAdminBlogPostsQuery();
   const [updateBlogPost] = useUpdateBlogPostMutation();
   const [deleteBlogPost] = useDeleteBlogPostMutation();
-  // Delete offers Undo instead of asking first (P1-10): a published post
+  // Delete offers Undo instead of asking first: a published post
   // stays on the blog until the toast closes.
   const { pending: deleting, remove: removePost } = useUndoableDelete<BlogPost>(
     async (post) => {
@@ -95,7 +95,7 @@ export default function BlogAdminPage() {
   const [status, setStatus] = useState<Status>("all");
   const [search, setSearch] = useState("");
 
-  // The open post lives in the URL, "new" for one not yet saved (ADM-004).
+  // The open post lives in the URL, "new" for one not yet saved.
   const [postParam, setPostParam] = useUrlParam("post", "replace");
   const open = (post: BlogPost | null) => {
     setSession({ key: Date.now(), id: post?.id ?? null });

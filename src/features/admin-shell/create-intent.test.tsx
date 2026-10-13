@@ -1,13 +1,26 @@
 import { act, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { requestCreate, takeCreateIntent, useCreateIntent, type CreateTarget } from "./create-intent";
+import {
+  requestCreate,
+  takeCreateIntent,
+  useCreateIntent,
+  type CreateTarget,
+} from "./create-intent";
 
-function Module({ target, onCreate, ready = true }: { target: CreateTarget; onCreate: () => void; ready?: boolean }) {
+function Module({
+  target,
+  onCreate,
+  ready = true,
+}: {
+  target: CreateTarget;
+  onCreate: () => void;
+  ready?: boolean;
+}) {
   useCreateIntent(target, onCreate, ready);
   return null;
 }
 
-describe("quick add opens the create form (ADM-003)", () => {
+describe("quick add opens the create form", () => {
   it("navigates to the module, which opens its form once on arrival", () => {
     const navigate = vi.fn();
     requestCreate("task", navigate);

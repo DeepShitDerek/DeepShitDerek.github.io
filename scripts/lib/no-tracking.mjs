@@ -1,5 +1,5 @@
 /**
- * Requests a check must never make against a live project (V2-043 finding).
+ * Requests a check must never make against a live project.
  *
  * Builds made with the live settings talk to the live database, so every
  * page a check opened was recorded as a visit, and every post it held open

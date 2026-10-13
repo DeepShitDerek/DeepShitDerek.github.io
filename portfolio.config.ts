@@ -134,7 +134,7 @@ const portfolioConfig = {
   ],
 
   // Pages that live in the footer only. (The Foliokit credit is separate —
-  // see `product.show`.)
+  // the build adds it, see scripts/finalize-export.mjs.)
   footerLinks: [{ label: "Updates", href: "/updates" }],
 
   // ---------------------------------------------------------------------------
@@ -419,8 +419,8 @@ const portfolioConfig = {
   // ---------------------------------------------------------------------------
   // PRODUCT — the /kit page that sells Foliokit itself
   // ---------------------------------------------------------------------------
-  // `show: false` removes /kit and the footer credit — what a site built *with*
-  // Foliokit usually wants. Prices are yours to set; nothing here is invented.
+  // `show: false` removes /kit — what a site built *with* Foliokit usually
+  // wants. Prices are yours to set; nothing here is invented.
   // `repoUrl` is Foliokit's own repository, not the sample person's.
   product: {
     show: true,

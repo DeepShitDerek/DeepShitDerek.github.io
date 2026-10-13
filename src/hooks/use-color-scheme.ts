@@ -26,7 +26,8 @@ export function useColorScheme(): {
 
   useEffect(() => {
     const html = document.documentElement;
-    const read = () => setCurrent(html.classList.contains("dark") ? "dark" : "light");
+    const read = () =>
+      setCurrent(html.classList.contains("dark") ? "dark" : "light");
     read();
     const observer = new MutationObserver(read);
     observer.observe(html, { attributes: true, attributeFilter: ["class"] });

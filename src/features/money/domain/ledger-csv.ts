@@ -4,7 +4,7 @@ import { categoryLabel } from "./categories";
 import { toInputString } from "./money";
 
 /**
- * The register as CSV, one row per posting (ADM-008): a transfer is two rows,
+ * The register as CSV, one row per posting: a transfer is two rows,
  * a split is one per category, so a spreadsheet can sum any column honestly.
  * Amounts are exact decimals in the account's own currency, never converted.
  */
@@ -27,7 +27,10 @@ const HEADER = [
  * Quote for CSV, and defuse text a spreadsheet would run as a formula
  * (a payee of `=HYPERLINK(...)` from an imported statement).
  */
-export function csvCell(value: string | number | null | undefined, text = true): string {
+export function csvCell(
+  value: string | number | null | undefined,
+  text = true,
+): string {
   let s = value == null ? "" : String(value);
   if (text && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -52,7 +55,12 @@ export function ledgerCsv(
           csvCell(t.status),
           csvCell(account?.name ?? "Unknown account"),
           csvCell(categoryLabel(p.categoryId, categoryById)),
-          csvCell(currency ? toInputString({ minor: p.amountMinor, currency }) : p.amountMinor, false),
+          csvCell(
+            currency
+              ? toInputString({ minor: p.amountMinor, currency })
+              : p.amountMinor,
+            false,
+          ),
           csvCell(currency),
           csvCell(p.memo),
           csvCell(t.notes),

@@ -9,7 +9,7 @@ import { useUrlTab } from "@/hooks/use-url-tab";
 
 const TABS = ["upcoming", "budgets", "goals", "forecast"] as const;
 
-/** Planning (V2-080): what is due, what the month is allowed, what you are saving for, and where it is all heading. */
+/** Planning: what is due, what the month is allowed, what you are saving for, and where it is all heading. */
 export function PlanArea() {
   // In the URL (?tab=), so Back and a reload return to it.
   const [tab, setTab] = useUrlTab("upcoming", TABS);
@@ -21,10 +21,18 @@ export function PlanArea() {
         <TabsTrigger value="goals">Goals</TabsTrigger>
         <TabsTrigger value="forecast">Forecast</TabsTrigger>
       </TabsList>
-      <TabsContent value="upcoming"><UpcomingPanel /></TabsContent>
-      <TabsContent value="budgets"><BudgetsPanel /></TabsContent>
-      <TabsContent value="goals"><GoalsPanel /></TabsContent>
-      <TabsContent value="forecast"><ForecastPanel /></TabsContent>
+      <TabsContent value="upcoming">
+        <UpcomingPanel />
+      </TabsContent>
+      <TabsContent value="budgets">
+        <BudgetsPanel />
+      </TabsContent>
+      <TabsContent value="goals">
+        <GoalsPanel />
+      </TabsContent>
+      <TabsContent value="forecast">
+        <ForecastPanel />
+      </TabsContent>
     </Tabs>
   );
 }

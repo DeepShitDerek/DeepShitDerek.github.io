@@ -104,12 +104,7 @@
       "web_commit_signoff_required": false,
       "has_pull_requests": false,
       "pull_request_creation_policy": "all",
-      "topics": [
-        "ai-agents",
-        "cordis",
-        "dsh",
-        "dsh-plugin"
-      ],
+      "topics": ["ai-agents", "cordis", "dsh", "dsh-plugin"],
       "visibility": "public",
       "forks": 17848,
       "open_issues": 0,
@@ -448,9 +443,7 @@
       "web_commit_signoff_required": false,
       "has_pull_requests": true,
       "pull_request_creation_policy": "all",
-      "topics": [
-
-      ],
+      "topics": [],
       "visibility": "public",
       "forks": 112,
       "open_issues": 47,
@@ -560,12 +553,7 @@
       "web_commit_signoff_required": false,
       "has_pull_requests": true,
       "pull_request_creation_policy": "all",
-      "topics": [
-        "deepseek",
-        "deepseek-harness",
-        "dsh-plugin",
-        "llm-agent"
-      ],
+      "topics": ["deepseek", "deepseek-harness", "dsh-plugin", "llm-agent"],
       "visibility": "public",
       "forks": 109,
       "open_issues": 27,
@@ -675,9 +663,7 @@
       "web_commit_signoff_required": false,
       "has_pull_requests": true,
       "pull_request_creation_policy": "all",
-      "topics": [
-
-      ],
+      "topics": [],
       "visibility": "public",
       "forks": 305,
       "open_issues": 6,

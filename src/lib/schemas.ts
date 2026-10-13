@@ -9,17 +9,13 @@ import {
   TASK_RECURRENCE_INTERVAL_MAX,
   LEARNING_STATUS,
   HABIT_VALUE_MAX,
-  HABIT_NOTE_MAX,
 } from "./constants";
 import { SITE_IDENTITY_DEFAULTS } from "./site-identity-defaults";
 import { CONTACT_TOPIC_VALUES } from "./contact-topics";
+import { SITE_STYLES } from "./site-style";
 
 // Re-exported for callers that already validate with this module.
-export {
-  CONTACT_TOPICS,
-  contactTopicLabel,
-  type ContactTopic,
-} from "./contact-topics";
+export { CONTACT_TOPICS, contactTopicLabel } from "./contact-topics";
 
 // =============================================================================
 // LIMITS
@@ -30,7 +26,7 @@ export {
 // forms, the tables, and the public renderers can all agree on.
 // =============================================================================
 
-export const LIMITS = {
+const LIMITS = {
   /** Single-line labels: titles, names, categories, link text. */
   TITLE: 200,
   /** Short free text: excerpts, subtitles, descriptions shown in a card. */
@@ -49,27 +45,23 @@ export const LIMITS = {
  * The money ceiling mirrors its DB column width exactly. NUMERIC(10,2) tops out
  * at 99,999,999.99; anything larger is a Postgres `numeric field overflow`,
  * which surfaces to the user as an opaque failure after the form has already
- * told them the value was fine.
- *
- * There were three of these. `MONEY_MAX_12_2` and `MONEY_MAX_18_4` mirrored v1
- * finance columns and went with them — finance v2 stores integer minor units
- * and has its own ceiling, `FIN_MINOR_MAX`, set by what a JavaScript number can
- * hold exactly rather than by a NUMERIC width.
+ * told them the value was fine. The money module does not use it: it stores
+ * integer minor units.
  */
-export const MONEY_MAX_10_2 = 99_999_999.99;
+const MONEY_MAX_10_2 = 99_999_999.99;
 
 // =============================================================================
 // REUSABLE SCHEMA FRAGMENTS
 // =============================================================================
 
 /** Optional string that can be null. */
-export const optionalString = z.string().optional().nullable();
+const optionalString = z.string().optional().nullable();
 
 /**
  * Optional free text with an upper bound. Kept nullable because every one of
  * these maps to a nullable TEXT column.
  */
-export const boundedOptionalString = (max: number, label = "This field") =>
+const boundedOptionalString = (max: number, label = "This field") =>
   z
     .string()
     .max(max, `${label} must be ${max.toLocaleString()} characters or fewer`)
@@ -77,7 +69,7 @@ export const boundedOptionalString = (max: number, label = "This field") =>
     .nullable();
 
 /** Required single-line text with both a floor and a ceiling. */
-export const boundedRequiredString = (max: number, label: string) =>
+const boundedRequiredString = (max: number, label: string) =>
   z
     .string()
     .trim()
@@ -92,12 +84,12 @@ export const urlOrEmpty = z
   .or(z.literal(""));
 
 /** A `#rrggbb` colour. Stored as TEXT, so nothing else validates it. */
-export const hexColor = z
+const hexColor = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex colour such as #3b82f6");
 
 /** URL-safe slug — matches the `^[a-z0-9-]+$` rule the blog editor enforces. */
-export const slug = z
+const slug = z
   .string()
   .trim()
   .min(1, "Slug is required")
@@ -108,7 +100,7 @@ export const slug = z
   );
 
 /** A bounded list of bounded tags. */
-export const tagList = z
+const tagList = z
   .array(z.string().trim().max(LIMITS.TAG, "Tag is too long"))
   .max(LIMITS.TAG_COUNT, `At most ${LIMITS.TAG_COUNT} tags`)
   .optional()
@@ -134,16 +126,8 @@ const blankToNull = (value: unknown) =>
 const twoDecimals = (value: number) =>
   Number.isFinite(value) && Math.abs(value - Number(value.toFixed(2))) < 1e-9;
 
-/** Required money: positive, within the column width, at most 2 decimals. */
-export const money = (max: number, label = "Amount") =>
-  z.coerce
-    .number({ invalid_type_error: `${label} must be a number` })
-    .positive(`${label} must be positive`)
-    .max(max, `${label} must be ${max.toLocaleString()} or less`)
-    .refine(twoDecimals, `${label} can have at most 2 decimal places`);
-
 /** Money that may be absent, and is allowed to be zero when present. */
-export const optionalMoney = (max: number, label = "Amount") =>
+const optionalMoney = (max: number, label = "Amount") =>
   z.preprocess(
     blankToNull,
     z.coerce
@@ -155,7 +139,7 @@ export const optionalMoney = (max: number, label = "Amount") =>
   );
 
 /** An optional whole number within a range; blank means "not set", not zero. */
-export const optionalInt = (min: number, max: number, label: string) =>
+const optionalInt = (min: number, max: number, label: string) =>
   z.preprocess(
     blankToNull,
     z.coerce
@@ -166,22 +150,13 @@ export const optionalInt = (min: number, max: number, label: string) =>
       .nullable(),
   );
 
-/** Date string in YYYY-MM-DD format */
-export const dateString = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format");
-
-/** Required date string */
-export const requiredDateString = z.string().min(1, "Date is required");
-
 // =============================================================================
 // TASK SCHEMAS
 // =============================================================================
 
 /**
  * Every bound here mirrors a CHECK constraint on `tasks` — see
- * `db/migrations/001-tasks-projects-dependencies.sql`. A value this schema
- * accepts and Postgres rejects surfaces as an opaque write failure.
+ * `db/schema.sql`. A value this schema accepts and Postgres rejects surfaces as an opaque write failure.
  */
 export const taskSchema = z
   .object({
@@ -243,23 +218,13 @@ export const taskProjectSchema = z.object({
   color: hexColor.optional().nullable(),
 });
 
-export type TaskProjectFormValues = z.infer<typeof taskProjectSchema>;
-
-export const subTaskSchema = z.object({
-  task_id: z.string(),
-  title: boundedRequiredString(LIMITS.TITLE, "Title"),
-  is_completed: z.boolean().default(false),
-});
-
-export type SubTaskFormValues = z.infer<typeof subTaskSchema>;
-
 // =============================================================================
 // HABIT SCHEMAS
 // =============================================================================
 
 /**
  * Every bound mirrors a CHECK constraint on `habits` — see
- * `db/migrations/002-habits.sql`.
+ * `db/schema.sql`.
  */
 export const habitSchema = z
   .object({
@@ -314,11 +279,6 @@ export const habitSchema = z
     path: ["step"],
   });
 
-export const habitLogSchema = z.object({
-  value: z.coerce.number().min(0).max(HABIT_VALUE_MAX),
-  note: boundedOptionalString(HABIT_NOTE_MAX, "Note"),
-});
-
 export type HabitFormValues = z.infer<typeof habitSchema>;
 
 // =============================================================================
@@ -332,7 +292,7 @@ export const learningSubjectSchema = z.object({
 
 export type LearningSubjectFormValues = z.infer<typeof learningSubjectSchema>;
 
-export const LEARNING_MATERIAL_KINDS = ["reference", "recall", "quiz"] as const;
+const LEARNING_MATERIAL_KINDS = ["reference", "recall", "quiz"] as const;
 
 export const learningTopicSchema = z.object({
   subject_id: z.string().min(1, "Subject is required"),
@@ -378,8 +338,6 @@ export const learningTopicSchema = z.object({
     .nullable(),
 });
 
-export type LearningTopicFormValues = z.infer<typeof learningTopicSchema>;
-
 // =============================================================================
 // NOTE SCHEMAS
 // =============================================================================
@@ -391,22 +349,6 @@ export const noteSchema = z.object({
   color: hexColor.optional().nullable(),
   is_pinned: z.boolean().optional(),
 });
-
-export type NoteFormValues = z.infer<typeof noteSchema>;
-
-/**
- * Only the fields the user edits are validated. The Excalidraw scene itself
- * (`elements`/`app_state`/`files`) is the library's own output and is stored
- * verbatim — re-validating its shape here would break on every upstream
- * element-format change without protecting anything.
- */
-export const whiteboardSchema = z.object({
-  title: boundedOptionalString(LIMITS.TITLE, "Title"),
-  tags: tagList,
-  is_pinned: z.boolean().optional(),
-});
-
-export type WhiteboardFormValues = z.infer<typeof whiteboardSchema>;
 
 // =============================================================================
 // LIFE UPDATE SCHEMAS
@@ -424,8 +366,6 @@ export const lifeUpdateSchema = z.object({
   is_published: z.boolean().default(false),
 });
 
-export type LifeUpdateFormValues = z.infer<typeof lifeUpdateSchema>;
-
 // =============================================================================
 // EVENT SCHEMAS
 // =============================================================================
@@ -439,7 +379,7 @@ export type LifeUpdateFormValues = z.infer<typeof lifeUpdateSchema>;
  * extending this schema, and the sheet was validating nothing but a non-empty
  * title, so a pasted address or a long meeting link failed at the database.
  */
-export const EVENT_LIMITS = {
+const EVENT_LIMITS = {
   /** `char_length(location) <= 300` */
   LOCATION: 300,
   /** `char_length(meeting_url) <= 2048` */
@@ -484,8 +424,6 @@ export const eventSchema = z
     path: ["end_time"],
   });
 
-export type EventFormValues = z.infer<typeof eventSchema>;
-
 /**
  * A calendar. `name` is bounded 1..80 by the column, and the sidebar checked
  * only that it was non-empty — so a long name failed at the database with
@@ -505,15 +443,13 @@ export const calendarSchema = z.object({
   sort_order: z.number().int().optional(),
 });
 
-export type CalendarFormValues = z.infer<typeof calendarSchema>;
-
 // =============================================================================
 // INVENTORY SCHEMAS
 // =============================================================================
 
 /**
  * Bounds mirror the CHECK constraints in
- * `db/migrations/005-inventory.sql`.
+ * `db/schema.sql`.
  */
 export const inventoryItemSchema = z
   .object({
@@ -615,8 +551,6 @@ export const portfolioItemSchema = z.object({
     .optional(),
 });
 
-export type PortfolioItemFormValues = z.infer<typeof portfolioItemSchema>;
-
 export const navLinkSchema = z.object({
   label: boundedRequiredString(LIMITS.TITLE, "Label"),
   /**
@@ -638,8 +572,6 @@ export const navLinkSchema = z.object({
   is_visible: z.boolean().default(true),
 });
 
-export type NavLinkFormValues = z.infer<typeof navLinkSchema>;
-
 // =============================================================================
 // BLOG SCHEMAS
 // =============================================================================
@@ -658,8 +590,6 @@ export const blogPostSchema = z.object({
   tags: tagList,
   internal_notes: boundedOptionalString(LIMITS.SUMMARY, "Internal notes"),
 });
-
-export type BlogPostFormValues = z.infer<typeof blogPostSchema>;
 
 // =============================================================================
 // CONTACT FORM SCHEMA
@@ -717,7 +647,7 @@ export type ContactFormValues = z.infer<typeof contactFormSchema>;
 // SITE SETTINGS SCHEMAS
 // =============================================================================
 
-export const socialLinkSchema = z.object({
+const socialLinkSchema = z.object({
   // Doubles as the lookup key into SOCIAL_ICONS and as the React key, so a
   // blank id would collapse two rows onto one another in the editor.
   id: boundedRequiredString(LIMITS.TAG, "Link id"),
@@ -727,8 +657,6 @@ export const socialLinkSchema = z.object({
   url: urlOrEmpty,
   is_visible: z.boolean(),
 });
-
-export type SocialLinkFormValues = z.infer<typeof socialLinkSchema>;
 
 /**
  * How many entries each open-ended list may hold.
@@ -866,6 +794,7 @@ export const siteSettingsSchema = z.object({
     }),
     updates_layout: z.enum(["timeline", "scrapbook"]).default("scrapbook"),
     typography_preset: boundedRequiredString(LIMITS.TAG, "Typography preset"),
+    site_style: z.enum(SITE_STYLES).optional(),
   }),
   social_links: z
     .array(socialLinkSchema)
@@ -918,7 +847,7 @@ export const siteSettingsDefaultValues: SiteSettingsFormValues =
  * not a place, and without this it reaches Postgres as a constraint violation
  * the form cannot explain.
  */
-export const DISCOVER_LIMITS = {
+const DISCOVER_LIMITS = {
   /** `char_length(label) BETWEEN 1 AND 80` */
   PLACE_LABEL: 80,
   /** `char_length(term) BETWEEN 1 AND 80` */
@@ -951,9 +880,6 @@ export const discoverTopicSchema = z.object({
   sort_order: z.number().int().optional(),
 });
 
-export type DiscoverPlaceFormValues = z.infer<typeof discoverPlaceSchema>;
-export type DiscoverTopicFormValues = z.infer<typeof discoverTopicSchema>;
-
 // ─── Library ──────────────────────────────────────────────────────────────
 
 export const LIBRARY_KINDS = [
@@ -971,8 +897,8 @@ export const LIBRARY_STATUSES = [
   "abandoned",
 ] as const;
 
-/** Mirrors the CHECK constraints in db/migrations/018. */
-export const LIBRARY_LIMITS = {
+/** Mirrors the CHECK constraints in db/schema.sql. */
+const LIBRARY_LIMITS = {
   TITLE: 200,
   CREATOR: 200,
   URL: 2_048,

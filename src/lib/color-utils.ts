@@ -3,7 +3,7 @@
  * `"220 13% 9%"` — the shape every theme preset stores its colours in.
  * Returns null for anything that is not in that shape.
  */
-export function lightnessOf(hslToken: string): number | null {
+function lightnessOf(hslToken: string): number | null {
   const parts = hslToken.trim().split(/\s+/);
   if (parts.length < 3) return null;
   const lightness = Number.parseFloat(parts[2]);
@@ -11,7 +11,7 @@ export function lightnessOf(hslToken: string): number | null {
 }
 
 /** Below this the surrounding UI reads as dark. */
-export const DARK_LIGHTNESS_THRESHOLD = 50;
+const DARK_LIGHTNESS_THRESHOLD = 50;
 
 /**
  * Whether a resolved `--background` token reads as a dark surface.
@@ -100,8 +100,6 @@ export interface Hsl {
 
 /** WCAG AA for normal-size text. */
 export const AA_NORMAL_TEXT = 4.5;
-/** WCAG AA for large text (>=18.66px bold or >=24px). */
-export const AA_LARGE_TEXT = 3;
 
 /** Parse a `"220 13% 9%"` design token. Null for anything not in that shape. */
 export function parseHslToken(token: string): Hsl | null {
@@ -115,7 +113,7 @@ export function parseHslToken(token: string): Hsl | null {
 }
 
 /** HSL to linear 0-1 RGB. */
-export function hslToRgb({ h, s, l }: Hsl): [number, number, number] {
+function hslToRgb({ h, s, l }: Hsl): [number, number, number] {
   const sn = s / 100;
   const ln = l / 100;
   const k = (n: number) => (n + h / 30) % 12;
@@ -126,7 +124,7 @@ export function hslToRgb({ h, s, l }: Hsl): [number, number, number] {
 }
 
 /** WCAG relative luminance of an sRGB triple given as 0-1 channels. */
-export function relativeLuminance(rgb: [number, number, number]): number {
+function relativeLuminance(rgb: [number, number, number]): number {
   const channel = (c: number) =>
     c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   const [r, g, b] = rgb.map(channel);
@@ -159,6 +157,6 @@ export function contrastRatioHex(a: string, b: string): number | null {
 }
 
 /** `#RGB` or `#RRGGBB` — the two forms `hexToHsl` can actually read. */
-export function isHexColor(value: string): boolean {
+function isHexColor(value: string): boolean {
   return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
 }

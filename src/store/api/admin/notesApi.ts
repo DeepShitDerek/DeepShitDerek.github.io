@@ -7,7 +7,7 @@ import {
   deleteQueryFn,
 } from "./query-helpers";
 
-export const notesApi = adminApi.injectEndpoints({
+const notesApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getNotes: builder.query<Note[], void>({
       queryFn: getAllQueryFn<Note>("notes", [

@@ -5,6 +5,11 @@
     "/work/": { "minScore": 40, "maxLcp": 6.1, "maxTbt": 1500, "maxCls": 0.1 },
     "/blog/": { "minScore": 45, "maxLcp": 5.3, "maxTbt": 1350, "maxCls": 0.1 },
     "post": { "minScore": 46, "maxLcp": 5.4, "maxTbt": 1300, "maxCls": 0.1 },
-    "/contact/": { "minScore": 45, "maxLcp": 5.4, "maxTbt": 1300, "maxCls": 0.1 }
+    "/contact/": {
+      "minScore": 45,
+      "maxLcp": 5.4,
+      "maxTbt": 1300,
+      "maxCls": 0.1
+    }
   }
 }

@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 export type PanelState = "loading" | "done" | "failed";
 
 /**
- * One panel for every Discover source (03-workspace-ui.md §2.18, P-panel):
+ * One panel for every Discover source:
  * a title, an optional note or action on the right, the body, and the same
  * words for loading, a silent source and an empty answer. Discover had two
  * local Panel components with different padding and headers, and several
@@ -36,8 +36,18 @@ export function Panel({
 }) {
   const pad = "px-4";
   return (
-    <section className={cn("overflow-hidden rounded-surface border bg-card", className)}>
-      <header className={cn("flex items-baseline justify-between gap-3 pb-2 pt-3.5", pad)}>
+    <section
+      className={cn(
+        "overflow-hidden rounded-surface border bg-card",
+        className,
+      )}
+    >
+      <header
+        className={cn(
+          "flex items-baseline justify-between gap-3 pb-2 pt-3.5",
+          pad,
+        )}
+      >
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-foreground">{title}</h2>
           {note && <p className="text-xs text-muted-foreground">{note}</p>}
@@ -45,15 +55,26 @@ export function Panel({
         {action && <div className="shrink-0">{action}</div>}
       </header>
 
-      {state === "loading" && <p className={cn("pb-4 text-sm text-muted-foreground", pad)}>Reading…</p>}
+      {state === "loading" && (
+        <p className={cn("pb-4 text-sm text-muted-foreground", pad)}>
+          Reading…
+        </p>
+      )}
       {state === "failed" && (
         <p className={cn("pb-4 text-sm text-muted-foreground", pad)}>
           {/* Named, so you know whether to wait or to investigate. */}
-          {title} did not answer. The service may be down, or the request may have been blocked.
+          {title} did not answer. The service may be down, or the request may
+          have been blocked.
         </p>
       )}
-      {state === "done" && empty && <p className={cn("pb-4 text-sm text-muted-foreground", pad)}>{emptyText}</p>}
-      {state === "done" && !empty && <div className={cn(!flush && "px-4 pb-4")}>{children}</div>}
+      {state === "done" && empty && (
+        <p className={cn("pb-4 text-sm text-muted-foreground", pad)}>
+          {emptyText}
+        </p>
+      )}
+      {state === "done" && !empty && (
+        <div className={cn(!flush && "px-4 pb-4")}>{children}</div>
+      )}
     </section>
   );
 }

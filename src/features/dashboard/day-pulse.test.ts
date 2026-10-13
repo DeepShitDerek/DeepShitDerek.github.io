@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { DashboardData, Task } from "@/types";
 import { dayPulse } from "./day-plan";
 
-const task = (id: string, status: string) => ({ id, title: id, status }) as Task;
+const task = (id: string, status: string) =>
+  ({ id, title: id, status }) as Task;
 
-describe("the day's pulse counts finished tasks (ADM-013)", () => {
+describe("the day's pulse counts finished tasks", () => {
   it("moves as today's tasks are ticked off, with overdue still owed", () => {
     const data = {
       habits: [],

@@ -8,7 +8,7 @@ import {
   updateQueryFn,
 } from "./query-helpers";
 
-export const inventoryApi = adminApi.injectEndpoints({
+const inventoryApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getInventory: builder.query<InventoryItem[], void>({
       queryFn: getAllQueryFn<InventoryItem>("inventory_items", [

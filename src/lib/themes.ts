@@ -16,10 +16,10 @@ export const VALID_THEMES = [
   CUSTOM_THEME,
 ];
 
-export const TYPOGRAPHY_CLASSES = TYPOGRAPHY_PRESETS.map((t) => t.value);
+const TYPOGRAPHY_CLASSES = TYPOGRAPHY_PRESETS.map((t) => t.value);
 
 /**
- * The one default (T-1): the code fallback, `portfolio.config.ts`, the
+ * The one default: the code fallback, `portfolio.config.ts`, the
  * `db/schema.sql` seed and the settings form all start here, so a fresh
  * install, a static build and a missing value agree. `themes.test.ts` holds
  * the config and the seed to it.
@@ -77,9 +77,9 @@ export function pairedTheme(themeClass: string, scheme: Scheme): string {
  * `site-theme`, which caches the *applied* class for the first paint: this
  * is the preference, and the owner's theme still decides everything else.
  */
-export const SCHEME_STORAGE_KEY = "visitor-scheme";
+const SCHEME_STORAGE_KEY = "visitor-scheme";
 
-export function readVisitorScheme(): Scheme | null {
+function readVisitorScheme(): Scheme | null {
   try {
     const value = window.localStorage.getItem(SCHEME_STORAGE_KEY);
     return value === "light" || value === "dark" ? value : null;
@@ -170,7 +170,7 @@ export function customThemeVars(
 }
 
 /**
- * Danger and status colours for a custom palette (P0-4, T-2).
+ * Danger and status colours for a custom palette.
  *
  * The owner picks six colours, none of them a status, so these come from the
  * scheme the ground implies. The old fixed `#ef4444` measured 3.76:1 on white
@@ -203,7 +203,7 @@ export function statusVars(dark: boolean): Record<string, string> {
 }
 
 /** Write the custom palette onto <html>. */
-export function applyCustomThemeColors(colors: CustomThemeColors): void {
+function applyCustomThemeColors(colors: CustomThemeColors): void {
   const root = document.documentElement;
   for (const [name, value] of Object.entries(customThemeVars(colors))) {
     root.style.setProperty(name, value);
@@ -211,7 +211,7 @@ export function applyCustomThemeColors(colors: CustomThemeColors): void {
 }
 
 /** Remove inline custom-color overrides so preset theme classes win. */
-export function clearCustomThemeColors(): void {
+function clearCustomThemeColors(): void {
   const root = document.documentElement;
   THEME_CSS_VARS.forEach((name) => root.style.removeProperty(`--${name}`));
 }
@@ -237,7 +237,7 @@ function syncDarkClass(): void {
 }
 
 /**
- * Keep the `dark` class in step with whatever sets the theme (V2-060).
+ * Keep the `dark` class in step with whatever sets the theme.
  *
  * `applyTheme` syncs it, but next-themes applies a visitor's saved choice
  * (and the command palette's light/dark switch) on its own, without calling
@@ -250,7 +250,10 @@ function syncDarkClass(): void {
 export function watchDarkClass(): () => void {
   syncDarkClass();
   const observer = new MutationObserver(() => syncDarkClass());
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class", "style"],
+  });
   return () => observer.disconnect();
 }
 

@@ -16,7 +16,6 @@ import {
 } from "@/store/api/publicApi";
 import { Band } from "@/components/layout/band";
 import { isInternalUrl, safeLinkUrl } from "@/lib/safe-url";
-import { PRODUCT } from "@/lib/product";
 import { footerLinks } from "./nav-links";
 import { cn } from "@/lib/cn";
 
@@ -83,7 +82,7 @@ export default function PublicFooter() {
  * A rule, then who and where — identity on the left, the site's pages and the
  * owner's channels on the right — and one quiet row to close. The name set
  * huge across the band in fading gradient text is gone: gradient text is off
- * the system (north star §3.2), and it left a 250px gap (P2-8).
+ * the system, and it left a 250px gap.
  */
 export function FooterView({
   identity,
@@ -134,7 +133,10 @@ export function FooterView({
           )}
           {availability && (
             <p className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
-              <span aria-hidden className="size-2 shrink-0 rounded-full bg-success" />
+              <span
+                aria-hidden
+                className="size-2 shrink-0 rounded-full bg-success"
+              />
               {availability}
             </p>
           )}
@@ -206,20 +208,6 @@ export function FooterView({
             <Markdown className="max-w-none text-sm text-muted-foreground [&_a]:text-primary [&_a]:no-underline [&_a]:underline-offset-4 [&_a:hover]:underline [&_p]:m-0">
               {footer_data.copyright_text}
             </Markdown>
-          )}
-          {PRODUCT.show && (
-            <p className="text-xs">
-              Built with{" "}
-              <Link
-                href="/kit"
-                className={cn(
-                  "rounded-sm font-medium text-foreground underline-offset-4 hover:underline",
-                  FOCUS,
-                )}
-              >
-                {PRODUCT.name}
-              </Link>
-            </p>
           )}
         </div>
         <button

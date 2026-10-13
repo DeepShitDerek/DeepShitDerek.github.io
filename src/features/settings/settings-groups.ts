@@ -1,4 +1,9 @@
 import {
+  isImmersive,
+  resolveSiteStyle,
+  type SiteStyle,
+} from "@/lib/site-style";
+import {
   BookUser,
   Fingerprint,
   Footprints,
@@ -8,6 +13,7 @@ import {
   MessageSquare,
   PanelRightOpen,
   Palette,
+  Sparkles,
   Type,
   type LucideIcon,
 } from "lucide-react";
@@ -43,6 +49,29 @@ export interface SettingsGroup {
   preview: PreviewPage | null;
   /** Extra words the search box should match — synonyms, old labels. */
   keywords: readonly string[];
+}
+
+/**
+ * The groups whose settings nothing reads in an immersive style: Noir, Paper
+ * and Dusk bring their own colours and type, to the site and the workspace.
+ */
+const GOVERNED_BY_STYLE: readonly string[] = ["theme", "typography"];
+
+/**
+ * How a group behaves under the chosen site style. Under Classic, as it is
+ * declared. Under an immersive style the public site and the workspace both
+ * take their look from the style, so Theme and Typography are idle: they
+ * stay editable (the choice comes back with Classic) and lose their preview,
+ * which would show a site their values no longer reach.
+ */
+export function groupUnderStyle(
+  group: Pick<SettingsGroup, "id" | "preview">,
+  style: SiteStyle,
+): { preview: SettingsGroup["preview"]; governed: boolean } {
+  const governed =
+    isImmersive(resolveSiteStyle(style)) &&
+    GOVERNED_BY_STYLE.includes(group.id);
+  return { preview: governed ? null : group.preview, governed };
 }
 
 export const SETTINGS_SECTIONS: readonly {
@@ -133,6 +162,24 @@ export const SETTINGS_SECTIONS: readonly {
         fields: ["profile_data.typography_preset"],
         preview: "home",
         keywords: ["font", "typeface", "serif", "heading", "body"],
+      },
+      {
+        id: "site-style",
+        label: "Site style",
+        description:
+          "Classic, or one of three immersive looks for the public site.",
+        icon: Sparkles,
+        fields: ["profile_data.site_style"],
+        preview: "home",
+        keywords: [
+          "immersive",
+          "noir",
+          "paper",
+          "dusk",
+          "cinematic",
+          "scroll",
+          "style",
+        ],
       },
       {
         id: "layout",

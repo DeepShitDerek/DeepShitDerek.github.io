@@ -12,7 +12,7 @@ import { hasNextOccurrence, nextOccurrence } from "./task-recurrence";
 
 /**
  * Change a task's status, scheduling the next one when a repeating task is
- * completed. Shared by the Tasks page and the dashboard (ADM-013), so ticking
+ * completed. Shared by the Tasks page and the dashboard, so ticking
  * a task off from either place does the same thing.
  *
  * `known` is the task list the caller already holds; without it the list is
@@ -24,14 +24,20 @@ export function useSetTaskStatus() {
   const [loadTasks] = useLazyGetTasksQuery();
 
   return useCallback(
-    async (task: Task, status: TaskStatus, known?: readonly Task[]): Promise<boolean> => {
+    async (
+      task: Task,
+      status: TaskStatus,
+      known?: readonly Task[],
+    ): Promise<boolean> => {
       try {
         await updateTask({ id: task.id, status }).unwrap();
 
         if (status === "done" && task.status !== "done" && task.recurrence) {
           const next = nextOccurrence(task);
-          const tasks = next ? (known ?? (await loadTasks(undefined, true).unwrap())) : [];
-          // Done, undone and done again: the next one already exists (ADM-015).
+          const tasks = next
+            ? (known ?? (await loadTasks(undefined, true).unwrap()))
+            : [];
+          // Done, undone and done again: the next one already exists.
           if (next && !hasNextOccurrence(tasks, task, next)) {
             await addTask(next).unwrap();
             toast.success("Completed — next one scheduled", {

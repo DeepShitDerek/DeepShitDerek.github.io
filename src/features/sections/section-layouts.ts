@@ -47,7 +47,7 @@ export type LayoutComponent = ComponentType<{ items: PortfolioItem[] }>;
  *     not exist — which is exactly the state the database allows, since the
  *     column is unconstrained TEXT with no lookup table.
  */
-export const SECTION_LAYOUTS: Record<string, LayoutComponent> = {
+const SECTION_LAYOUTS: Record<string, LayoutComponent> = {
   // Basic
   default: DefaultListLayout,
   timeline: TimelineLayout,

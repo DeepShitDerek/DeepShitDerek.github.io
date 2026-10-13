@@ -28,12 +28,12 @@ import { EMPTY_GRAPH, type Graph } from "../domain/types";
  * changes. Nothing here knows about the canvas library.
  */
 
-export interface Selection {
+interface Selection {
   nodes: readonly string[];
   edges: readonly string[];
 }
 
-export const EMPTY_SELECTION: Selection = { nodes: [], edges: [] };
+const EMPTY_SELECTION: Selection = { nodes: [], edges: [] };
 
 export interface MapState {
   name: string;
@@ -46,7 +46,7 @@ export interface MapState {
   version: number;
 }
 
-export interface RunOptions {
+interface RunOptions {
   /** Consecutive runs with the same key within a second merge into one undo. */
   mergeKey?: string;
   /** Selection to apply afterwards — e.g. the node just created. */

@@ -174,17 +174,6 @@ export function buildEntries({
   return entries.sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
-/** Split into the two rows the grid draws separately. */
-export function splitByAllDay(entries: CalendarEntry[]): {
-  timed: CalendarEntry[];
-  allDay: CalendarEntry[];
-} {
-  return {
-    timed: entries.filter((entry) => !entry.isAllDay),
-    allDay: entries.filter((entry) => entry.isAllDay),
-  };
-}
-
 /**
  * Which entries a visibility filter lets through.
  *

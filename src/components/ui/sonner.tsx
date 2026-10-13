@@ -6,7 +6,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 /**
- * Toasts (north star §3.4): bottom-right on a desktop, bottom-centre on a
+ * Toasts: bottom-right on a desktop, bottom-centre on a
  * phone, lifted above the workspace tab bar there. Sonner pauses a toast
  * while it is hovered or focused, so an Undo (use-undoable-delete) cannot
  * run out under the pointer.
@@ -22,7 +22,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={scheme ?? "light"}
       position="bottom-right"
-      mobileOffset={{ bottom: "calc(var(--tabbar-h) + 1rem + env(safe-area-inset-bottom))" }}
+      mobileOffset={{
+        bottom: "calc(var(--tabbar-h) + 1rem + env(safe-area-inset-bottom))",
+      }}
       className="toaster group"
       toastOptions={{
         classNames: {

@@ -5,7 +5,7 @@ import {
   orUndefined,
 } from "@/lib/public-data";
 
-// One card per post built at this time (V2-045); same list as /blog/[slug].
+// One card per post built at this time; same list as /blog/[slug].
 export const dynamic = "force-static";
 export const dynamicParams = false;
 

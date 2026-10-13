@@ -25,13 +25,17 @@ export function ContactCta() {
     (social) => social.id.toLowerCase() === "email" && social.is_visible,
   );
   const emailHref = safeLinkUrl(email?.url);
-  const availability = identity?.profile_data?.status_panel?.availability?.trim();
+  const availability =
+    identity?.profile_data?.status_panel?.availability?.trim();
 
   return (
     <Band weight="feature" aria-labelledby="cta-heading">
       <div className="border-t border-border pt-12">
         <div className="max-w-hero">
-          <h2 id="cta-heading" className="t-title text-balance [overflow-wrap:anywhere]">
+          <h2
+            id="cta-heading"
+            className="t-title text-balance [overflow-wrap:anywhere]"
+          >
             Let&apos;s build something that ships.
           </h2>
           <p className="t-lead mt-4 max-w-prose text-pretty">
@@ -39,7 +43,10 @@ export function ContactCta() {
           </p>
           {availability && (
             <p className="mt-4 inline-flex items-center gap-2 font-mono text-micro text-muted-foreground">
-              <span aria-hidden className="size-2 shrink-0 rounded-full bg-success" />
+              <span
+                aria-hidden
+                className="size-2 shrink-0 rounded-full bg-success"
+              />
               {availability}
             </p>
           )}

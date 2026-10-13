@@ -1,9 +1,13 @@
 name: Deploy Next.js site to Pages
 
 # This file has to live in .github/workflows at the repository root: GitHub
-# reads workflows from nowhere else. The app itself is in, so every run
-# step below works there (`defaults.run.working-directory`), and the steps
-# that are actions rather than commands are given paths explicitly.
+# reads workflows from nowhere else.
+#
+# It works in any repository the code is pushed to:
+# - GitHub Pages may be off. The site is still built and checked; it is only
+#   published once Pages is turned on (Settings > Pages > Source: GitHub
+#   Actions), and the run says so.
+# - With no secrets set, the build is the static site.
 
 on:
   push:
@@ -28,14 +32,14 @@ concurrency:
   group: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && 'pages' || format('checks-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-defaults:
-  run:
-    working-directory: .
-
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    outputs:
+      # "true" when this run built something GitHub Pages can publish.
+      publish: ${{ steps.site.outputs.publish }}
 
     steps:
       - name: Checkout
@@ -48,12 +52,35 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      # Whether this run publishes: only main, never a pull request, and only
+      # where GitHub Pages is on. A repository that has not turned Pages on
+      # yet (a new fork) still gets the whole build and every check; asking
+      # for the Pages settings there is what used to fail the run.
+      - name: Check where the site is published
+        id: site
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYS: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        run: |
+          publish=false
+          if [ "$DEPLOYS" = "true" ]; then
+            source=$(gh api "repos/${{ github.repository }}/pages" --jq .build_type 2>/dev/null || true)
+            if [ "$source" = "workflow" ]; then
+              publish=true
+            elif [ -n "$source" ]; then
+              echo "::warning title=Not published::GitHub Pages is on, but set to publish from a branch. The site was built and checked but not published. Change Settings > Pages > Source to GitHub Actions, then run this workflow again."
+            else
+              echo "::warning title=Not published::GitHub Pages is not turned on for this repository, so the site was built and checked but not published. Turn it on under Settings > Pages > Source: GitHub Actions, then run this workflow again."
+            fi
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
       # Reads the Pages settings and writes the site's base path into the Next
       # config (empty for a custom domain or a user site, "/<repo>" for a
-      # project site). Only on the runs that deploy.
+      # project site). Only on the runs that publish.
       - name: Setup Pages
         id: pages
-        if: github.event_name != 'pull_request'
+        if: steps.site.outputs.publish == 'true'
         uses: actions/configure-pages@v6
         with:
           static_site_generator: next
@@ -76,22 +103,25 @@ jobs:
       - name: Check Radix packages share their internals
         run: node scripts/check-radix-dedupe.mjs
 
-      # V2-021: nothing ships that does not typecheck or lint clean.
+      # Nothing ships that does not typecheck or lint clean.
       - name: Typecheck
         run: npx --no-install tsc --noEmit
 
       - name: Lint
         run: npx --no-install eslint src --max-warnings 0
 
+      - name: Formatting
+        run: npm run format:check
+
       # Runtime dependency advisories: anything not already known and
-      # explained in scripts/check-audit.mjs fails the build (V2-021).
+      # explained in scripts/check-audit.mjs fails the build.
       - name: Audit dependencies
         run: node scripts/check-audit.mjs
 
       - name: Run tests
         run: npx --no-install vitest run
 
-      # Every theme preset's text pairs at 4.5:1 (WCAG 1.4.3, V2-060) — a
+      # Every theme preset's text pairs at 4.5:1 (WCAG 1.4.3) — a
       # preset edit that makes text unreadable fails here, not in the owner's eyes.
       - name: Check theme contrast
         run: node scripts/theme-contrast.mjs
@@ -102,8 +132,7 @@ jobs:
       - name: Run database policy tests
         run: node scripts/test-db.mjs
 
-      # The sample person's seed (db/john-doe.sample.sql) is the first thing a
-      # new owner runs. Applied twice to a throwaway database, so a schema
+      # The sample person's data must load into a fresh database: a schema
       # change that breaks it fails here and not on someone's first day.
       - name: Run the sample seed
         run: node scripts/test-sample-seed.mjs
@@ -131,10 +160,10 @@ jobs:
         # restored with .next/cache above: without that, a deploy would be
         # built from the content as it was when the cache was first filled.
         # The script builds with webpack: ~7 KB lighter per public page
-        # than Turbopack on Next 16 (V2-023).
+        # than Turbopack on Next 16.
         run: npm run build
 
-      # Public pages are prerendered with their content (ADR-004). Fail the
+      # Public pages are prerendered with their content. Fail the
       # deploy if a page ships as an empty shell, or if its first client
       # render disagrees with the HTML (checked in three timezones).
       - name: Check prerendered content
@@ -142,7 +171,8 @@ jobs:
 
       # BASE_PATH: a project site (https://<user>.github.io/<repo>/) is built
       # with that prefix on every asset; these checks take it off again to
-      # find the files. Empty for a custom domain or a user site.
+      # find the files. Empty for a custom domain or a user site, and on a
+      # run that does not publish.
       - name: Check hydration
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
@@ -154,8 +184,8 @@ jobs:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: node scripts/check-bundle-budget.mjs
 
-      # Lighthouse, mobile, 3 runs per page, against lighthouse-budget.json
-      # (V2-061). Not blocking yet: the budgets come from a local machine, and
+      # Lighthouse, mobile, 3 runs per page, against lighthouse-budget.json.
+      # Not blocking yet: the budgets come from a local machine, and
       # simulated throttling still depends on the host CPU. Once a few CI runs
       # have been read (the report is uploaded), set the budgets from them and
       # remove continue-on-error.
@@ -168,22 +198,23 @@ jobs:
 
       - name: Keep the Lighthouse report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: lighthouse-report
           path: lighthouse-report.json
           if-no-files-found: ignore
 
       - name: Upload artifact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: steps.site.outputs.publish == 'true'
         uses: actions/upload-pages-artifact@v5
         with:
           path: out
 
-  # The browser checks that need the dev harness (V2-064): accessibility on
-  # every screen (V2-060), the money module end to end (V2-080) and the Maps
-  # editor (V2-070). The harness exposes /dev/* test routes, so this is its own
-  # build, in static mode (no secrets, no live data), and it is never deployed.
+  # The browser checks that need the dev harness: accessibility on
+  # every screen, the money module end to end, the Maps
+  # editor and the immersive layouts. The harness exposes /dev/* test
+  # routes, so this is its own build, in static mode (no secrets, no live
+  # data), and it is never deployed.
   browser-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -217,8 +248,7 @@ jobs:
       # Step 6 of this check (double-click, type a name) has a known timing
       # race: a new node's title sometimes takes focus late, so one run can
       # fail on a healthy build. Up to three tries; a real break fails all
-      # three. Remove the loop when the race is fixed
-      # (docs/redesign-results.md, "Open, by module", Maps).
+      # three. Remove the loop when the race is fixed.
       - name: Check the Maps editor
         run: |
           for attempt in 1 2 3; do
@@ -227,9 +257,12 @@ jobs:
           done
           exit 1
 
+      - name: Check the immersive layouts
+        run: node scripts/check-immersive.mjs
+
   deploy:
-    # Only what is on main goes live.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # Only what is on main goes live, and only where Pages is turned on.
+    if: needs.build.outputs.publish == 'true'
 
     environment:
       name: github-pages

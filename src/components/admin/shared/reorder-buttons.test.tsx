@@ -15,7 +15,11 @@ describe("reorder buttons (Content and Navigation)", () => {
 
   it("disables a direction the row cannot move in", () => {
     render(<ReorderButtons name="Work" onMoveDown={() => {}} />);
-    expect(screen.getByRole("button", { name: "Move up: Work" })).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "Move down: Work" })).toHaveProperty("disabled", false);
+    expect(
+      screen.getByRole("button", { name: "Move up: Work" }),
+    ).toHaveProperty("disabled", true);
+    expect(
+      screen.getByRole("button", { name: "Move down: Work" }),
+    ).toHaveProperty("disabled", false);
   });
 });

@@ -44,7 +44,7 @@ import { cn } from "@/lib/cn";
 import { embedFor } from "./embed";
 import { KIND_LABELS, statusLabel } from "./library-model";
 
-export const KIND_ICONS: Record<LibraryKind, LucideIcon> = {
+const KIND_ICONS: Record<LibraryKind, LucideIcon> = {
   book: BookOpen,
   article: Newspaper,
   video: Clapperboard,
@@ -69,7 +69,7 @@ const STATUS_LOOK: Record<
 };
 
 /** Status in words, with an icon, in the kind's own verb ("Reading", "Watched"). */
-export function SourceStatusBadge({
+function SourceStatusBadge({
   status,
   kind,
 }: {
@@ -101,7 +101,7 @@ function sinceLine(source: LibrarySource): string | null {
 }
 
 /**
- * What you are in the middle of, first (03-workspace-ui.md §2.8): the
+ * What you are in the middle of, first: the
  * "currently reading" state was a chip on the second tab.
  */
 export function NowReading({

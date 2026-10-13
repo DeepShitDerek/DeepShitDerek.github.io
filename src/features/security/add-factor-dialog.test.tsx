@@ -27,7 +27,10 @@ beforeEach(() => {
     data: { all: [{ id: "stale", factor_type: "totp", status: "unverified" }] },
   });
   mfa.enroll.mockResolvedValue({
-    data: { id: "f2", totp: { qr_code: "data:image/svg+xml,x", secret: "ABCDEFGH" } },
+    data: {
+      id: "f2",
+      totp: { qr_code: "data:image/svg+xml,x", secret: "ABCDEFGH" },
+    },
     error: null,
   });
   mfa.unenroll.mockResolvedValue({ error: null });
@@ -36,23 +39,35 @@ beforeEach(() => {
 
 function setup(existingNames = ["Phone"]) {
   const onOpenChange = vi.fn();
-  render(<AddFactorDialog open onOpenChange={onOpenChange} existingNames={existingNames} />);
+  render(
+    <AddFactorDialog
+      open
+      onOpenChange={onOpenChange}
+      existingNames={existingNames}
+    />,
+  );
   return { onOpenChange };
 }
 
-describe("adding a second 2FA method (ADM-025)", () => {
+describe("adding a second 2FA method", () => {
   it("clears abandoned attempts, enrols under the chosen name, and verifies", async () => {
     const { onOpenChange } = setup();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByAltText("QR code for MFA enrollment");
     expect(mfa.unenroll).toHaveBeenCalledWith({ factorId: "stale" });
-    expect(mfa.enroll).toHaveBeenCalledWith({ factorType: "totp", friendlyName: "Backup authenticator" });
+    expect(mfa.enroll).toHaveBeenCalledWith({
+      factorType: "totp",
+      friendlyName: "Backup authenticator",
+    });
 
     const otp = screen.getByLabelText("The 6-digit code it shows");
     fireEvent.change(otp, { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Add method" }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(mfa.challengeAndVerify).toHaveBeenCalledWith({ factorId: "f2", code: "123456" });
+    expect(mfa.challengeAndVerify).toHaveBeenCalledWith({
+      factorId: "f2",
+      code: "123456",
+    });
     expect(dispatch).toHaveBeenCalled();
   });
 
@@ -69,6 +84,9 @@ describe("adding a second 2FA method (ADM-025)", () => {
   it("refuses a name already in use", () => {
     setup(["Backup authenticator"]);
     expect(screen.getByText("A method already has this name.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty(
+      "disabled",
+      true,
+    );
   });
 });

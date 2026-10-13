@@ -19,6 +19,6 @@ export function getStorageUrl(filePath: string | null | undefined): string {
   if (filePath.startsWith("http")) return filePath;
   if (!isSupabaseConfigured) return filePath;
   // Built without supabase-js, which this helper used to pull into every
-  // page through lib/utils (V2-026).
+  // page through lib/utils.
   return publicStorageUrl(BUCKET_NAME, filePath);
 }

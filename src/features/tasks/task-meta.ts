@@ -19,7 +19,6 @@ export const TASK_STATUSES: TaskStatus[] = [
   "review",
   "done",
 ];
-export const TASK_PRIORITIES: TaskPriority[] = ["low", "medium", "high"];
 
 interface StatusMeta {
   label: string;

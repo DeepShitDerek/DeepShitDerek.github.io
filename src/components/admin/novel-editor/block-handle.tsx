@@ -98,7 +98,11 @@ export function BlockHandle({
         const padTop = parseFloat(style.paddingTop) || 0;
         found = {
           pos: offset,
-          top: rect.top - rootTop + padTop + (Math.min(line, rect.height) - 24) / 2,
+          top:
+            rect.top -
+            rootTop +
+            padTop +
+            (Math.min(line, rect.height) - 24) / 2,
         };
       });
       setBlock(found);
@@ -139,7 +143,11 @@ export function BlockHandle({
   const addBelow = () => {
     // An empty line is reused rather than followed by another.
     if (node.type.name === "paragraph" && node.content.size === 0) {
-      editor.chain().focus(pos + 1).insertContent("/").run();
+      editor
+        .chain()
+        .focus(pos + 1)
+        .insertContent("/")
+        .run();
     } else {
       const end = pos + node.nodeSize;
       editor

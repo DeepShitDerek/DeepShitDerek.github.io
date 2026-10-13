@@ -124,7 +124,7 @@ export default function AssetsPage() {
     [assets],
   );
 
-  // Deleting unused files offers Undo (P1-10): the storage delete runs only
+  // Deleting unused files offers Undo: the storage delete runs only
   // when the toast closes. A batch is one toast; its key lists its ids.
   const { pending: deleting, remove: removeBatch } = useUndoableDelete<{
     id: string;
@@ -450,7 +450,7 @@ export default function AssetsPage() {
       />
 
       {/*
-        SEC-003 (V2-013): the bucket is public. Every file here is readable by
+        The bucket is public. Every file here is readable by
         anyone who has its link, so say so where the upload happens rather than
         let a receipt or an ID scan end up world-readable by accident.
       */}

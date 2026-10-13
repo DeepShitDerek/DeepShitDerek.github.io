@@ -36,7 +36,7 @@ export interface NavGroup {
 
 /**
  * Personal OS navigation, grouped by how often each module is opened
- * (design-research/information-architecture.md §6, P1-12): what you look at
+ * (docs/design-research/information-architecture.md §6): what you look at
  * every morning, what you do all day, what you study, money, the public
  * site, what comes in from it, and the rare system screens.
  *

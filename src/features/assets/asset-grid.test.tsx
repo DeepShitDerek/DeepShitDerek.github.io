@@ -10,7 +10,10 @@ const asset = (id: string, name: string, used: number): StorageAsset => ({
   mime_type: "image/png",
   size_kb: 12,
   alt_text: null,
-  used_in: Array.from({ length: used }, (_, i) => ({ type: "page", id: `p${i}` })),
+  used_in: Array.from({ length: used }, (_, i) => ({
+    type: "page",
+    id: `p${i}`,
+  })),
   created_at: "2026-10-01T00:00:00Z",
 });
 const ASSETS = [asset("a", "hero.png", 2), asset("b", "old.png", 0)];
@@ -34,7 +37,9 @@ describe("asset grid tiles", () => {
     mount(false, onSelect);
     const tile = screen.getByRole("button", { name: /^hero\.png/ });
     expect(tile.textContent).toMatch(/Used on 2/);
-    expect(screen.getByRole("button", { name: /^old\.png/ }).textContent).toMatch(/Unused/);
+    expect(
+      screen.getByRole("button", { name: /^old\.png/ }).textContent,
+    ).toMatch(/Unused/);
     fireEvent.click(tile);
     expect(onSelect).toHaveBeenCalledWith(ASSETS[0]);
   });
@@ -43,7 +48,9 @@ describe("asset grid tiles", () => {
     mount();
     const tile = screen.getByRole("button", { name: /^hero\.png/ });
     expect(within(tile).queryAllByRole("button")).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "Delete hero.png" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Delete hero.png" }),
+    ).toBeTruthy();
   });
 
   it("report selection in select mode", () => {

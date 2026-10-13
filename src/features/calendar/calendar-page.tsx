@@ -65,7 +65,7 @@ const VIEW_IDS = VIEWS.map((v) => v.id);
 type Editing = { entry: CalendarEntry } | { draft: EditorDraft } | null;
 
 /**
- * The calendar, rebuilt (03-workspace-ui.md §2.3).
+ * The calendar, rebuilt.
  *
  * The grid is the module's own again, not FullCalendar's: one set of views
  * drawn from `layout.ts`, styled with the theme like everything else, and

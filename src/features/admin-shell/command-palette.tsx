@@ -1,16 +1,21 @@
 import * as React from "react";
-// Mounted by AdminShell only, after the admin guard passes (V2-024).
+// Mounted by AdminShell only, after the admin guard passes.
 import { useRouter } from "next/navigation";
 import { supabase } from "@/supabase/client";
 import { useAppDispatch } from "@/store/hooks";
 import { startFocus } from "@/store/slices/focusSlice";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { isImmersive } from "@/lib/site-style";
+import { useSiteStyle } from "@/features/immersive/styles/use-site-style";
 import { NAV_GROUPS } from "@/features/admin-shell/nav-config";
 import { requestCreate } from "@/features/admin-shell/create-intent";
 import { OPEN_KEYBOARD_MAP } from "@/features/admin-shell/keyboard-map";
 import { shortcutsOwnedByEditor } from "@/lib/editor-shortcuts";
-import { type SearchKind, useSearchWorkspaceQuery } from "@/store/api/admin/searchApi";
-import { cn } from "@/lib/utils"; // Ensure you have this utility
+import {
+  type SearchKind,
+  useSearchWorkspaceQuery,
+} from "@/store/api/admin/searchApi";
+import { cn } from "@/lib/utils";
 import {
   User,
   FileText,
@@ -41,7 +46,10 @@ import {
 } from "@/components/ui/command";
 import { toast } from "sonner";
 
-const HIT_ICONS: Record<SearchKind, React.ComponentType<{ className?: string }>> = {
+const HIT_ICONS: Record<
+  SearchKind,
+  React.ComponentType<{ className?: string }>
+> = {
   note: StickyNote,
   task: ListTodo,
   post: FileText,
@@ -59,13 +67,20 @@ export function CommandPalette() {
   const [isAdmin, setIsAdmin] = React.useState(false);
   const router = useRouter();
   const { setScheme } = useColorScheme();
+  // Noir, Paper and Dusk set light or dark themselves; there is nothing to
+  // switch, as on the site header.
+  const styleSetsScheme = isImmersive(useSiteStyle());
   const dispatch = useAppDispatch();
 
   // Handle Keyboard Shortcut (Cmd+K)
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       // On a whiteboard ⌘K adds a link to the selected shape.
-      if (e.key === "k" && (e.metaKey || e.ctrlKey) && !shortcutsOwnedByEditor()) {
+      if (
+        e.key === "k" &&
+        (e.metaKey || e.ctrlKey) &&
+        !shortcutsOwnedByEditor()
+      ) {
         e.preventDefault();
         setOpen((open) => !open);
       }
@@ -103,7 +118,7 @@ export function CommandPalette() {
     }
   }, []);
 
-  // Records by title (ADM-027), once typing pauses and there is enough to
+  // Records by title, once typing pauses and there is enough to
   // match on; a single letter would match half the workspace.
   const [query, setQuery] = React.useState("");
   const [term, setTerm] = React.useState("");
@@ -115,9 +130,12 @@ export function CommandPalette() {
   React.useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
-  const { data: hits = [], isFetching: searching } = useSearchWorkspaceQuery(term, {
-    skip: !isAdmin || !open || term.length < 2,
-  });
+  const { data: hits = [], isFetching: searching } = useSearchWorkspaceQuery(
+    term,
+    {
+      skip: !isAdmin || !open || term.length < 2,
+    },
+  );
 
   const runCommand = React.useCallback((command: () => unknown) => {
     setOpen(false);
@@ -151,7 +169,11 @@ export function CommandPalette() {
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput
-          placeholder={isAdmin ? "Search notes, tasks, posts, messages, or a command…" : "Type a command or search..."}
+          placeholder={
+            isAdmin
+              ? "Search notes, tasks, posts, messages, or a command…"
+              : "Type a command or search..."
+          }
           value={query}
           onValueChange={setQuery}
         />
@@ -168,7 +190,9 @@ export function CommandPalette() {
             "max-h-[55vh] sm:max-h-[300px] lg:max-h-[450px]",
           )}
         >
-          <CommandEmpty>{searching ? "Searching…" : "No results found."}</CommandEmpty>
+          <CommandEmpty>
+            {searching ? "Searching…" : "No results found."}
+          </CommandEmpty>
 
           {isAdmin && term.length >= 2 && hits.length > 0 && (
             <>
@@ -184,8 +208,12 @@ export function CommandPalette() {
                       onSelect={() => runCommand(() => router.push(hit.href))}
                     >
                       <Icon className="mr-2 h-4 w-4" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate">{hit.title}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{HIT_LABELS[hit.kind]}</span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {hit.title}
+                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {HIT_LABELS[hit.kind]}
+                      </span>
                     </CommandItem>
                   );
                 })}
@@ -206,20 +234,26 @@ export function CommandPalette() {
                   <span>Write New Post</span>
                 </CommandItem>
                 <CommandItem
-                  onSelect={() => runCommand(() => requestCreate("task", router.push))}
+                  onSelect={() =>
+                    runCommand(() => requestCreate("task", router.push))
+                  }
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   <span>Add Task</span>
                 </CommandItem>
                 <CommandItem
-                  onSelect={() => runCommand(() => requestCreate("note", router.push))}
+                  onSelect={() =>
+                    runCommand(() => requestCreate("note", router.push))
+                  }
                 >
                   <StickyNote className="mr-2 h-4 w-4" />
                   <span>Jot Note</span>
                 </CommandItem>
                 <CommandItem
                   onSelect={() =>
-                    runCommand(() => document.dispatchEvent(new Event(OPEN_KEYBOARD_MAP)))
+                    runCommand(() =>
+                      document.dispatchEvent(new Event(OPEN_KEYBOARD_MAP)),
+                    )
                   }
                 >
                   <Keyboard className="mr-2 h-4 w-4" />
@@ -302,18 +336,22 @@ export function CommandPalette() {
               They now set the same light/dark preference as the site header's
               switch: the owner's theme in that scheme, or the core pair.
             */}
-            <CommandItem
-              onSelect={() => runCommand(() => setScheme("light"))}
-            >
-              <Sun className="mr-2 h-4 w-4" />
-              <span>Light Mode</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => setScheme("dark"))}
-            >
-              <Moon className="mr-2 h-4 w-4" />
-              <span>Dark Mode</span>
-            </CommandItem>
+            {!styleSetsScheme && (
+              <>
+                <CommandItem
+                  onSelect={() => runCommand(() => setScheme("light"))}
+                >
+                  <Sun className="mr-2 h-4 w-4" />
+                  <span>Light Mode</span>
+                </CommandItem>
+                <CommandItem
+                  onSelect={() => runCommand(() => setScheme("dark"))}
+                >
+                  <Moon className="mr-2 h-4 w-4" />
+                  <span>Dark Mode</span>
+                </CommandItem>
+              </>
+            )}
             <CommandItem onSelect={() => runCommand(copyCurrentUrl)}>
               <Copy className="mr-2 h-4 w-4" />
               <span>Copy Current URL</span>

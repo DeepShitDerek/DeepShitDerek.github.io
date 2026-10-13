@@ -35,8 +35,6 @@ export function slugify(text: string): string {
 
 export { getStorageUrl } from "./storage-utils";
 export { parseLocalDate, formatDate } from "./date-utils";
-export { hexToHsl } from "./color-utils";
-
 const WORDS_PER_MINUTE = 225;
 
 export function readTimeFromWordCount(wordCount: number): number {

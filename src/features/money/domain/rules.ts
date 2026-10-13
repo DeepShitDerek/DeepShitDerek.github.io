@@ -1,7 +1,7 @@
 import type { Rule } from "./model";
 
 /**
- * Categorisation rules (V2-080). Case-insensitive, highest priority first,
+ * Categorisation rules. Case-insensitive, highest priority first,
  * first match wins — a rule for "AMAZON PRIME" at priority 200 beats a rule
  * for "AMAZON" at 100, which is what makes a specific rule worth writing.
  *
@@ -36,15 +36,22 @@ function regexFor(pattern: string): RegExp | null {
 }
 
 export function isValidPattern(rule: Pick<Rule, "match" | "pattern">): boolean {
-  if (rule.pattern.trim().length === 0 || rule.pattern.length > 200) return false;
+  if (rule.pattern.trim().length === 0 || rule.pattern.length > 200)
+    return false;
   return rule.match !== "regex" || regexFor(rule.pattern) !== null;
 }
 
 /** Normalise bank text: case, runs of spaces, and the odd non-breaking space. */
 export const normaliseText = (text: string): string =>
-  text.replace(/[\s ]+/g, " ").trim().toLowerCase();
+  text
+    .replace(/[\s ]+/g, " ")
+    .trim()
+    .toLowerCase();
 
-export function ruleMatches(rule: Pick<Rule, "match" | "pattern">, text: string): boolean {
+export function ruleMatches(
+  rule: Pick<Rule, "match" | "pattern">,
+  text: string,
+): boolean {
   const haystack = normaliseText(text);
   const needle = normaliseText(rule.pattern);
   if (!needle) return false;
@@ -60,17 +67,30 @@ export function ruleMatches(rule: Pick<Rule, "match" | "pattern">, text: string)
   }
 }
 
-export function applyRules(rules: readonly Rule[], input: RuleInput): RuleResult | null {
+export function applyRules(
+  rules: readonly Rule[],
+  input: RuleInput,
+): RuleResult | null {
   const ordered = rules
-    .filter((rule) => rule.isActive && (!rule.accountId || rule.accountId === input.accountId))
+    .filter(
+      (rule) =>
+        rule.isActive &&
+        (!rule.accountId || rule.accountId === input.accountId),
+    )
     .slice()
     .sort((a, b) => b.priority - a.priority);
   // Each field on its own: "equals Netflix" must still match when the
   // description is "NETFLIX.COM" and the payee was already set to Netflix.
-  const fields = [input.description, input.payee ?? ""].filter((text) => text.trim());
+  const fields = [input.description, input.payee ?? ""].filter((text) =>
+    text.trim(),
+  );
   for (const rule of ordered) {
     if (fields.some((text) => ruleMatches(rule, text))) {
-      return { categoryId: rule.categoryId, payee: rule.payee, ruleId: rule.id };
+      return {
+        categoryId: rule.categoryId,
+        payee: rule.payee,
+        ruleId: rule.id,
+      };
     }
   }
   return null;

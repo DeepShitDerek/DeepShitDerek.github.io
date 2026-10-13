@@ -1,5 +1,5 @@
 /**
- * When the overview earns its corner (03-workspace-ui.md §2.20).
+ * When the overview earns its corner.
  *
  * It was drawn on an empty map and took a quarter of a phone screen. Now it
  * appears once the map is big enough to get lost in, and never on a phone,

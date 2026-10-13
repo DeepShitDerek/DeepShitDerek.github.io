@@ -122,16 +122,21 @@ export function InventoryForm({ item, onSuccess }: InventoryFormProps) {
   // Outside the form schema: optional, and blank means the base currency.
   const [currency, setCurrency] = useState(item?.currency ?? "");
   const currencyCode = currency.trim().toUpperCase();
-  const currencyInvalid = currencyCode !== "" && !/^[A-Z]{3}$/.test(currencyCode);
+  const currencyInvalid =
+    currencyCode !== "" && !/^[A-Z]{3}$/.test(currencyCode);
 
-  // The ledger expense that bought it (ADM-024).
-  const [transactionId, setTransactionId] = useState<string | null>(item?.transaction_id ?? null);
+  // The ledger expense that bought it.
+  const [transactionId, setTransactionId] = useState<string | null>(
+    item?.transaction_id ?? null,
+  );
   const linkPurchase = (option: PurchaseOption | null) => {
     setTransactionId(option?.id ?? null);
     if (!option) return;
     // Fill what is still blank from the purchase; never overwrite.
-    if (!form.getValues("purchase_date")) form.setValue("purchase_date", option.date, { shouldDirty: true });
-    if (!form.getValues("purchase_price")) form.setValue("purchase_price", option.amount, { shouldDirty: true });
+    if (!form.getValues("purchase_date"))
+      form.setValue("purchase_date", option.date, { shouldDirty: true });
+    if (!form.getValues("purchase_price"))
+      form.setValue("purchase_price", option.amount, { shouldDirty: true });
     if (!currencyCode) setCurrency(option.currency);
   };
 
@@ -141,8 +146,10 @@ export function InventoryForm({ item, onSuccess }: InventoryFormProps) {
       const payload = {
         ...values,
         // Sent only once a currency is in play, so saving keeps working on a
-        // database that has not yet had the column added (ADM-024).
-        ...(currencyCode || item?.currency ? { currency: currencyCode || null } : {}),
+        // database that has not yet had the column added.
+        ...(currencyCode || item?.currency
+          ? { currency: currencyCode || null }
+          : {}),
         transaction_id: transactionId,
         // Only fall back to the purchase price when no current value was given
         // at all. Previously `||` meant an explicit 0 was overwritten, so an
@@ -255,9 +262,14 @@ export function InventoryForm({ item, onSuccess }: InventoryFormProps) {
 
         <div className="space-y-2">
           <Label htmlFor="inventory-purchase">Bought with</Label>
-          <PurchasePicker id="inventory-purchase" value={transactionId} onChange={linkPurchase} />
+          <PurchasePicker
+            id="inventory-purchase"
+            value={transactionId}
+            onChange={linkPurchase}
+          />
           <p className="text-xs text-muted-foreground">
-            The expense in Money that paid for it. Fills in the date, price and currency if they are blank.
+            The expense in Money that paid for it. Fills in the date, price and
+            currency if they are blank.
           </p>
         </div>
 
@@ -276,7 +288,10 @@ export function InventoryForm({ item, onSuccess }: InventoryFormProps) {
           />
           <p
             id="inventory-currency-hint"
-            className={cn("text-xs", currencyInvalid ? "text-destructive" : "text-muted-foreground")}
+            className={cn(
+              "text-xs",
+              currencyInvalid ? "text-destructive" : "text-muted-foreground",
+            )}
           >
             {currencyInvalid
               ? "Three letters, like CAD, USD or INR."

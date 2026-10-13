@@ -12,7 +12,7 @@ import type { Graph } from "./types";
  * one entry — typing a title is one undo step, not one per keystroke.
  */
 
-export interface HistoryEntry {
+interface HistoryEntry {
   label: string;
   forward: GraphMutation[];
   inverse: GraphMutation[];
@@ -26,8 +26,8 @@ export interface History {
 }
 
 export const EMPTY_HISTORY: History = { past: [], future: [] };
-export const HISTORY_LIMIT = 300;
-export const MERGE_WINDOW_MS = 1200;
+const HISTORY_LIMIT = 300;
+const MERGE_WINDOW_MS = 1200;
 
 export interface ExecuteResult {
   graph: Graph;

@@ -36,7 +36,7 @@ const ROW_START_PX = 112;
 const TIME_MIN_WIDTH = 150;
 
 /**
- * The month (03-workspace-ui.md §2.3).
+ * The month.
  *
  * On a wide screen each week row measures itself and shows only what fits:
  * multi-day and all-day entries as one bar across the days they cover, then

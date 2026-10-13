@@ -104,7 +104,7 @@ function Field({
   );
 }
 
-export function ColorSwatches({
+function ColorSwatches({
   value,
   onChange,
   typeFallback,
@@ -163,7 +163,7 @@ export function ColorSwatches({
   );
 }
 
-export function TypeSelect({
+function TypeSelect({
   value,
   onChange,
 }: {
@@ -557,9 +557,9 @@ function MultiDetails() {
 }
 
 /**
- * Nothing selected (03-workspace-ui.md §2.20). This was a table of keyboard
- * shortcuts, desktop-only content on every screen; they are in the editor's
- * ⋯ menu now, which opens the workspace keyboard map.
+ * Nothing selected. Keyboard shortcuts are not listed here: they are
+ * desktop-only content, and the editor's ⋯ menu opens the workspace keyboard
+ * map.
  *
  * Deliberately static: no store subscriptions. Showing live counts here made
  * the panel re-render as a double-clicked node took focus, and the typed

@@ -13,8 +13,8 @@ import {
  *
  * `contact_submissions` has had admin SELECT and DELETE policies since the
  * schema was written and no interface at all, so messages accumulated where
- * nobody could read them. The UPDATE policy the marking actions need arrives
- * with `db/migrations/007-contact-inbox.sql`.
+ * nobody could read them. The UPDATE policy the marking actions need is in
+ * `db/schema.sql`.
  *
  * `integration_settings` is a separate table from `site_identity` on purpose:
  * that one is `FOR SELECT USING (true)`, so a webhook URL stored there would
@@ -97,7 +97,7 @@ export const inboxApi = adminApi.injectEndpoints({
           .maybeSingle();
         if (error) return { error };
         // `maybeSingle` rather than `single`: the row is seeded by the schema,
-        // but a database that has not run migration 007 has no table at all,
+        // but a database set up from an older schema has no table at all,
         // and an inbox that cannot show its notification settings should still
         // show the messages.
         return {

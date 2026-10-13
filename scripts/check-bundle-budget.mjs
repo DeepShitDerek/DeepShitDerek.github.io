@@ -5,7 +5,7 @@ import { gzipSync } from "node:zlib";
 import { stripBasePath } from "./lib/base-path.mjs";
 
 /**
- * JavaScript budget for the public pages (V2-061, started early).
+ * JavaScript budget for the public pages.
  *
  * Sums the gzipped size of every script each exported public page loads —
  * the `<script src>` tags in its HTML under out/ — and fails when a route
@@ -14,7 +14,7 @@ import { stripBasePath } from "./lib/base-path.mjs";
  * has to either win the bytes back or raise the budget in the same commit,
  * where a reviewer sees it.
  *
- * Measured from the HTML rather than a build manifest since V2-023: the
+ * Measured from the HTML rather than a build manifest: the
  * manifests are Next's internals (app-build-manifest.json went away in 16),
  * while the scripts a page's HTML asks for are exactly what a visitor
  * downloads before the page works. Lazily imported chunks are not counted.
@@ -37,7 +37,10 @@ function firstChild(dir) {
   const full = path.join(out, dir);
   if (!existsSync(full)) return null;
   const name = readdirSync(full, { withFileTypes: true }).find(
-    (d) => d.isDirectory() && !d.name.startsWith("__next") && existsSync(path.join(full, d.name, "index.html")),
+    (d) =>
+      d.isDirectory() &&
+      !d.name.startsWith("__next") &&
+      existsSync(path.join(full, d.name, "index.html")),
   )?.name;
   return name ? path.join(dir, name, "index.html") : null;
 }
@@ -61,7 +64,10 @@ const gzipCache = new Map();
 const gzipKb = (src) => {
   if (!gzipCache.has(src)) {
     const file = path.join(out, decodeURIComponent(src.split("?")[0]));
-    gzipCache.set(src, gzipSync(readFileSync(file), { level: 9 }).length / 1024);
+    gzipCache.set(
+      src,
+      gzipSync(readFileSync(file), { level: 9 }).length / 1024,
+    );
   }
   return gzipCache.get(src);
 };
@@ -86,7 +92,9 @@ for (const [route, html] of Object.entries(ROUTES)) {
       // A project-site build prefixes every asset with its base path.
       .map((src) => stripBasePath(src)),
   );
-  sizes[route] = Math.round([...scripts].reduce((sum, src) => sum + gzipKb(src), 0) * 10) / 10;
+  sizes[route] =
+    Math.round([...scripts].reduce((sum, src) => sum + gzipKb(src), 0) * 10) /
+    10;
 }
 
 if (process.argv.includes("--update")) {

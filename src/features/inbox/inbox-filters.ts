@@ -27,7 +27,7 @@ export function messageState(message: ContactSubmission): InboxState {
  * inbox that empties itself the moment you glance at something is how enquiries
  * get lost. Archiving is the deliberate "I am done with this".
  */
-export function needsAttention(message: ContactSubmission): boolean {
+function needsAttention(message: ContactSubmission): boolean {
   const state = messageState(message);
   return state === "unread" || state === "open";
 }
@@ -60,7 +60,7 @@ export const INBOX_FILTERS: {
 ];
 
 /** Does this message belong in the named view? */
-export function matchesFilter(
+function matchesFilter(
   message: ContactSubmission,
   filter: InboxFilter,
 ): boolean {
@@ -79,10 +79,7 @@ export function matchesFilter(
 }
 
 /** Case-insensitive search across the fields a person would remember. */
-export function matchesSearch(
-  message: ContactSubmission,
-  term: string,
-): boolean {
+function matchesSearch(message: ContactSubmission, term: string): boolean {
   const needle = term.trim().toLowerCase();
   if (needle === "") return true;
   return [message.name, message.email, message.subject, message.message]
@@ -218,7 +215,7 @@ export function replyMailto(message: ContactSubmission): string {
 }
 
 /**
- * What the open message should become when the list changes (ADM-021).
+ * What the open message should become when the list changes.
  * `undefined` means leave it as it is.
  *
  * A wide screen always has a detail pane, so it is filled with the first
@@ -226,7 +223,11 @@ export function replyMailto(message: ContactSubmission): string {
  * nothing is ever opened for the reader; a message that leaves the view
  * closes the sheet.
  */
-export function nextSelection(visibleIds: readonly string[], selectedId: string | null, narrow: boolean): string | null | undefined {
+export function nextSelection(
+  visibleIds: readonly string[],
+  selectedId: string | null,
+  narrow: boolean,
+): string | null | undefined {
   if (visibleIds.length === 0) return selectedId === null ? undefined : null;
   if (selectedId !== null && visibleIds.includes(selectedId)) return undefined;
   if (narrow) return selectedId === null ? undefined : null;

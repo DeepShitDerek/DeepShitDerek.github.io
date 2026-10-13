@@ -49,7 +49,9 @@ export function LearningHarness() {
         Workspace
       </header>
       <main className="flex-1 px-4 pb-6 pt-6 sm:px-6">
-        <div className="mx-auto w-full max-w-wide">{seeded && <LearningPage />}</div>
+        <div className="mx-auto w-full max-w-wide">
+          {seeded && <LearningPage />}
+        </div>
       </main>
     </div>
   );

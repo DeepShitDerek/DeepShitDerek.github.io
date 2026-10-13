@@ -14,7 +14,7 @@ import { blockTracking } from "./lib/no-tracking.mjs";
 import { stripBasePath } from "./lib/base-path.mjs";
 
 /**
- * Hydration check for the prerendered public pages (V2-025).
+ * Hydration check for the prerendered public pages.
  *
  * Serves out/ locally, opens each page in headless Chrome over the DevTools
  * protocol, and fails on any React hydration error (#418/#423/#425) or

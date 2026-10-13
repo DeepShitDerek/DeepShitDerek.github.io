@@ -182,7 +182,7 @@ export function topicUrl(
 }
 
 /** The host, for a "where is this from" label. Never throws on a bad URL. */
-export function hostOf(url: string): string | undefined {
+function hostOf(url: string): string | undefined {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
   } catch {
@@ -250,17 +250,17 @@ export const WINDOWS: { id: Window; label: string; days: number }[] = [
   { id: "month", label: "This month", days: 30 },
 ];
 
-export function windowDays(window: Window): number {
+function windowDays(window: Window): number {
   return WINDOWS.find((entry) => entry.id === window)?.days ?? 1;
 }
 
 /** Unix seconds at the start of the window. */
-export function cutoffSeconds(window: Window, now = new Date()): number {
+function cutoffSeconds(window: Window, now = new Date()): number {
   return Math.floor(now.getTime() / 1000) - windowDays(window) * 86_400;
 }
 
 /** `YYYY-MM-DD` at the start of the window, from local calendar fields. */
-export function cutoffDate(window: Window, now = new Date()): string {
+function cutoffDate(window: Window, now = new Date()): string {
   const start = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -364,7 +364,7 @@ export function parseRepos(body: unknown): Repo[] {
  * answers the 24-hour question only, and the UI says so rather than implying a
  * month's version exists.
  */
-export function mostReadUrl(now = new Date()): string {
+function mostReadUrl(now = new Date()): string {
   // Yesterday: today's figures are partial until the day closes, and a
   // half-counted day ranks the early hours above everything after them.
   const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
@@ -428,37 +428,6 @@ export function compactNumber(value: number): string {
 
 // ── On this day ─────────────────────────────────────────────────────────────
 
-export interface HistoricEvent {
-  year: number;
-  text: string;
-}
-
-export function onThisDayUrl(date = new Date()): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  // Built from local calendar fields: an ISO string would ask for yesterday's
-  // events for part of every day.
-  return `https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`;
-}
-
-export function parseHistoricEvents(body: unknown, limit = 3): HistoricEvent[] {
-  const events = (body as { events?: unknown[] } | null)?.events;
-  if (!Array.isArray(events)) return [];
-
-  return events
-    .map((row): HistoricEvent | null => {
-      if (typeof row !== "object" || row === null) return null;
-      const record = row as Record<string, unknown>;
-      const year = record.year;
-      const text = record.text;
-      if (typeof year !== "number" || typeof text !== "string") return null;
-      return { year, text: text.trim() };
-    })
-    .filter((event): event is HistoricEvent => event !== null)
-    .sort((a, b) => b.year - a.year)
-    .slice(0, limit);
-}
-
 /* ── Place search ────────────────────────────────────────────────────────── */
 
 /** A place found by name: what a forecast needs, and enough to tell two apart. */
@@ -475,7 +444,7 @@ export interface PlaceMatch {
 /**
  * Open-Meteo's place search, the same provider as the forecast: free, no
  * key. "Add a place" asked for latitude and longitude, which nobody knows
- * for their own city (03-workspace-ui.md §2.18).
+ * for their own city.
  */
 export function placeSearchUrl(name: string, count = 5): string {
   const params = new URLSearchParams({
@@ -504,7 +473,12 @@ export function parsePlaces(body: unknown): PlaceMatch[] {
   const results = (body as GeocodingResponse | null)?.results ?? [];
   return results
     .filter(
-      (r): r is Required<Pick<NonNullable<typeof r>, "id" | "name" | "latitude" | "longitude">> & typeof r =>
+      (
+        r,
+      ): r is Required<
+        Pick<NonNullable<typeof r>, "id" | "name" | "latitude" | "longitude">
+      > &
+        typeof r =>
         typeof r?.id === "number" &&
         typeof r.name === "string" &&
         Number.isFinite(r.latitude) &&
@@ -522,7 +496,8 @@ export function parsePlaces(body: unknown): PlaceMatch[] {
 
 /* ── Most read, for a week or a month ────────────────────────────────────── */
 
-const TOP_API = "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access";
+const TOP_API =
+  "https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -535,19 +510,32 @@ const pad2 = (n: number) => String(n).padStart(2, "0");
  * The panel followed only "24 hours" before, so choosing a week left it
  * unchanged and the window control looked broken.
  */
-export function mostReadSource(window: Window, now = new Date()): { urls: string[]; label: string } {
-  if (window === "day") return { urls: [mostReadUrl(now)], label: "Wikipedia, yesterday" };
+export function mostReadSource(
+  window: Window,
+  now = new Date(),
+): { urls: string[]; label: string } {
+  if (window === "day")
+    return { urls: [mostReadUrl(now)], label: "Wikipedia, yesterday" };
   if (window === "week") {
     const urls = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1 - i);
+      const d = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 1 - i,
+      );
       return `${TOP_API}/${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
     });
     return { urls, label: "Wikipedia, the last seven days" };
   }
   const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const name = last.toLocaleDateString("en-CA", { month: "long", year: "numeric" });
+  const name = last.toLocaleDateString("en-CA", {
+    month: "long",
+    year: "numeric",
+  });
   return {
-    urls: [`${TOP_API}/${last.getFullYear()}/${pad2(last.getMonth() + 1)}/all-days`],
+    urls: [
+      `${TOP_API}/${last.getFullYear()}/${pad2(last.getMonth() + 1)}/all-days`,
+    ],
     label: `Wikipedia, ${name} (the last full month)`,
   };
 }
@@ -555,7 +543,9 @@ export function mostReadSource(window: Window, now = new Date()): { urls: string
 /** Not an article: the front page, searches, and the project's own pages. */
 function isArticle(title: string): boolean {
   if (title === "Main_Page" || title === "-") return false;
-  return !/^(Special|Wikipedia|File|Portal|Help|Talk|Category|Template|User|Draft|Module|MediaWiki):/.test(title);
+  return !/^(Special|Wikipedia|File|Portal|Help|Talk|Category|Template|User|Draft|Module|MediaWiki):/.test(
+    title,
+  );
 }
 
 /**
@@ -565,11 +555,15 @@ function isArticle(title: string): boolean {
 export function parseTopArticles(bodies: unknown[], limit = 6): ReadArticle[] {
   const views = new Map<string, number>();
   for (const body of bodies) {
-    const articles = (body as { items?: { articles?: { article?: unknown; views?: unknown }[] }[] } | null)?.items?.[0]
-      ?.articles;
+    const articles = (
+      body as {
+        items?: { articles?: { article?: unknown; views?: unknown }[] }[];
+      } | null
+    )?.items?.[0]?.articles;
     if (!Array.isArray(articles)) continue;
     for (const row of articles) {
-      if (typeof row?.article !== "string" || typeof row.views !== "number") continue;
+      if (typeof row?.article !== "string" || typeof row.views !== "number")
+        continue;
       if (!isArticle(row.article)) continue;
       views.set(row.article, (views.get(row.article) ?? 0) + row.views);
     }

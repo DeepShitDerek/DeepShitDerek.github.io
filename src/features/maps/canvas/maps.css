@@ -1,5 +1,5 @@
 /*
-  Maps canvas (V2-070). React Flow's variables mapped onto the theme's
+  Maps canvas. React Flow's variables mapped onto the theme's
   tokens, so the canvas follows whichever of the 56 presets is active.
   Scoped to .maps-canvas: nothing here leaks into the rest of the app.
 */
@@ -46,7 +46,10 @@
   border-radius: var(--r-control, 0.75rem);
   border: 1.5px solid hsl(var(--map-accent) / 0.55);
   background:
-    linear-gradient(hsl(var(--map-accent) / var(--map-fill)), hsl(var(--map-accent) / var(--map-fill))),
+    linear-gradient(
+      hsl(var(--map-accent) / var(--map-fill)),
+      hsl(var(--map-accent) / var(--map-fill))
+    ),
     hsl(var(--card));
   color: hsl(var(--card-foreground));
   box-shadow: var(--e-1);

@@ -17,7 +17,7 @@ import { getErrorMessage } from "@/lib/utils";
 /**
  * Delete and reset, shared by the popover and the editor.
  *
- * A one-off event is deleted with Undo (P1-10): it leaves the grid at once
+ * A one-off event is deleted with Undo: it leaves the grid at once
  * and nothing is removed until the toast closes. One occurrence of a series
  * asks whether "this" means the occurrence or the series: removing just
  * this one writes a cancellation, never deletes the row (which would take

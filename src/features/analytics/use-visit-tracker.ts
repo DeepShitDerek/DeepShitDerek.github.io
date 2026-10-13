@@ -15,7 +15,7 @@ import { classifySource, countryFromTimezone } from "./visitor-source";
  *
  * Everything here is best-effort and silent. Analytics must never be able to
  * break, slow, or block a page: a failed insert, a blocked geo lookup and a
- * database that has not run migration 008 all end the same way, with the
+ * database without the analytics tables all end the same way, with the
  * visitor none the wiser.
  */
 
@@ -124,7 +124,7 @@ export function useVisitTracker(): void {
        * one account, so a session is proof of who this is.
        */
       // Read from storage, not through supabase-js, which would cost every
-      // visitor ~59 KB for this one yes/no (V2-026).
+      // visitor ~59 KB for this one yes/no.
       if (hasStoredSession() && !debug) return;
       // Automated browsers (checks, crawlers driven by WebDriver) are not
       // visitors; the build's own checks were landing in the figures.

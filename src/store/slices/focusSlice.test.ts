@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import reducer, { initialFocusState, pauseFocus, resumeFocus, startFocus, syncFocus } from "./focusSlice";
+import reducer, {
+  initialFocusState,
+  pauseFocus,
+  resumeFocus,
+  startFocus,
+  syncFocus,
+} from "./focusSlice";
 import { loadFocus, saveFocus } from "@/features/focus/focus-persistence";
 
 afterEach(() => {
@@ -9,7 +15,7 @@ afterEach(() => {
 
 const at = (ms: number) => vi.setSystemTime(ms);
 
-describe("focus timer runs on the wall clock (ADM-020)", () => {
+describe("focus timer runs on the wall clock", () => {
   it("counts real time, however rarely it is ticked", () => {
     vi.useFakeTimers();
     at(0);
@@ -41,7 +47,10 @@ describe("focus timer runs on the wall clock (ADM-020)", () => {
   it("is kept for a reload, and forgotten once stopped", () => {
     vi.useFakeTimers();
     at(0);
-    const running = reducer(initialFocusState, startFocus({ durationMinutes: 25, taskId: "t1" }));
+    const running = reducer(
+      initialFocusState,
+      startFocus({ durationMinutes: 25, taskId: "t1" }),
+    );
     saveFocus(running);
     expect(loadFocus()).toEqual(running);
     saveFocus(initialFocusState);

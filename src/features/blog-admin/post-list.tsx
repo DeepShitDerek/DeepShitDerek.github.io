@@ -51,7 +51,7 @@ function when(post: BlogPost): string {
 /**
  * The draft you were last working on, first — because opening the blog
  * module is most often a way back to it. A slim banner, not a hero card
- * (03-workspace-ui.md §2.10): the list under it is the page.
+ *: the list under it is the page.
  */
 export function ContinueWriting({
   post,
@@ -104,7 +104,7 @@ export function PostSection({
           {posts.length}
         </span>
       </h2>
-      {/* One ruled list, not a card per post (north star §3.4). */}
+      {/* One ruled list, not a card per post. */}
       <ul className="list-none divide-y rounded-surface border bg-card p-0">
         {posts.map((post) => (
           <PostRow key={post.id} post={post} {...actions} />

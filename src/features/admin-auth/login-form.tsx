@@ -120,7 +120,8 @@ export function LoginForm() {
   };
 
   if (isCheckingAdmin) return <AuthPending text="One moment…" />;
-  if (isRedirecting) return <AuthPending text="You're signed in — opening your workspace…" />;
+  if (isRedirecting)
+    return <AuthPending text="You're signed in — opening your workspace…" />;
 
   return (
     <AuthPanel
@@ -154,7 +155,12 @@ export function LoginForm() {
 
         {error && <AuthError message={error} />}
 
-        <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isSubmitting}
+          className="w-full"
+        >
           {isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
 

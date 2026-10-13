@@ -10,7 +10,7 @@ import { useUrlTab } from "@/hooks/use-url-tab";
 
 const TABS = ["loans", "payoff", "credit", "income", "applications"] as const;
 
-/** Borrowing (V2-080): loans, paying debt down, credit, and applying for more. */
+/** Borrowing: loans, paying debt down, credit, and applying for more. */
 export function BorrowingArea() {
   // In the URL (?tab=), so Back and a reload return to it.
   const [tab, setTab] = useUrlTab("loans", TABS);
@@ -25,11 +25,21 @@ export function BorrowingArea() {
           <TabsTrigger value="applications">Applications</TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="loans"><LoansPanel /></TabsContent>
-      <TabsContent value="payoff"><PayoffPanel /></TabsContent>
-      <TabsContent value="credit"><CreditPanel /></TabsContent>
-      <TabsContent value="income"><IncomePanel /></TabsContent>
-      <TabsContent value="applications"><ApplicationsPanel /></TabsContent>
+      <TabsContent value="loans">
+        <LoansPanel />
+      </TabsContent>
+      <TabsContent value="payoff">
+        <PayoffPanel />
+      </TabsContent>
+      <TabsContent value="credit">
+        <CreditPanel />
+      </TabsContent>
+      <TabsContent value="income">
+        <IncomePanel />
+      </TabsContent>
+      <TabsContent value="applications">
+        <ApplicationsPanel />
+      </TabsContent>
     </Tabs>
   );
 }

@@ -16,7 +16,12 @@ export function BlogEditorHarness() {
       </header>
       <main className="flex-1 px-4 pb-6 pt-6 sm:px-6">
         <div className="mx-auto w-full max-w-wide">
-          <BlogEditor post={null} onClose={() => {}} onCreated={() => {}} onDelete={() => {}} />
+          <BlogEditor
+            post={null}
+            onClose={() => {}}
+            onCreated={() => {}}
+            onDelete={() => {}}
+          />
         </div>
       </main>
     </div>

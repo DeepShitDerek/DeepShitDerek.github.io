@@ -13,7 +13,7 @@ import {
 import { cn } from "@/lib/cn";
 
 /**
- * Which of the three overlays the grid is drawing (03-workspace-ui.md §2.3).
+ * Which of the three overlays the grid is drawing.
  *
  * The calendar shows four kinds of thing: events, tasks due, habits done and
  * money. Only events come from the calendars themselves. The other three were

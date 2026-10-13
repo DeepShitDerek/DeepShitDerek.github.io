@@ -41,10 +41,24 @@ export function SaveStatus({
         className,
       )}
     >
-      {state === "saving" && <Loader2 aria-hidden className="size-3 shrink-0 animate-spin motion-reduce:animate-none" />}
-      {state === "saved" && <Check aria-hidden className="size-3 shrink-0 text-success" />}
-      {state === "dirty" && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-warning" />}
-      {state === "error" && <AlertCircle aria-hidden className="size-3 shrink-0" />}
+      {state === "saving" && (
+        <Loader2
+          aria-hidden
+          className="size-3 shrink-0 animate-spin motion-reduce:animate-none"
+        />
+      )}
+      {state === "saved" && (
+        <Check aria-hidden className="size-3 shrink-0 text-success" />
+      )}
+      {state === "dirty" && (
+        <span
+          aria-hidden
+          className="size-1.5 shrink-0 rounded-full bg-warning"
+        />
+      )}
+      {state === "error" && (
+        <AlertCircle aria-hidden className="size-3 shrink-0" />
+      )}
       <span className="truncate">{words}</span>
     </p>
   );

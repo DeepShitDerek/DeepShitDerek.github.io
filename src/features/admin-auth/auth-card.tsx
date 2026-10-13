@@ -8,9 +8,7 @@ import { cn } from "@/lib/cn";
 /**
  * The pieces every sign-in screen is built from.
  *
- * They replace a v2 card that the redesign had skipped: a numbered mono step
- * label ("01 / access"), a terminal status line ("// awaiting credentials"),
- * uppercase mono errors, and a border drawn around a shadowed card. These are
+ * These are
  * the first screens a new owner sees, so they speak plainly and sit on the
  * page, not in a box.
  */
@@ -56,9 +54,12 @@ export function AuthPanel({
 const FIRST_RUN = ["Account", "Email", "Two-factor", "Workspace"];
 
 /** First-time setup, as four steps the new owner can see the end of. */
-export function SetupSteps({ current }: { current: number }) {
+function SetupSteps({ current }: { current: number }) {
   return (
-    <ol aria-label="Setting up your workspace" className="flex items-center gap-2">
+    <ol
+      aria-label="Setting up your workspace"
+      className="flex items-center gap-2"
+    >
       {FIRST_RUN.map((label, index) => {
         const done = index < current;
         const here = index === current;

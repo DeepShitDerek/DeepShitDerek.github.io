@@ -3,14 +3,20 @@ import type { InventoryItem } from "@/types";
 import { totals } from "./inventory-filters";
 import { formatValue, itemCurrency } from "./item-value";
 
-const item = (fields: Partial<InventoryItem>) => ({ id: "x", name: "x", ...fields }) as InventoryItem;
+const item = (fields: Partial<InventoryItem>) =>
+  ({ id: "x", name: "x", ...fields }) as InventoryItem;
 
-describe("inventory money is kept per currency (ADM-024)", () => {
+describe("inventory money is kept per currency", () => {
   it("never adds rupees to dollars, and leads with the base currency", () => {
     const result = totals(
       [
         item({ purchase_price: 2000, current_value: 1500 }), // no currency: base
-        item({ purchase_price: 100, current_value: 120, currency: "CAD", quantity: 2 }),
+        item({
+          purchase_price: 100,
+          current_value: 120,
+          currency: "CAD",
+          quantity: 2,
+        }),
         item({ purchase_price: 90000, current_value: 60000, currency: "INR" }),
       ],
       "CAD",

@@ -6,7 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/providers/confirm-dialog-provider";
 import { getErrorMessage } from "@/lib/utils";
-import { useGetIntegrationSettingsQuery, useGetWatchlistQuery } from "@/store/api/adminApi";
+import {
+  useGetIntegrationSettingsQuery,
+  useGetWatchlistQuery,
+} from "@/store/api/adminApi";
 import { fetchQuotes } from "@/features/discover/quotes";
 import { fetchJson } from "@/features/discover/sources";
 import type { Security } from "../domain/invest";
@@ -14,7 +17,7 @@ import { pricesFromQuotes, watchedSecurities } from "../domain/quote-prices";
 import { useSavePricesMutation } from "../data/money-api";
 
 /**
- * "Today's prices from Discover" (ADM-026): opt-in, one click at a time.
+ * "Today's prices from Discover": opt-in, one click at a time.
  *
  * Only for held securities already on the Discover watchlist, whose symbols
  * the owner already sends to a quote provider. It asks first, every time, and
@@ -55,7 +58,10 @@ export function DiscoverQuotesButton({
     setBusy(true);
     try {
       const entries = watchlist.filter((e) =>
-        watched.some((s) => s.symbol.trim().toUpperCase() === e.symbol.trim().toUpperCase()),
+        watched.some(
+          (s) =>
+            s.symbol.trim().toUpperCase() === e.symbol.trim().toUpperCase(),
+        ),
       );
       const quotes = await fetchQuotes(entries, {
         baseCurrency,
@@ -80,21 +86,33 @@ export function DiscoverQuotesButton({
         ...(missing > 0 ? [`${missing} without a quote`] : []),
       ];
       if (prices.length > 0) {
-        toast.success(`${prices.length} price${prices.length === 1 ? "" : "s"} saved for today`, {
-          description: notes.join(" · ") || undefined,
-        });
+        toast.success(
+          `${prices.length} price${prices.length === 1 ? "" : "s"} saved for today`,
+          {
+            description: notes.join(" · ") || undefined,
+          },
+        );
       } else {
-        toast.info("No prices saved", { description: notes.join(" · ") || "No quotes came back." });
+        toast.info("No prices saved", {
+          description: notes.join(" · ") || "No quotes came back.",
+        });
       }
     } catch (error) {
-      toast.error("Couldn't fetch prices", { description: getErrorMessage(error) });
+      toast.error("Couldn't fetch prices", {
+        description: getErrorMessage(error),
+      });
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Button size="sm" variant="outline" onClick={() => void run()} disabled={busy}>
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => void run()}
+      disabled={busy}
+    >
       {busy ? (
         <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
       ) : (

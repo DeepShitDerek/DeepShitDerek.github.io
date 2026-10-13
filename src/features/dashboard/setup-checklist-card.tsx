@@ -14,7 +14,7 @@ import { normalizeSiteContent } from "@/lib/site-identity";
 import { cn } from "@/lib/cn";
 import { setupItems } from "./setup-checklist";
 
-export const SETUP_DISMISS_KEY = "setup-checklist-dismissed";
+const SETUP_DISMISS_KEY = "setup-checklist-dismissed";
 
 function readDismissed(): boolean {
   try {

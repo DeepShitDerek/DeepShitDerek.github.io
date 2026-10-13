@@ -1,5 +1,9 @@
 /** Save text as a file the browser downloads (exports, backups). */
-export function downloadText(filename: string, text: string, type: string): void {
+export function downloadText(
+  filename: string,
+  text: string,
+  type: string,
+): void {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const link = document.createElement("a");
   link.href = url;

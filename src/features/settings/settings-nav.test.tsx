@@ -13,9 +13,9 @@ describe("SettingsGroupSwitcher", () => {
         invalidIds={new Set()}
       />,
     );
-    expect(screen.getByRole("combobox", { name: "Settings group" })).toHaveTextContent(
-      "Brand & logo · unsaved",
-    );
+    expect(
+      screen.getByRole("combobox", { name: "Settings group" }),
+    ).toHaveTextContent("Brand & logo · unsaved");
   });
 
   it("puts errors ahead of unsaved", () => {
@@ -27,8 +27,8 @@ describe("SettingsGroupSwitcher", () => {
         invalidIds={new Set([DEFAULT_GROUP_ID])}
       />,
     );
-    expect(screen.getByRole("combobox", { name: "Settings group" })).toHaveTextContent(
-      "Brand & logo · has errors",
-    );
+    expect(
+      screen.getByRole("combobox", { name: "Settings group" }),
+    ).toHaveTextContent("Brand & logo · has errors");
   });
 });

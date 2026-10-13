@@ -57,7 +57,7 @@ function visibleScopes(counts: FolderCounts, current: NoteFolder) {
   );
 }
 
-export function folderLabel(folder: NoteFolder): string {
+function folderLabel(folder: NoteFolder): string {
   return folder.kind === "tag"
     ? `#${folder.tag}`
     : SCOPES.find((s) => s.scope === folder.scope)!.label;

@@ -26,7 +26,6 @@ export const adminApi = createApi({
     "AdminPosts",
     "Calendar",
     "CalendarSetup",
-    "Analytics",
     "Dashboard",
     "MFA",
     "SiteContent",
@@ -40,7 +39,7 @@ export const adminApi = createApi({
     "Visitors",
     "Library",
 
-    // Money — finance v3 (V2-080). Split on how often things change: setup
+    // Money. Split on how often things change: setup
     // is read by everything, so a saved transaction must not refetch it.
     "MoneySetup",
     "MoneyRates",

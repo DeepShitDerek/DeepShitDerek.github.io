@@ -1,5 +1,6 @@
 import type { SiteContent } from "@/types";
 import { SITE_IDENTITY_DEFAULTS } from "./site-identity-defaults";
+import { resolveSiteStyle } from "./site-style";
 
 /**
  * Fill in a `site_identity` row so the rest of the app can trust its shape.
@@ -137,6 +138,7 @@ export function normalizeSiteContent(row: Partial<SiteContent>): SiteContent {
       // site into an empty list rather than one blank paragraph.
       bio: withoutBlanks(merged.profile_data.bio),
       proof: normalizeProof(merged.profile_data.proof),
+      site_style: resolveSiteStyle(merged.profile_data.site_style),
       status_panel: {
         ...panel,
         currently_exploring: {

@@ -1,7 +1,7 @@
 import { renderOgCard } from "@/lib/og/card";
 import { OG_PAGES, type OgPageKey } from "@/lib/og/pages";
 
-// Rendered to out/og/page/<key>/image.png at build (V2-045).
+// Rendered to out/og/page/<key>/image.png at build.
 export const dynamic = "force-static";
 export const dynamicParams = false;
 

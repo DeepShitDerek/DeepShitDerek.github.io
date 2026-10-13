@@ -1,4 +1,4 @@
-import type { DashboardData, Habit } from "@/types";
+import type { DashboardData } from "@/types";
 import { isDueOn, todayIso } from "@/features/habits/habit-schedule";
 import { indexLogs, isSatisfiedOn } from "@/features/habits/habit-progress";
 
@@ -15,26 +15,12 @@ import { indexLogs, isSatisfiedOn } from "@/features/habits/habit-progress";
  * belongs to. Events have real times. Habits have a time of day. Tasks due
  * today have neither, so they sit in a dock rather than being invented a slot
  * — a task pinned to 09:00 because something had to go somewhere is the exact
- * lie the old calendar told, and it is recorded in the log as a trap.
+ * lie the old calendar told.
  *
  * All of it is pure. The interesting parts are arithmetic — which hours to
  * show, where an event sits, what counts as "next" — and arithmetic is
  * testable in a way that a positioned div is not.
  */
-
-export type Band = "morning" | "afternoon" | "evening";
-
-export const BANDS: { id: Band; label: string; from: number; to: number }[] = [
-  { id: "morning", label: "Morning", from: 5, to: 12 },
-  { id: "afternoon", label: "Afternoon", from: 12, to: 17 },
-  { id: "evening", label: "Evening", from: 17, to: 24 },
-];
-
-export function bandFor(hour: number): Band {
-  if (hour < 12) return "morning";
-  if (hour < 17) return "afternoon";
-  return "evening";
-}
 
 /**
  * The hours the spine draws.
@@ -140,54 +126,6 @@ function formatTime(date: Date): string {
   return `${hours}:${minutes}`;
 }
 
-export interface BandHabits {
-  band: Band;
-  label: string;
-  habits: { id: string; title: string; done: boolean }[];
-}
-
-/**
- * Today's habits, grouped into the part of the day they belong to.
- *
- * `anytime` is the common case and lands in the band the day is currently in,
- * so an untimed habit reads as "still to do" rather than being filed under a
- * morning that has already gone.
- */
-export function habitBands(
-  habits: Habit[],
-  now = new Date(),
-  today = todayIso(now),
-): BandHabits[] {
-  const active = habits.filter((habit) => !habit.archived_at);
-  const currentBand = bandFor(now.getHours());
-
-  const grouped = new Map<Band, BandHabits["habits"]>(
-    BANDS.map((band) => [band.id, []]),
-  );
-
-  for (const habit of active) {
-    if (!isDueOn(habit, today)) continue;
-
-    const preference = habit.time_of_day;
-    const band: Band =
-      preference && preference !== "anytime"
-        ? (preference as Band)
-        : currentBand;
-
-    grouped.get(band)!.push({
-      id: habit.id,
-      title: habit.title,
-      done: isSatisfiedOn(habit, indexLogs(habit), today),
-    });
-  }
-
-  return BANDS.map((band) => ({
-    band: band.id,
-    label: band.label,
-    habits: grouped.get(band.id)!,
-  })).filter((band) => band.habits.length > 0);
-}
-
 export interface NextUp {
   title: string;
   at: string;
@@ -278,7 +216,7 @@ export function dayPulse(data: DashboardData, now = new Date()): Pulse {
   }
 
   // Tasks: today's include the finished ones, so ticking one off moves the
-  // ring (ADM-013). Overdue counts against the day too — it is work that was
+  // ring. Overdue counts against the day too — it is work that was
   // owed before it — and leaves the list once done.
   const tasksDone = data.tasksDueToday.filter(
     (task) => task.status === "done",

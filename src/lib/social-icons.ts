@@ -21,7 +21,7 @@ import {
  * generic globe instead of nothing. A row with no icon at all reads as broken
  * next to rows that have one.
  */
-export const SOCIAL_ICONS: Record<string, LucideIcon> = {
+const SOCIAL_ICONS: Record<string, LucideIcon> = {
   github: Github,
   linkedin: Linkedin,
   email: Mail,
@@ -41,6 +41,3 @@ export const SOCIAL_ICONS: Record<string, LucideIcon> = {
 export function socialIcon(id: string): LucideIcon {
   return SOCIAL_ICONS[id.trim().toLowerCase()] ?? Globe;
 }
-
-/** The ids this map knows about, for the settings quick-add menu. */
-export const KNOWN_SOCIAL_IDS = Object.keys(SOCIAL_ICONS);

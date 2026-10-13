@@ -27,7 +27,7 @@ vi.mock("@/supabase/client", () => ({
 const { adminApi } = await import("./baseApi");
 const { likePattern, searchApi } = await import("./searchApi");
 
-describe("palette search (ADM-027)", () => {
+describe("palette search", () => {
   it("takes the term's own wildcards literally", () => {
     // 50%_off\  →  %50\%\_off\\%
     expect(likePattern("50%_off\\")).toBe("%50\\%\\_off\\\\%");
@@ -38,7 +38,9 @@ describe("palette search (ADM-027)", () => {
       reducer: { [adminApi.reducerPath]: adminApi.reducer },
       middleware: (d) => d().concat(adminApi.middleware),
     });
-    const { data } = await store.dispatch(searchApi.endpoints.searchWorkspace.initiate("a,b)"));
+    const { data } = await store.dispatch(
+      searchApi.endpoints.searchWorkspace.initiate("a,b)"),
+    );
     expect(data?.map((h) => [h.kind, h.title, h.href])).toEqual([
       ["note", "Untitled note", "/admin/notes/?note=notes-1"],
       ["task", "", "/admin/tasks/?task=tasks-1"],
@@ -46,7 +48,10 @@ describe("palette search (ADM-027)", () => {
       ["message", "Hello, (again) — Ada", "/admin/inbox/?message=m1"],
     ]);
     // Commas and parentheses in the term stay inside the quoted value.
-    expect(calls.contact_submissions).toContainEqual(["or", 'subject.ilike."%a,b)%",name.ilike."%a,b)%"']);
+    expect(calls.contact_submissions).toContainEqual([
+      "or",
+      'subject.ilike."%a,b)%",name.ilike."%a,b)%"',
+    ]);
     expect(calls.notes).toContainEqual(["is", "archived_at", null]);
   });
 });

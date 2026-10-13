@@ -3,7 +3,7 @@ import type { PortfolioItem, PortfolioSection } from "@/types";
 import { adminApi } from "./baseApi";
 import { NO_DB_ERROR, saveQueryFn, deleteQueryFn } from "./query-helpers";
 
-export const portfolioApi = adminApi.injectEndpoints({
+const portfolioApi = adminApi.injectEndpoints({
   endpoints: (builder) => ({
     getPortfolioContent: builder.query<PortfolioSection[], void>({
       queryFn: async () => {

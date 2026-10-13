@@ -3,6 +3,7 @@ import { socialMetadata } from "@/lib/og/metadata";
 import { ogPageImage } from "@/lib/og/pages";
 import { siteContent } from "@/lib/site-content";
 import { BlogListPage } from "@/features/blog/blog-list-page";
+import { StyleSwitch } from "@/features/immersive/style-switch";
 import { pagePreload } from "@/lib/public-preload-server";
 import { PublicPreload } from "@/store/public-preload";
 
@@ -24,7 +25,11 @@ export default async function Page() {
   const builtSlugs = (data.posts ?? []).map((post) => post.slug);
   return (
     <PublicPreload data={data}>
-      <BlogListPage builtSlugs={builtSlugs} />
+      <StyleSwitch
+        layout="blog"
+        builtSlugs={builtSlugs}
+        classic={<BlogListPage builtSlugs={builtSlugs} />}
+      />
     </PublicPreload>
   );
 }
